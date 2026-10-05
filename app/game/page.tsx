@@ -1,0 +1,80 @@
+
+"use client";
+
+import {
+    Suspense,
+} from "react";
+
+import {
+    useSearchParams,
+} from "next/navigation";
+
+import BoomGame from "@/components/game/BoomGame";
+
+
+// ============================================================
+// GAME PAGE CONTENT
+// ============================================================
+
+function GamePageContent() {
+
+    const searchParams =
+        useSearchParams();
+
+
+    const roomCode =
+        searchParams.get("code") || "";
+
+
+    return (
+        <BoomGame
+            roomCode={roomCode}
+        />
+    );
+}
+
+
+// ============================================================
+// GAME PAGE
+// ============================================================
+
+export default function GamePage() {
+
+    return (
+        <Suspense
+            fallback={
+                <div
+                    style={{
+                        position:
+                            "fixed",
+
+                        inset: 0,
+
+                        display: "flex",
+
+                        alignItems:
+                            "center",
+
+                        justifyContent:
+                            "center",
+
+                        background:
+                            "#111827",
+
+                        color: "#fff",
+
+                        fontSize: 18,
+
+                        fontWeight: 600,
+                    }}
+                >
+                    Đang tải game...
+                </div>
+            }
+        >
+
+            <GamePageContent />
+
+        </Suspense>
+    );
+}
