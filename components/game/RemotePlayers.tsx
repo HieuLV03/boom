@@ -11,15 +11,15 @@ import { useFrame } from "@react-three/fiber";
 
 import type { Group } from "three";
 
+import {
+    getStateCallbacks,
+} from "@colyseus/sdk";
+
 import Player from "./Player";
 
 import {
     useMultiplayerStore,
 } from "@/stores/multiplayer.store";
-
-import {
-    getStateCallbacks,
-} from "@colyseus/sdk";
 
 
 // ============================================================
@@ -46,20 +46,19 @@ function RemotePlayer({
         useRef<Group>(null);
 
 
-    // ========================================================
-    // UPDATE POSITION
-    // ========================================================
-
     useFrame(() => {
 
         const group =
             groupRef.current;
 
-
         if (!group || !player) {
             return;
         }
 
+
+        // ----------------------------------------------------
+        // POSITION
+        // ----------------------------------------------------
 
         group.position.x =
             player.x ?? 0;
@@ -71,26 +70,23 @@ function RemotePlayer({
             player.z ?? 0;
 
 
+        // ----------------------------------------------------
+        // ROTATION
+        // ----------------------------------------------------
+
         group.rotation.y =
             player.rotation ?? 0;
+
     });
 
 
-    // ========================================================
-    // RENDER
-    // ========================================================
-
     return (
-        <group
-            ref={groupRef}
-        >
+        <group ref={groupRef}>
+
             <Player
-                position={[
-                    0,
-                    0,
-                    0,
-                ]}
+                position={[0, 0, 0]}
             />
+
         </group>
     );
 }
@@ -108,14 +104,17 @@ export default function RemotePlayers() {
         );
 
 
-    const [players, setPlayers] =
+    const [
+        players,
+        setPlayers,
+    ] =
         useState<RemotePlayerData[]>(
             []
         );
 
 
     // ========================================================
-    // COLYSEUS STATE
+    // SYNC PLAYERS
     // ========================================================
 
     useEffect(() => {
@@ -140,17 +139,13 @@ export default function RemotePlayers() {
         }
 
 
-        // ====================================================
-        // COLYSEUS CALLBACKS
-        // ====================================================
-
         const $ =
             getStateCallbacks(room);
 
 
-        // ====================================================
+        // ----------------------------------------------------
         // REFRESH
-        // ====================================================
+        // ----------------------------------------------------
 
         const refreshPlayers =
             () => {
@@ -179,6 +174,7 @@ export default function RemotePlayers() {
                             id,
                             player,
                         });
+
                     }
                 );
 
@@ -188,62 +184,72 @@ export default function RemotePlayers() {
 
 
         // ====================================================
-        // INITIAL
+        // QUAN TRỌNG
+        // ====================================================
+        //
+        // Đăng ký listener TRƯỚC khi refresh.
+        //
+        // Tránh trường hợp:
+        //
+        // refresh()
+        // ↓
+        // player mới xuất hiện
+        // ↓
+        // onAdd chưa được đăng ký
+        // ↓
+        // mất event
+        //
+        // ====================================================
+
+
+        const removeAddListener =
+            $(playersMap).onAdd(
+                (
+                    _player: any,
+                    id: string
+                ) => {
+
+                    if (
+                        id ===
+                        room.sessionId
+                    ) {
+                        return;
+                    }
+
+
+                    refreshPlayers();
+
+                }
+            );
+
+
+        const removeRemoveListener =
+            $(playersMap).onRemove(
+                (
+                    _player: any,
+                    id: string
+                ) => {
+
+                    if (
+                        id ===
+                        room.sessionId
+                    ) {
+                        return;
+                    }
+
+
+                    refreshPlayers();
+
+                }
+            );
+
+
+        // ====================================================
+        // SAU KHI LISTENER ĐÃ ĐƯỢC ĐĂNG KÝ
+        // MỚI ĐỌC STATE HIỆN TẠI
         // ====================================================
 
         refreshPlayers();
-
-
-        // ====================================================
-        // PLAYER JOIN
-        // ====================================================
-
-        const removeAddListener =
-            $(
-                playersMap
-            ).onAdd(
-                (
-                    _player: any,
-                    id: string
-                ) => {
-
-                    if (
-                        id ===
-                        room.sessionId
-                    ) {
-                        return;
-                    }
-
-
-                    refreshPlayers();
-                }
-            );
-
-
-        // ====================================================
-        // PLAYER LEAVE
-        // ====================================================
-
-        const removeRemoveListener =
-            $(
-                playersMap
-            ).onRemove(
-                (
-                    _player: any,
-                    id: string
-                ) => {
-
-                    if (
-                        id ===
-                        room.sessionId
-                    ) {
-                        return;
-                    }
-
-
-                    refreshPlayers();
-                }
-            );
 
 
         // ====================================================
