@@ -76,11 +76,8 @@ function CameraController({
         //
         // yaw = 0
         //
-        // Camera:
-        // X = player.x
-        // Z = player.z + distance
-        //
-        // Camera nhìn về phía -Z.
+        // Camera ở phía +Z
+        // Camera nhìn về -Z
         // ====================================================
 
         const horizontalDistance =
@@ -152,6 +149,7 @@ function CameraController({
             player.position.y + 1.1,
             player.position.z
         );
+
     });
 
 
@@ -173,6 +171,22 @@ function LocalPlayerController({
         useMultiplayerStore(
             (state) => state.room
         );
+
+
+    // ========================================================
+    // MOVEMENT VELOCITY
+    //
+    // Dùng ref để không làm React render lại liên tục.
+    //
+    // velocityX / velocityZ:
+    // vận tốc hiện tại của player.
+    // ========================================================
+
+    const velocityX =
+        useRef(0);
+
+    const velocityZ =
+        useRef(0);
 
 
     // ========================================================
@@ -213,6 +227,11 @@ function LocalPlayerController({
                 player.rotation.y =
                     serverPlayer.rotation ?? 0;
 
+
+                velocityX.current = 0;
+
+                velocityZ.current = 0;
+
                 return;
             }
         }
@@ -229,6 +248,11 @@ function LocalPlayerController({
         );
 
         player.rotation.y = 0;
+
+
+        velocityX.current = 0;
+
+        velocityZ.current = 0;
 
     }, [room, playerRef]);
 
@@ -258,15 +282,51 @@ function LocalPlayerController({
             useMovementStore.getState();
 
 
-        const magnitude =
+        // ====================================================
+        // INPUT MAGNITUDE
+        // ====================================================
+
+        const inputMagnitude =
             Math.sqrt(
                 x * x +
                 y * y
             );
 
 
-        if (magnitude < 0.05) {
-            return;
+        // ====================================================
+        // DEAD ZONE
+        //
+        // Tránh tay rung nhẹ làm nhân vật di chuyển.
+        // ====================================================
+
+        const DEAD_ZONE = 0.08;
+
+
+        let normalizedMagnitude = 0;
+
+
+        if (
+            inputMagnitude >
+            DEAD_ZONE
+        ) {
+
+            normalizedMagnitude =
+                (
+                    inputMagnitude -
+                    DEAD_ZONE
+                ) /
+                (
+                    1 -
+                    DEAD_ZONE
+                );
+
+
+            normalizedMagnitude =
+                Math.min(
+                    1,
+                    normalizedMagnitude
+                );
+
         }
 
 
@@ -283,13 +343,16 @@ function LocalPlayerController({
         // ====================================================
         // CAMERA FORWARD
         //
-        // yaw = 0:
+        // yaw = 0
         //
         // Camera nhìn:
-        //       ↓
-        //      -Z
         //
-        // Vì vậy forward = -Z.
+        //        -Z
+        //         ↓
+        //        👤
+        //
+        // Joystick ↑
+        // → chạy -Z
         // ====================================================
 
         const forwardX =
@@ -304,7 +367,12 @@ function LocalPlayerController({
         //
         // yaw = 0:
         //
-        // Camera bên phải màn hình = +X.
+        //             +X
+        //              →
+        //             👤
+        //
+        // Joystick →
+        // → chạy +X
         // ====================================================
 
         const rightX =
@@ -315,94 +383,255 @@ function LocalPlayerController({
 
 
         // ====================================================
-        // JOYSTICK → CAMERA SPACE → WORLD SPACE
+        // JOYSTICK → CAMERA SPACE
         //
-        // Joystick:
+        // x:
+        // -1 = trái
+        // +1 = phải
         //
-        // x = -1  → trái
-        // x = +1  → phải
+        // y:
+        // -1 = lên
+        // +1 = xuống
         //
-        // y = -1  → lên
-        // y = +1  → xuống
-        //
-        // UP phải đi theo forward.
+        // Vì joystick ↑ là y = -1
+        // nên phải dùng -y.
         // ====================================================
 
-        const moveX =
+        let targetX =
             rightX * x +
             forwardX * (-y);
 
 
-        const moveZ =
+        let targetZ =
             rightZ * x +
             forwardZ * (-y);
 
 
         // ====================================================
-        // NORMALIZE
+        // TARGET DIRECTION
         // ====================================================
 
-        const length =
+        const targetLength =
             Math.sqrt(
-                moveX * moveX +
-                moveZ * moveZ
+                targetX * targetX +
+                targetZ * targetZ
             );
 
 
-        if (length < 0.001) {
-            return;
+        if (
+            targetLength >
+            0.001 &&
+            normalizedMagnitude > 0
+        ) {
+
+            targetX /=
+                targetLength;
+
+            targetZ /=
+                targetLength;
+
+        } else {
+
+            targetX = 0;
+
+            targetZ = 0;
+
         }
-
-
-        const directionX =
-            moveX / length;
-
-
-        const directionZ =
-            moveZ / length;
 
 
         // ====================================================
         // SPEED
         // ====================================================
+        //
+        // Joystick càng kéo xa
+        // → tốc độ càng cao.
+        //
+        // Đây là điểm khác biệt quan trọng
+        // so với code cũ.
+        // ====================================================
 
-        const speed = 5;
+        const MAX_SPEED = 5.5;
+
+
+        const targetSpeed =
+            MAX_SPEED *
+            normalizedMagnitude;
+
+
+        const targetVelocityX =
+            targetX *
+            targetSpeed;
+
+
+        const targetVelocityZ =
+            targetZ *
+            targetSpeed;
 
 
         // ====================================================
-        // APPLY POSITION
+        // ACCELERATION / DECELERATION
+        // ====================================================
+        //
+        // Không đổi vận tốc ngay lập tức.
+        //
+        // Có joystick:
+        //     → tăng tốc mượt
+        //
+        // Thả joystick:
+        //     → giảm tốc mượt
         // ====================================================
 
-        player.position.x +=
-            directionX *
-            speed *
+        const ACCELERATION = 18;
+
+        const DECELERATION = 22;
+
+
+        const acceleration =
+            normalizedMagnitude > 0
+                ? ACCELERATION
+                : DECELERATION;
+
+
+        const velocityStep =
+            acceleration *
             delta;
 
 
-        player.position.z +=
-            directionZ *
-            speed *
-            delta;
+        // ====================================================
+        // MOVE VELOCITY X
+        // ====================================================
+
+        const differenceX =
+            targetVelocityX -
+            velocityX.current;
+
+
+        if (
+            Math.abs(differenceX) <=
+            velocityStep
+        ) {
+
+            velocityX.current =
+                targetVelocityX;
+
+        } else {
+
+            velocityX.current +=
+                Math.sign(differenceX) *
+                velocityStep;
+
+        }
+
+
+        // ====================================================
+        // MOVE VELOCITY Z
+        // ====================================================
+
+        const differenceZ =
+            targetVelocityZ -
+            velocityZ.current;
+
+
+        if (
+            Math.abs(differenceZ) <=
+            velocityStep
+        ) {
+
+            velocityZ.current =
+                targetVelocityZ;
+
+        } else {
+
+            velocityZ.current +=
+                Math.sign(differenceZ) *
+                velocityStep;
+
+        }
+
+
+        // ====================================================
+        // APPLY MOVEMENT
+        // ====================================================
+
+        const moving =
+            Math.abs(velocityX.current) >
+                0.001 ||
+            Math.abs(velocityZ.current) >
+                0.001;
+
+
+        if (moving) {
+
+            player.position.x +=
+                velocityX.current *
+                delta;
+
+
+            player.position.z +=
+                velocityZ.current *
+                delta;
+
+        }
 
 
         // ====================================================
         // PLAYER ROTATION
+        // ====================================================
         //
-        // Nhân vật quay về hướng đang di chuyển.
+        // Player model:
+        //
+        // FRONT = local -Z
+        //
+        // Vì vậy:
+        //
+        // direction (0, -1)
+        // → rotation = 0
+        //
+        // direction (+1, 0)
+        // → rotation = -PI/2
+        //
+        // direction (0, +1)
+        // → rotation = PI
         // ====================================================
 
-        player.rotation.y =
-            Math.atan2(
-                directionX,
-                directionZ
+        const currentSpeed =
+            Math.sqrt(
+                velocityX.current *
+                    velocityX.current +
+                velocityZ.current *
+                    velocityZ.current
             );
+
+
+        if (
+            currentSpeed >
+            0.05
+        ) {
+
+            const directionX =
+                velocityX.current /
+                currentSpeed;
+
+
+            const directionZ =
+                velocityZ.current /
+                currentSpeed;
+
+
+            player.rotation.y =
+                Math.atan2(
+                    -directionX,
+                    -directionZ
+                );
+
+        }
 
 
         // ====================================================
         // MULTIPLAYER SYNC
         // ====================================================
 
-        if (room) {
+        if (room && moving) {
 
             room.send(
                 "move",
@@ -420,6 +649,7 @@ function LocalPlayerController({
                         player.rotation.y,
                 }
             );
+
         }
 
     });
@@ -433,6 +663,7 @@ function LocalPlayerController({
         <group
             ref={playerRef}
         >
+
             <Player
                 position={[
                     0,
@@ -440,6 +671,7 @@ function LocalPlayerController({
                     0,
                 ]}
             />
+
         </group>
     );
 }
@@ -468,6 +700,7 @@ function Tree({
                 ]}
                 castShadow
             >
+
                 <cylinderGeometry
                     args={[
                         0.3,
@@ -480,6 +713,7 @@ function Tree({
                 <meshStandardMaterial
                     color="#78350f"
                 />
+
             </mesh>
 
 
@@ -491,6 +725,7 @@ function Tree({
                 ]}
                 castShadow
             >
+
                 <coneGeometry
                     args={[
                         1.5,
@@ -502,6 +737,7 @@ function Tree({
                 <meshStandardMaterial
                     color="#166534"
                 />
+
             </mesh>
 
         </group>
@@ -527,6 +763,7 @@ function Rock({
             scale={scale}
             castShadow
         >
+
             <dodecahedronGeometry
                 args={[
                     1,
@@ -537,6 +774,7 @@ function Rock({
             <meshStandardMaterial
                 color="#6b7280"
             />
+
         </mesh>
     );
 }
@@ -565,6 +803,7 @@ function House({
                 ]}
                 castShadow
             >
+
                 <boxGeometry
                     args={[
                         5,
@@ -576,6 +815,7 @@ function House({
                 <meshStandardMaterial
                     color="#d1d5db"
                 />
+
             </mesh>
 
 
@@ -592,6 +832,7 @@ function House({
                 ]}
                 castShadow
             >
+
                 <coneGeometry
                     args={[
                         4,
@@ -603,6 +844,7 @@ function House({
                 <meshStandardMaterial
                     color="#991b1b"
                 />
+
             </mesh>
 
         </group>
@@ -629,6 +871,7 @@ function Road() {
                 0,
             ]}
         >
+
             <planeGeometry
                 args={[
                     8,
@@ -639,6 +882,7 @@ function Road() {
             <meshStandardMaterial
                 color="#374151"
             />
+
         </mesh>
     );
 }
@@ -669,6 +913,7 @@ export default function GameWorld() {
                 ]}
                 receiveShadow
             >
+
                 <planeGeometry
                     args={[
                         100,
@@ -679,6 +924,7 @@ export default function GameWorld() {
                 <meshStandardMaterial
                     color="#4d7c0f"
                 />
+
             </mesh>
 
 
