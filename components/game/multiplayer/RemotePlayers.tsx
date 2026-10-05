@@ -15,7 +15,7 @@ import {
     getStateCallbacks,
 } from "@colyseus/sdk";
 
-import Player from "./Player";
+import Player from "../player/Player";
 
 import {
     useMultiplayerStore,

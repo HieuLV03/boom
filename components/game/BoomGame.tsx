@@ -9,6 +9,10 @@ import GameHUD from "./GameHUD";
 import VirtualJoystick from "./VirtualJoystick";
 import TouchCamera from "./TouchCamera";
 
+import {
+    useBombStore,
+} from "./bomb/bomb.store";
+
 type Props = {
     roomCode?: string;
 };
@@ -16,6 +20,17 @@ type Props = {
 export default function BoomGame({
     roomCode = "",
 }: Props) {
+
+    // ==================================================
+    // BOMB
+    // ==================================================
+
+    const requestBomb =
+        useBombStore(
+            (state) =>
+                state.requestBomb
+        );
+
 
     return (
         <div
@@ -189,7 +204,20 @@ export default function BoomGame({
                 }}
             >
 
+                {/* ==================================================
+                    PLACE BOMB
+                ================================================== */}
+
                 <button
+                    type="button"
+                    onPointerDown={(
+                        event
+                    ) => {
+
+                        event.stopPropagation();
+
+                        requestBomb();
+                    }}
                     style={{
                         width: 64,
                         height: 64,
@@ -197,21 +225,45 @@ export default function BoomGame({
                         borderRadius:
                             "50%",
 
-                        border: "none",
+                        border:
+                            "2px solid rgba(255,255,255,.25)",
 
                         background:
                             "rgba(0,0,0,.55)",
 
                         color: "#fff",
 
-                        fontSize: 28,
+                        fontSize: 30,
+
+                        display:
+                            "flex",
+
+                        alignItems:
+                            "center",
+
+                        justifyContent:
+                            "center",
+
+                        touchAction:
+                            "manipulation",
+
+                        userSelect:
+                            "none",
+
+                        WebkitTapHighlightColor:
+                            "transparent",
                     }}
                 >
-                    🔫
+                    💣
                 </button>
 
 
+                {/* ==================================================
+                    JUMP
+                ================================================== */}
+
                 <button
+                    type="button"
                     style={{
                         width: 64,
                         height: 64,
@@ -219,7 +271,8 @@ export default function BoomGame({
                         borderRadius:
                             "50%",
 
-                        border: "none",
+                        border:
+                            "2px solid rgba(255,255,255,.25)",
 
                         background:
                             "rgba(0,0,0,.55)",
@@ -227,6 +280,15 @@ export default function BoomGame({
                         color: "#fff",
 
                         fontSize: 28,
+
+                        display:
+                            "flex",
+
+                        alignItems:
+                            "center",
+
+                        justifyContent:
+                            "center",
                     }}
                 >
                     🦘

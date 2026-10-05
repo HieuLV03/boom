@@ -1,3 +1,4 @@
+
 import {
     Schema,
     MapSchema,
@@ -6,7 +7,7 @@ import {
 
 
 // ============================================================
-// PLAYER STATE
+// PLAYER
 // ============================================================
 
 export class PlayerState extends Schema {
@@ -38,6 +39,47 @@ export class PlayerState extends Schema {
 
 
 // ============================================================
+// BOMB
+// ============================================================
+
+export class BombState extends Schema {
+
+    @type("string")
+    id: string = "";
+
+    @type("string")
+    ownerId: string = "";
+
+    @type("string")
+    bombType: string = "normal";
+
+    @type("number")
+    x: number = 0;
+
+    @type("number")
+    y: number = 0;
+
+    @type("number")
+    z: number = 0;
+
+    @type("number")
+    radius: number = 4;
+
+    @type("number")
+    damage: number = 100;
+
+    @type("number")
+    remaining: number = 3;
+
+    @type("boolean")
+    exploded: boolean = false;
+
+    @type("string")
+    explosionType: string = "circle";
+}
+
+
+// ============================================================
 // BATTLE STATE
 // ============================================================
 
@@ -51,4 +93,10 @@ export class BattleState extends Schema {
     })
     players =
         new MapSchema<PlayerState>();
+
+    @type({
+        map: BombState,
+    })
+    bombs =
+        new MapSchema<BombState>();
 }

@@ -1,9 +1,16 @@
-
 "use client";
 
-import { useRef } from "react";
+import {
+    useMemo,
+} from "react";
 
-import * as THREE from "three";
+import type {
+    PlayerAppearance,
+} from "./types";
+
+import {
+    CHARACTERS,
+} from "./player.config";
 
 
 // ============================================================
@@ -11,34 +18,52 @@ import * as THREE from "three";
 // ============================================================
 
 type Props = {
-    position?: [number, number, number];
-    rotation?: number;
+
+    appearance?: PlayerAppearance;
+
 };
 
 
 // ============================================================
-// PLAYER
+// CHARACTER
 // ============================================================
 
-export default function Player({
-    position = [0, 0, 0],
-    rotation = 0,
+export default function Character({
+
+    appearance,
+
 }: Props) {
 
-    const groupRef =
-        useRef<THREE.Group>(null);
+    const config =
+        useMemo(
+            () =>
+                CHARACTERS[
+                    appearance?.characterId ??
+                    "default"
+                ] ??
+                CHARACTERS.default,
+
+            [
+                appearance?.characterId,
+            ]
+        );
+
+
+    const scale =
+        config.scale *
+        (appearance?.scale ?? 1);
+
+
+    const skinColor =
+        appearance?.skinColor ??
+        "#D99A6C";
 
 
     return (
-    <group
-    ref={groupRef}
-    position={position}
-    rotation={[
-        0,
-        rotation + Math.PI,
-        0,
-    ]}
->
+
+        <group
+            scale={scale}
+        >
 
             {/* ==================================================
                 BODY
@@ -52,18 +77,20 @@ export default function Player({
                 ]}
                 castShadow
             >
+
                 <capsuleGeometry
                     args={[
                         0.38,
-                        0.8,
-                        4,
+                        0.75,
                         8,
+                        16,
                     ]}
                 />
 
                 <meshStandardMaterial
-                    color="#2563eb"
+                    color="#2563EB"
                 />
+
             </mesh>
 
 
@@ -79,17 +106,19 @@ export default function Player({
                 ]}
                 castShadow
             >
+
                 <sphereGeometry
                     args={[
-                        0.3,
-                        20,
-                        20,
+                        0.42,
+                        24,
+                        24,
                     ]}
                 />
 
                 <meshStandardMaterial
-                    color="#f2c29b"
+                    color={skinColor}
                 />
+
             </mesh>
 
 
@@ -97,55 +126,54 @@ export default function Player({
                 HAIR
             ================================================== */}
 
-        <mesh
-    position={[
-        0,
-        2.08,
-        0,
-    ]}
-    scale={[
-        1,
-        0.55,
-        1,
-    ]}
-    castShadow
->
-    <sphereGeometry
-        args={[
-            0.31,
-            20,
-            12,
-        ]}
-    />
+            <mesh
+                position={[
+                    0,
+                    2.12,
+                    0,
+                ]}
+                castShadow
+            >
 
-    <meshStandardMaterial
-        color="#111827"
-    />
-</mesh>
+                <sphereGeometry
+                    args={[
+                        0.44,
+                        24,
+                        12,
+                    ]}
+                />
+
+                <meshStandardMaterial
+                    color="#171717"
+                />
+
+            </mesh>
+
 
             {/* ==================================================
                 LEFT EYE
-                Front = -Z
             ================================================== */}
 
             <mesh
                 position={[
-                    -0.105,
-                    1.88,
-                    -0.27,
+                    -0.14,
+                    1.91,
+                    0.385,
                 ]}
             >
+
                 <sphereGeometry
                     args={[
-                        0.045,
+                        0.055,
                         12,
                         12,
                     ]}
                 />
 
                 <meshStandardMaterial
-                    color="#ffffff"
+                    color="#111111"
                 />
+
             </mesh>
 
 
@@ -155,128 +183,51 @@ export default function Player({
 
             <mesh
                 position={[
-                    0.105,
-                    1.88,
-                    -0.27,
+                    0.14,
+                    1.91,
+                    0.385,
                 ]}
             >
+
                 <sphereGeometry
                     args={[
-                        0.045,
+                        0.055,
                         12,
                         12,
                     ]}
                 />
 
                 <meshStandardMaterial
-                    color="#ffffff"
-                />
-            </mesh>
-
-
-            {/* ==================================================
-                LEFT PUPIL
-            ================================================== */}
-
-            <mesh
-                position={[
-                    -0.105,
-                    1.88,
-                    -0.305,
-                ]}
-            >
-                <sphereGeometry
-                    args={[
-                        0.022,
-                        10,
-                        10,
-                    ]}
-                />
-
-                <meshStandardMaterial
                     color="#111111"
                 />
-            </mesh>
 
-
-            {/* ==================================================
-                RIGHT PUPIL
-            ================================================== */}
-
-            <mesh
-                position={[
-                    0.105,
-                    1.88,
-                    -0.305,
-                ]}
-            >
-                <sphereGeometry
-                    args={[
-                        0.022,
-                        10,
-                        10,
-                    ]}
-                />
-
-                <meshStandardMaterial
-                    color="#111111"
-                />
             </mesh>
 
 
             {/* ==================================================
                 NOSE
-                Front marker
             ================================================== */}
 
             <mesh
                 position={[
                     0,
-                    1.80,
-                    -0.31,
-                ]}
-                rotation={[
-                    Math.PI / 2,
-                    0,
-                    0,
+                    1.82,
+                    0.415,
                 ]}
             >
-                <coneGeometry
+
+                <sphereGeometry
                     args={[
-                        0.055,
-                        0.12,
+                        0.035,
+                        8,
                         8,
                     ]}
                 />
 
                 <meshStandardMaterial
-                    color="#d99070"
-                />
-            </mesh>
-
-
-            {/* ==================================================
-                CHEST LOGO
-                Helps identify front
-            ================================================== */}
-
-            <mesh
-                position={[
-                    0,
-                    1.2,
-                    -0.385,
-                ]}
-            >
-                <circleGeometry
-                    args={[
-                        0.1,
-                        16,
-                    ]}
+                    color={skinColor}
                 />
 
-                <meshStandardMaterial
-                    color="#facc15"
-                />
             </mesh>
 
 
@@ -286,24 +237,31 @@ export default function Player({
 
             <mesh
                 position={[
-                    -0.48,
-                    1.15,
+                    -0.5,
+                    1.05,
                     0,
+                ]}
+                rotation={[
+                    0,
+                    0,
+                    -0.12,
                 ]}
                 castShadow
             >
+
                 <capsuleGeometry
                     args={[
-                        0.12,
+                        0.11,
                         0.55,
-                        4,
-                        8,
+                        6,
+                        10,
                     ]}
                 />
 
                 <meshStandardMaterial
-                    color="#2563eb"
+                    color="#2563EB"
                 />
+
             </mesh>
 
 
@@ -313,24 +271,31 @@ export default function Player({
 
             <mesh
                 position={[
-                    0.48,
-                    1.15,
+                    0.5,
+                    1.05,
                     0,
+                ]}
+                rotation={[
+                    0,
+                    0,
+                    0.12,
                 ]}
                 castShadow
             >
+
                 <capsuleGeometry
                     args={[
-                        0.12,
+                        0.11,
                         0.55,
-                        4,
-                        8,
+                        6,
+                        10,
                     ]}
                 />
 
                 <meshStandardMaterial
-                    color="#2563eb"
+                    color="#2563EB"
                 />
+
             </mesh>
 
 
@@ -340,24 +305,26 @@ export default function Player({
 
             <mesh
                 position={[
-                    -0.18,
+                    -0.19,
                     0.45,
                     0,
                 ]}
                 castShadow
             >
+
                 <capsuleGeometry
                     args={[
                         0.14,
                         0.55,
-                        4,
-                        8,
+                        6,
+                        10,
                     ]}
                 />
 
                 <meshStandardMaterial
                     color="#111827"
                 />
+
             </mesh>
 
 
@@ -367,55 +334,82 @@ export default function Player({
 
             <mesh
                 position={[
-                    0.18,
+                    0.19,
                     0.45,
                     0,
                 ]}
                 castShadow
             >
+
                 <capsuleGeometry
                     args={[
                         0.14,
                         0.55,
-                        4,
-                        8,
+                        6,
+                        10,
                     ]}
                 />
 
                 <meshStandardMaterial
                     color="#111827"
                 />
+
             </mesh>
 
 
             {/* ==================================================
-                FRONT ARROW
-                Very obvious direction marker
+                LEFT SHOE
             ================================================== */}
 
             <mesh
                 position={[
-                    0,
-                    1.35,
-                    -0.45,
+                    -0.19,
+                    0.12,
+                    -0.08,
                 ]}
-                rotation={[
-                    -Math.PI / 2,
-                    0,
-                    0,
-                ]}
+                castShadow
             >
-                <coneGeometry
+
+                <boxGeometry
                     args={[
-                        0.12,
                         0.3,
-                        4,
+                        0.18,
+                        0.55,
                     ]}
                 />
 
                 <meshStandardMaterial
-                    color="#facc15"
+                    color="#F8FAFC"
                 />
+
+            </mesh>
+
+
+            {/* ==================================================
+                RIGHT SHOE
+            ================================================== */}
+
+            <mesh
+                position={[
+                    0.19,
+                    0.12,
+                    -0.08,
+                ]}
+                castShadow
+            >
+
+                <boxGeometry
+                    args={[
+                        0.3,
+                        0.18,
+                        0.55,
+                    ]}
+                />
+
+                <meshStandardMaterial
+                    color="#F8FAFC"
+                />
+
             </mesh>
 
         </group>
