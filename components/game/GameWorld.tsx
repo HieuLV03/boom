@@ -6,9 +6,12 @@ import {
     useRef,
 } from "react";
 
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 
-import type { Group } from "three";
+import type {
+    Group,
+    Vector3,
+} from "three";
 
 import Player from "./Player";
 import RemotePlayers from "./RemotePlayers";
@@ -18,14 +21,106 @@ import { useMultiplayerStore } from "@/stores/multiplayer.store";
 
 
 // ============================================================
+// CAMERA CONTROLLER
+// ============================================================
+
+function CameraController({
+    target,
+}: {
+    target: React.RefObject<Group | null>;
+}) {
+
+    const { camera } =
+        useThree();
+
+    const currentPosition =
+        useRef<Vector3 | null>(null);
+
+
+    useFrame((_, delta) => {
+
+        const player =
+            target.current;
+
+        if (!player) {
+            return;
+        }
+
+
+        // ====================================================
+        // CAMERA OFFSET
+        // ====================================================
+
+        const cameraDistance = 7;
+        const cameraHeight = 4;
+
+
+        // Camera nằm phía sau player
+        const targetX =
+            player.position.x;
+
+        const targetY =
+            player.position.y +
+            cameraHeight;
+
+        const targetZ =
+            player.position.z +
+            cameraDistance;
+
+
+        // ====================================================
+        // SMOOTH FOLLOW
+        // ====================================================
+
+        const smooth =
+            1 -
+            Math.pow(
+                0.001,
+                delta
+            );
+
+
+        camera.position.x +=
+            (targetX -
+                camera.position.x) *
+            smooth;
+
+        camera.position.y +=
+            (targetY -
+                camera.position.y) *
+            smooth;
+
+        camera.position.z +=
+            (targetZ -
+                camera.position.z) *
+            smooth;
+
+
+        // ====================================================
+        // LOOK AT PLAYER
+        // ====================================================
+
+        camera.lookAt(
+            player.position.x,
+            player.position.y + 1,
+            player.position.z
+        );
+    });
+
+
+    return null;
+}
+
+
+// ============================================================
 // LOCAL PLAYER CONTROLLER
 // ============================================================
 
-function LocalPlayerController() {
-
-    const playerRef =
-        useRef<Group>(null);
-
+function LocalPlayerController({
+    playerRef,
+}: {
+    playerRef: React.RefObject<Group | null>;
+}) {
 
     const room =
         useMultiplayerStore(
@@ -58,7 +153,6 @@ function LocalPlayerController() {
         const group =
             playerRef.current;
 
-
         if (!group) {
             return;
         }
@@ -74,7 +168,7 @@ function LocalPlayerController() {
         group.rotation.y =
             player.rotation ?? 0;
 
-    }, [room]);
+    }, [room, playerRef]);
 
 
     // ========================================================
@@ -86,24 +180,12 @@ function LocalPlayerController() {
         const player =
             playerRef.current;
 
-
         if (!player) {
             return;
         }
 
 
         if (!room) {
-            return;
-        }
-
-
-        const serverPlayer =
-            room.state?.players?.get(
-                room.sessionId
-            );
-
-
-        if (!serverPlayer) {
             return;
         }
 
@@ -122,10 +204,6 @@ function LocalPlayerController() {
             );
 
 
-        // ----------------------------------------------------
-        // DEAD ZONE
-        // ----------------------------------------------------
-
         if (
             magnitude < 0.05
         ) {
@@ -133,22 +211,17 @@ function LocalPlayerController() {
         }
 
 
-        // ----------------------------------------------------
-        // SPEED
-        // ----------------------------------------------------
-
         const speed = 5;
 
 
-        // ----------------------------------------------------
+        // ====================================================
         // MOVE
-        // ----------------------------------------------------
+        // ====================================================
 
         player.position.x +=
             x *
             speed *
             delta;
-
 
         player.position.z +=
             y *
@@ -156,9 +229,9 @@ function LocalPlayerController() {
             delta;
 
 
-        // ----------------------------------------------------
+        // ====================================================
         // ROTATION
-        // ----------------------------------------------------
+        // ====================================================
 
         player.rotation.y =
             Math.atan2(
@@ -167,22 +240,26 @@ function LocalPlayerController() {
             );
 
 
-        // ----------------------------------------------------
+        // ====================================================
         // SEND TO SERVER
-        // ----------------------------------------------------
+        // ====================================================
 
-        serverPlayer.x =
-            player.position.x;
+        room.send(
+            "move",
+            {
+                x:
+                    player.position.x,
 
-        serverPlayer.y =
-            player.position.y;
+                y:
+                    player.position.y,
 
-        serverPlayer.z =
-            player.position.z;
+                z:
+                    player.position.z,
 
-        serverPlayer.rotation =
-            player.rotation.y;
-
+                rotation:
+                    player.rotation.y,
+            }
+        );
     });
 
 
@@ -191,7 +268,11 @@ function LocalPlayerController() {
             ref={playerRef}
         >
             <Player
-                position={[0, 0, 0]}
+                position={[
+                    0,
+                    0,
+                    0,
+                ]}
             />
         </group>
     );
@@ -212,8 +293,6 @@ function Tree({
         <group
             position={position}
         >
-
-            {/* Trunk */}
 
             <mesh
                 position={[
@@ -237,8 +316,6 @@ function Tree({
                 />
             </mesh>
 
-
-            {/* Leaves */}
 
             <mesh
                 position={[
@@ -311,8 +388,6 @@ function House({
             position={position}
         >
 
-            {/* House body */}
-
             <mesh
                 position={[
                     0,
@@ -334,8 +409,6 @@ function House({
                 />
             </mesh>
 
-
-            {/* Roof */}
 
             <mesh
                 position={[
@@ -408,11 +481,15 @@ function Road() {
 
 export default function GameWorld() {
 
+    const playerRef =
+        useRef<Group>(null);
+
+
     return (
         <group>
 
             {/* ==================================================
-                GROUND
+                WORLD
             ================================================== */}
 
             <mesh
@@ -435,10 +512,6 @@ export default function GameWorld() {
                 />
             </mesh>
 
-
-            {/* ==================================================
-                ROAD
-            ================================================== */}
 
             <Road />
 
@@ -585,11 +658,22 @@ export default function GameWorld() {
                 LOCAL PLAYER
             ================================================== */}
 
-            <LocalPlayerController />
+            <LocalPlayerController
+                playerRef={playerRef}
+            />
 
 
             {/* ==================================================
-                OTHER ONLINE PLAYERS
+                CAMERA FOLLOW
+            ================================================== */}
+
+            <CameraController
+                target={playerRef}
+            />
+
+
+            {/* ==================================================
+                REMOTE PLAYERS
             ================================================== */}
 
             <RemotePlayers />
