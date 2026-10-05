@@ -1,9 +1,7 @@
 
 "use client";
 
-import {
-    useRef,
-} from "react";
+import { useRef } from "react";
 
 import {
     useCameraStore,
@@ -11,12 +9,13 @@ import {
 
 
 // ============================================================
-// SETTINGS
+// CAMERA SETTINGS
 // ============================================================
 
 const SENSITIVITY = 0.008;
 
 const MIN_PITCH = -0.75;
+
 const MAX_PITCH = 0.35;
 
 
@@ -36,6 +35,10 @@ export default function TouchCamera() {
         useRef(0);
 
 
+    // ========================================================
+    // POINTER DOWN
+    // ========================================================
+
     function handlePointerDown(
         event: React.PointerEvent<HTMLDivElement>
     ) {
@@ -48,11 +51,16 @@ export default function TouchCamera() {
         lastY.current =
             event.clientY;
 
+
         event.currentTarget.setPointerCapture(
             event.pointerId
         );
     }
 
+
+    // ========================================================
+    // POINTER MOVE
+    // ========================================================
 
     function handlePointerMove(
         event: React.PointerEvent<HTMLDivElement>
@@ -87,14 +95,28 @@ export default function TouchCamera() {
             useCameraStore.getState();
 
 
+        // ====================================================
+        // CAMERA ROTATION
+        //
+        // Kéo phải  → nhìn phải
+        // Kéo trái  → nhìn trái
+        // ====================================================
+
         let nextYaw =
-            yaw -
+            yaw +
             deltaX *
             SENSITIVITY;
 
 
+        // ====================================================
+        // CAMERA PITCH
+        //
+        // Kéo lên   → nhìn lên
+        // Kéo xuống → nhìn xuống
+        // ====================================================
+
         let nextPitch =
-            pitch -
+            pitch +
             deltaY *
             SENSITIVITY;
 
@@ -116,12 +138,19 @@ export default function TouchCamera() {
     }
 
 
+    // ========================================================
+    // POINTER UP
+    // ========================================================
+
     function handlePointerUp() {
 
-        active.current =
-            false;
+        active.current = false;
     }
 
+
+    // ========================================================
+    // UI
+    // ========================================================
 
     return (
         <div
@@ -140,8 +169,7 @@ export default function TouchCamera() {
 
                 zIndex: 5,
 
-                background:
-                    "transparent",
+                background: "transparent",
             }}
 
             onPointerDown={

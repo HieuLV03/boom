@@ -63,21 +63,24 @@ function CameraController({
 
 
         // ====================================================
-        // CAMERA DISTANCE
+        // CAMERA SETTINGS
         // ====================================================
 
         const distance = 7;
-
-
-        // ====================================================
-        // CAMERA HEIGHT
-        // ====================================================
 
         const height = 3;
 
 
         // ====================================================
-        // CAMERA OFFSET
+        // CAMERA ORBIT
+        //
+        // yaw = 0
+        //
+        // Camera:
+        // X = player.x
+        // Z = player.z + distance
+        //
+        // Camera nhìn về phía -Z.
         // ====================================================
 
         const horizontalDistance =
@@ -85,27 +88,27 @@ function CameraController({
             Math.cos(pitch);
 
 
-        const targetX =
+        const cameraX =
             player.position.x -
             Math.sin(yaw) *
             horizontalDistance;
 
 
-        const targetY =
+        const cameraY =
             player.position.y +
             height +
             Math.sin(pitch) *
             distance;
 
 
-        const targetZ =
-            player.position.z -
+        const cameraZ =
+            player.position.z +
             Math.cos(yaw) *
             horizontalDistance;
 
 
         // ====================================================
-        // SMOOTH FOLLOW
+        // SMOOTH CAMERA
         // ====================================================
 
         const smooth =
@@ -118,7 +121,7 @@ function CameraController({
 
         camera.position.x +=
             (
-                targetX -
+                cameraX -
                 camera.position.x
             ) *
             smooth;
@@ -126,7 +129,7 @@ function CameraController({
 
         camera.position.y +=
             (
-                targetY -
+                cameraY -
                 camera.position.y
             ) *
             smooth;
@@ -134,14 +137,14 @@ function CameraController({
 
         camera.position.z +=
             (
-                targetZ -
+                cameraZ -
                 camera.position.z
             ) *
             smooth;
 
 
         // ====================================================
-        // LOOK AT
+        // LOOK AT PLAYER
         // ====================================================
 
         camera.lookAt(
@@ -187,7 +190,7 @@ function LocalPlayerController({
 
 
         // ----------------------------------------------------
-        // CÓ ROOM
+        // SERVER SPAWN
         // ----------------------------------------------------
 
         if (room) {
@@ -216,7 +219,7 @@ function LocalPlayerController({
 
 
         // ----------------------------------------------------
-        // KHÔNG CÓ ROOM
+        // LOCAL SPAWN
         // ----------------------------------------------------
 
         player.position.set(
@@ -245,7 +248,7 @@ function LocalPlayerController({
 
 
         // ====================================================
-        // JOYSTICK
+        // JOYSTICK INPUT
         // ====================================================
 
         const {
@@ -268,7 +271,7 @@ function LocalPlayerController({
 
 
         // ====================================================
-        // CAMERA
+        // CAMERA ROTATION
         // ====================================================
 
         const {
@@ -279,14 +282,15 @@ function LocalPlayerController({
 
         // ====================================================
         // CAMERA FORWARD
+        //
+        // yaw = 0:
+        //
+        // Camera nhìn:
+        //       ↓
+        //      -Z
+        //
+        // Vì vậy forward = -Z.
         // ====================================================
-
-        // Camera đang nhìn về phía -Z khi yaw = 0.
-        //
-        // Joystick UP:
-        // y = -1
-        //
-        // => nhân vật phải đi về phía camera đang nhìn.
 
         const forwardX =
             -Math.sin(yaw);
@@ -297,6 +301,10 @@ function LocalPlayerController({
 
         // ====================================================
         // CAMERA RIGHT
+        //
+        // yaw = 0:
+        //
+        // Camera bên phải màn hình = +X.
         // ====================================================
 
         const rightX =
@@ -307,23 +315,23 @@ function LocalPlayerController({
 
 
         // ====================================================
-        // JOYSTICK → WORLD
+        // JOYSTICK → CAMERA SPACE → WORLD SPACE
+        //
+        // Joystick:
+        //
+        // x = -1  → trái
+        // x = +1  → phải
+        //
+        // y = -1  → lên
+        // y = +1  → xuống
+        //
+        // UP phải đi theo forward.
         // ====================================================
-
-        // x:
-        // -1 = trái
-        // +1 = phải
-        //
-        // y:
-        // -1 = lên
-        // +1 = xuống
-        //
-        // Vì forward đang biểu diễn hướng đi tới,
-        // joystick UP (y = -1) phải dùng -y.
 
         const moveX =
             rightX * x +
             forwardX * (-y);
+
 
         const moveZ =
             rightZ * x +
@@ -349,16 +357,21 @@ function LocalPlayerController({
         const directionX =
             moveX / length;
 
+
         const directionZ =
             moveZ / length;
 
 
         // ====================================================
-        // APPLY MOVEMENT
+        // SPEED
         // ====================================================
 
         const speed = 5;
 
+
+        // ====================================================
+        // APPLY POSITION
+        // ====================================================
 
         player.position.x +=
             directionX *
@@ -373,7 +386,9 @@ function LocalPlayerController({
 
 
         // ====================================================
-        // ROTATION
+        // PLAYER ROTATION
+        //
+        // Nhân vật quay về hướng đang di chuyển.
         // ====================================================
 
         player.rotation.y =
@@ -384,7 +399,7 @@ function LocalPlayerController({
 
 
         // ====================================================
-        // MULTIPLAYER
+        // MULTIPLAYER SYNC
         // ====================================================
 
         if (room) {
@@ -410,6 +425,10 @@ function LocalPlayerController({
     });
 
 
+    // ========================================================
+    // PLAYER
+    // ========================================================
+
     return (
         <group
             ref={playerRef}
@@ -424,7 +443,6 @@ function LocalPlayerController({
         </group>
     );
 }
-
 
 
 // ============================================================
@@ -510,7 +528,10 @@ function Rock({
             castShadow
         >
             <dodecahedronGeometry
-                args={[1, 0]}
+                args={[
+                    1,
+                    0,
+                ]}
             />
 
             <meshStandardMaterial
@@ -807,7 +828,7 @@ export default function GameWorld() {
 
 
             {/* ==================================================
-                PLAYER
+                LOCAL PLAYER
             ================================================== */}
 
             <LocalPlayerController
@@ -825,7 +846,7 @@ export default function GameWorld() {
 
 
             {/* ==================================================
-                ONLINE PLAYERS
+                REMOTE PLAYERS
             ================================================== */}
 
             <RemotePlayers />
