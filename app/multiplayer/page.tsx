@@ -5,6 +5,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import client from "@/lib/colyseus";
+import { useMultiplayerStore } from "@/stores/multiplayer.store";
+
 
 // ============================================================
 // GENERATE ROOM CODE
@@ -24,6 +26,20 @@ function generateRoomCode(): string {
 export default function MultiplayerPage() {
 
     const router = useRouter();
+
+    // ========================================================
+    // MULTIPLAYER STORE
+    // ========================================================
+
+    const setRoom =
+        useMultiplayerStore(
+            (state) => state.setRoom
+        );
+
+
+    // ========================================================
+    // LOCAL STATE
+    // ========================================================
 
     const [name, setName] =
         useState("");
@@ -49,7 +65,7 @@ export default function MultiplayerPage() {
 
 
             // ------------------------------------------------
-            // TẠO MÃ PHÒNG 6 SỐ
+            // GENERATE ROOM CODE
             // ------------------------------------------------
 
             const code =
@@ -80,6 +96,17 @@ export default function MultiplayerPage() {
                 );
 
 
+            // ------------------------------------------------
+            // SAVE ROOM CONNECTION
+            // ------------------------------------------------
+
+            setRoom(room);
+
+
+            // ------------------------------------------------
+            // DEBUG
+            // ------------------------------------------------
+
             console.log(
                 "[ROOM ID]",
                 room.roomId
@@ -95,9 +122,13 @@ export default function MultiplayerPage() {
                 code
             );
 
+            console.log(
+                "[ROOM CONNECTION SAVED]"
+            );
+
 
             // ------------------------------------------------
-            // CHUYỂN SANG GAME
+            // GO TO GAME
             // ------------------------------------------------
 
             router.push(
@@ -138,7 +169,7 @@ export default function MultiplayerPage() {
 
 
         // ----------------------------------------------------
-        // CHECK CODE
+        // VALIDATE ROOM CODE
         // ----------------------------------------------------
 
         if (
@@ -161,7 +192,7 @@ export default function MultiplayerPage() {
 
 
             // ------------------------------------------------
-            // JOIN ROOM BY ROOM CODE
+            // JOIN COLYSEUS ROOM
             // ------------------------------------------------
 
             const room =
@@ -178,6 +209,17 @@ export default function MultiplayerPage() {
                 );
 
 
+            // ------------------------------------------------
+            // SAVE ROOM CONNECTION
+            // ------------------------------------------------
+
+            setRoom(room);
+
+
+            // ------------------------------------------------
+            // DEBUG
+            // ------------------------------------------------
+
             console.log(
                 "[ROOM ID]",
                 room.roomId
@@ -193,9 +235,13 @@ export default function MultiplayerPage() {
                 code
             );
 
+            console.log(
+                "[ROOM CONNECTION SAVED]"
+            );
+
 
             // ------------------------------------------------
-            // CHUYỂN SANG GAME
+            // GO TO GAME
             // ------------------------------------------------
 
             router.push(
@@ -341,7 +387,7 @@ export default function MultiplayerPage() {
 
 
                 {/* ================================================== */}
-                {/* CREATE */}
+                {/* CREATE ROOM */}
                 {/* ================================================== */}
 
                 <button
@@ -471,7 +517,7 @@ export default function MultiplayerPage() {
 
 
                 {/* ================================================== */}
-                {/* JOIN */}
+                {/* JOIN ROOM */}
                 {/* ================================================== */}
 
                 <button
