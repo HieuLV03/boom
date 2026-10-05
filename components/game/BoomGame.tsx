@@ -7,6 +7,7 @@ import { PerspectiveCamera } from "@react-three/drei";
 import GameWorld from "./GameWorld";
 import GameHUD from "./GameHUD";
 import VirtualJoystick from "./VirtualJoystick";
+import TouchCamera from "./TouchCamera";
 
 type Props = {
     roomCode?: string;
@@ -15,6 +16,7 @@ type Props = {
 export default function BoomGame({
     roomCode = "",
 }: Props) {
+
     return (
         <div
             style={{
@@ -24,24 +26,45 @@ export default function BoomGame({
                 background: "#87ceeb",
             }}
         >
+
+            {/* ==================================================
+                3D GAME
+            ================================================== */}
+
             <Canvas
                 shadows
                 dpr={[1, 1.5]}
-                gl={{ antialias: false }}
+                gl={{
+                    antialias: false,
+                }}
             >
+
                 <PerspectiveCamera
                     makeDefault
-                    position={[0, 6, 10]}
+                    position={[
+                        0,
+                        4,
+                        7,
+                    ]}
                     fov={60}
                 />
 
-                <ambientLight intensity={1.5} />
+
+                <ambientLight
+                    intensity={1.5}
+                />
+
 
                 <directionalLight
-                    position={[10, 20, 10]}
+                    position={[
+                        10,
+                        20,
+                        10,
+                    ]}
                     intensity={2}
                     castShadow
                 />
+
 
                 <hemisphereLight
                     intensity={1}
@@ -49,102 +72,168 @@ export default function BoomGame({
                     groundColor="#4d7c0f"
                 />
 
+
                 <GameWorld />
+
             </Canvas>
 
-            {/* ============================= */}
-            {/* ROOM CODE */}
-            {/* ============================= */}
+
+            {/* ==================================================
+                ROOM CODE
+            ================================================== */}
 
             {roomCode && (
                 <div
                     style={{
                         position: "absolute",
+
                         top: 16,
                         left: "50%",
-                        transform: "translateX(-50%)",
 
-                        padding: "8px 16px",
+                        transform:
+                            "translateX(-50%)",
 
-                        background: "rgba(0, 0, 0, 0.65)",
-                        backdropFilter: "blur(8px)",
+                        padding:
+                            "8px 16px",
 
-                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        background:
+                            "rgba(0, 0, 0, 0.65)",
+
+                        backdropFilter:
+                            "blur(8px)",
+
+                        border:
+                            "1px solid rgba(255,255,255,.2)",
+
                         borderRadius: 12,
 
                         color: "#fff",
+
                         fontSize: 14,
+
                         fontWeight: 600,
 
                         zIndex: 20,
-                        pointerEvents: "none",
 
-                        textAlign: "center",
+                        pointerEvents:
+                            "none",
+
+                        textAlign:
+                            "center",
                     }}
                 >
+
                     Mã phòng:{" "}
+
                     <span
                         style={{
                             marginLeft: 6,
+
                             fontSize: 18,
+
                             letterSpacing: 3,
+
                             fontWeight: 800,
                         }}
                     >
                         {roomCode}
                     </span>
+
                 </div>
             )}
 
+
+            {/* ==================================================
+                HUD
+            ================================================== */}
+
             <GameHUD />
+
+
+            {/* ==================================================
+                LEFT JOYSTICK
+            ================================================== */}
 
             <VirtualJoystick />
 
-            {/* ============================= */}
-            {/* ACTION BUTTONS */}
-            {/* ============================= */}
+
+            {/* ==================================================
+                RIGHT CAMERA
+            ================================================== */}
+
+            <TouchCamera />
+
+
+            {/* ==================================================
+                ACTION BUTTONS
+            ================================================== */}
 
             <div
                 style={{
                     position: "absolute",
+
                     right: 24,
                     bottom: 80,
 
                     display: "flex",
-                    flexDirection: "column",
+
+                    flexDirection:
+                        "column",
+
                     gap: 14,
 
-                    pointerEvents: "auto",
+                    pointerEvents:
+                        "auto",
+
+                    zIndex: 10,
                 }}
             >
+
                 <button
                     style={{
                         width: 64,
                         height: 64,
-                        borderRadius: "50%",
+
+                        borderRadius:
+                            "50%",
+
                         border: "none",
-                        background: "rgba(0,0,0,0.55)",
+
+                        background:
+                            "rgba(0,0,0,.55)",
+
                         color: "#fff",
+
                         fontSize: 28,
                     }}
                 >
                     🔫
                 </button>
 
+
                 <button
                     style={{
                         width: 64,
                         height: 64,
-                        borderRadius: "50%",
+
+                        borderRadius:
+                            "50%",
+
                         border: "none",
-                        background: "rgba(0,0,0,0.55)",
+
+                        background:
+                            "rgba(0,0,0,.55)",
+
                         color: "#fff",
+
                         fontSize: 28,
                     }}
                 >
                     🦘
                 </button>
+
             </div>
+
         </div>
     );
 }
