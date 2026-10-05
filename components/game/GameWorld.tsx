@@ -4,20 +4,30 @@
 import {
     useEffect,
     useRef,
+    type RefObject,
 } from "react";
 
-import { useFrame, useThree } from "@react-three/fiber";
+import {
+    useFrame,
+    useThree,
+} from "@react-three/fiber";
 
-import type {
-    Group,
-    Vector3,
-} from "three";
+import type { Group } from "three";
 
 import Player from "./Player";
 import RemotePlayers from "./RemotePlayers";
 
-import { useMovementStore } from "@/stores/movement.store";
-import { useMultiplayerStore } from "@/stores/multiplayer.store";
+import {
+    useMovementStore,
+} from "@/stores/movement.store";
+
+import {
+    useMultiplayerStore,
+} from "@/stores/multiplayer.store";
+
+import {
+    useCameraStore,
+} from "@/stores/camera.store";
 
 
 // ============================================================
@@ -27,14 +37,12 @@ import { useMultiplayerStore } from "@/stores/multiplayer.store";
 function CameraController({
     target,
 }: {
-    target: React.RefObject<Group | null>;
+    target: RefObject<Group | null>;
 }) {
 
-    const { camera } =
-        useThree();
-
-    const currentPosition =
-        useRef<Vector3 | null>(null);
+    const {
+        camera,
+    } = useThree();
 
 
     useFrame((_, delta) => {
@@ -47,25 +55,53 @@ function CameraController({
         }
 
 
+        const {
+            yaw,
+            pitch,
+        } =
+            useCameraStore.getState();
+
+
+        // ====================================================
+        // CAMERA DISTANCE
+        // ====================================================
+
+        const distance = 7;
+
+
+        // ====================================================
+        // CAMERA HEIGHT
+        // ====================================================
+
+        const height = 3;
+
+
         // ====================================================
         // CAMERA OFFSET
         // ====================================================
 
-        const cameraDistance = 7;
-        const cameraHeight = 4;
+        const horizontalDistance =
+            distance *
+            Math.cos(pitch);
 
 
-        // Camera nằm phía sau player
         const targetX =
-            player.position.x;
+            player.position.x -
+            Math.sin(yaw) *
+            horizontalDistance;
+
 
         const targetY =
             player.position.y +
-            cameraHeight;
+            height +
+            Math.sin(pitch) *
+            distance;
+
 
         const targetZ =
-            player.position.z +
-            cameraDistance;
+            player.position.z -
+            Math.cos(yaw) *
+            horizontalDistance;
 
 
         // ====================================================
@@ -81,28 +117,36 @@ function CameraController({
 
 
         camera.position.x +=
-            (targetX -
-                camera.position.x) *
+            (
+                targetX -
+                camera.position.x
+            ) *
             smooth;
+
 
         camera.position.y +=
-            (targetY -
-                camera.position.y) *
+            (
+                targetY -
+                camera.position.y
+            ) *
             smooth;
 
+
         camera.position.z +=
-            (targetZ -
-                camera.position.z) *
+            (
+                targetZ -
+                camera.position.z
+            ) *
             smooth;
 
 
         // ====================================================
-        // LOOK AT PLAYER
+        // LOOK AT
         // ====================================================
 
         camera.lookAt(
             player.position.x,
-            player.position.y + 1,
+            player.position.y + 1.1,
             player.position.z
         );
     });
@@ -113,13 +157,13 @@ function CameraController({
 
 
 // ============================================================
-// LOCAL PLAYER CONTROLLER
+// LOCAL PLAYER
 // ============================================================
 
 function LocalPlayerController({
     playerRef,
 }: {
-    playerRef: React.RefObject<Group | null>;
+    playerRef: RefObject<Group | null>;
 }) {
 
     const room =
@@ -139,10 +183,19 @@ function LocalPlayerController({
         }
 
 
-        const player =
+        const serverPlayer =
             room.state?.players?.get(
                 room.sessionId
             );
+
+
+        if (!serverPlayer) {
+            return;
+        }
+
+
+        const player =
+            playerRef.current;
 
 
         if (!player) {
@@ -150,23 +203,15 @@ function LocalPlayerController({
         }
 
 
-        const group =
-            playerRef.current;
-
-        if (!group) {
-            return;
-        }
-
-
-        group.position.set(
-            player.x ?? 0,
-            player.y ?? 0,
-            player.z ?? 0
+        player.position.set(
+            serverPlayer.x ?? 0,
+            serverPlayer.y ?? 0,
+            serverPlayer.z ?? 0
         );
 
 
-        group.rotation.y =
-            player.rotation ?? 0;
+        player.rotation.y =
+            serverPlayer.rotation ?? 0;
 
     }, [room, playerRef]);
 
@@ -180,12 +225,8 @@ function LocalPlayerController({
         const player =
             playerRef.current;
 
-        if (!player) {
-            return;
-        }
 
-
-        if (!room) {
+        if (!player || !room) {
             return;
         }
 
@@ -211,32 +252,99 @@ function LocalPlayerController({
         }
 
 
+        // ====================================================
+        // CAMERA ROTATION
+        // ====================================================
+
+        const {
+            yaw,
+        } =
+            useCameraStore.getState();
+
+
+        // ====================================================
+        // MOVEMENT SPEED
+        // ====================================================
+
         const speed = 5;
 
 
         // ====================================================
-        // MOVE
+        // DIRECTION RELATIVE TO CAMERA
         // ====================================================
+
+        const forwardX =
+            -Math.sin(yaw);
+
+        const forwardZ =
+            -Math.cos(yaw);
+
+
+        const rightX =
+            Math.cos(yaw);
+
+        const rightZ =
+            -Math.sin(yaw);
+
+
+        // ====================================================
+        // FINAL MOVEMENT
+        // ====================================================
+
+        const moveX =
+            rightX * x +
+            forwardX * -y;
+
+
+        const moveZ =
+            rightZ * x +
+            forwardZ * -y;
+
+
+        const moveLength =
+            Math.sqrt(
+                moveX * moveX +
+                moveZ * moveZ
+            );
+
+
+        if (
+            moveLength < 0.001
+        ) {
+            return;
+        }
+
+
+        const normalizedX =
+            moveX /
+            moveLength;
+
+
+        const normalizedZ =
+            moveZ /
+            moveLength;
+
 
         player.position.x +=
-            x *
+            normalizedX *
             speed *
             delta;
 
+
         player.position.z +=
-            y *
+            normalizedZ *
             speed *
             delta;
 
 
         // ====================================================
-        // ROTATION
+        // PLAYER ROTATION
         // ====================================================
 
         player.rotation.y =
             Math.atan2(
-                x,
-                -y
+                normalizedX,
+                normalizedZ
             );
 
 
@@ -489,7 +597,7 @@ export default function GameWorld() {
         <group>
 
             {/* ==================================================
-                WORLD
+                GROUND
             ================================================== */}
 
             <mesh
@@ -512,6 +620,10 @@ export default function GameWorld() {
                 />
             </mesh>
 
+
+            {/* ==================================================
+                ROAD
+            ================================================== */}
 
             <Road />
 
@@ -655,7 +767,7 @@ export default function GameWorld() {
 
 
             {/* ==================================================
-                LOCAL PLAYER
+                PLAYER
             ================================================== */}
 
             <LocalPlayerController
@@ -664,7 +776,7 @@ export default function GameWorld() {
 
 
             {/* ==================================================
-                CAMERA FOLLOW
+                CAMERA
             ================================================== */}
 
             <CameraController
@@ -673,7 +785,7 @@ export default function GameWorld() {
 
 
             {/* ==================================================
-                REMOTE PLAYERS
+                ONLINE PLAYERS
             ================================================== */}
 
             <RemotePlayers />
