@@ -1,62 +1,194 @@
 
 "use client";
 
-import { useRef } from "react";
+import {
+    useEffect,
+    useRef,
+} from "react";
+
 import { useFrame } from "@react-three/fiber";
+
 import type { Group } from "three";
 
 import Player from "./Player";
+import RemotePlayers from "./RemotePlayers";
+
 import { useMovementStore } from "@/stores/movement.store";
 import { useMultiplayerStore } from "@/stores/multiplayer.store";
 
+
+// ============================================================
+// LOCAL PLAYER CONTROLLER
+// ============================================================
+
 function LocalPlayerController() {
-    const playerRef = useRef<Group>(null);
+
+    const playerRef =
+        useRef<Group>(null);
+
+
+    const room =
+        useMultiplayerStore(
+            (state) => state.room
+        );
+
+
+    // ========================================================
+    // INITIAL SPAWN
+    // ========================================================
+
+    useEffect(() => {
+
+        if (!room) {
+            return;
+        }
+
+
+        const player =
+            room.state?.players?.get(
+                room.sessionId
+            );
+
+
+        if (!player) {
+            return;
+        }
+
+
+        const group =
+            playerRef.current;
+
+
+        if (!group) {
+            return;
+        }
+
+
+        group.position.set(
+            player.x ?? 0,
+            player.y ?? 0,
+            player.z ?? 0
+        );
+
+
+        group.rotation.y =
+            player.rotation ?? 0;
+
+    }, [room]);
+
+
+    // ========================================================
+    // MOVEMENT
+    // ========================================================
 
     useFrame((_, delta) => {
-        const player = playerRef.current;
 
-        if (!player) return;
+        const player =
+            playerRef.current;
 
-        const { x, y } =
+
+        if (!player) {
+            return;
+        }
+
+
+        if (!room) {
+            return;
+        }
+
+
+        const serverPlayer =
+            room.state?.players?.get(
+                room.sessionId
+            );
+
+
+        if (!serverPlayer) {
+            return;
+        }
+
+
+        const {
+            x,
+            y,
+        } =
             useMovementStore.getState();
 
-        const deadZone = 0.05;
+
+        const magnitude =
+            Math.sqrt(
+                x * x +
+                y * y
+            );
+
+
+        // ----------------------------------------------------
+        // DEAD ZONE
+        // ----------------------------------------------------
 
         if (
-            Math.abs(x) < deadZone &&
-            Math.abs(y) < deadZone
+            magnitude < 0.05
         ) {
             return;
         }
 
+
+        // ----------------------------------------------------
+        // SPEED
+        // ----------------------------------------------------
+
         const speed = 5;
 
+
+        // ----------------------------------------------------
+        // MOVE
+        // ----------------------------------------------------
+
         player.position.x +=
-            x * speed * delta;
+            x *
+            speed *
+            delta;
+
 
         player.position.z +=
-            y * speed * delta;
+            y *
+            speed *
+            delta;
+
+
+        // ----------------------------------------------------
+        // ROTATION
+        // ----------------------------------------------------
 
         player.rotation.y =
-            Math.atan2(x, -y);
+            Math.atan2(
+                x,
+                -y
+            );
 
-        const room =
-            useMultiplayerStore.getState().room;
 
-        if (room) {
-            room.send("move", {
-                x: player.position.x,
-                y: player.position.y,
-                z: player.position.z,
-                rotation: player.rotation.y,
-            });
-        }
+        // ----------------------------------------------------
+        // SEND TO SERVER
+        // ----------------------------------------------------
+
+        serverPlayer.x =
+            player.position.x;
+
+        serverPlayer.y =
+            player.position.y;
+
+        serverPlayer.z =
+            player.position.z;
+
+        serverPlayer.rotation =
+            player.rotation.y;
+
     });
+
 
     return (
         <group
             ref={playerRef}
-            position={[0, 0, 5]}
         >
             <Player
                 position={[0, 0, 0]}
@@ -65,39 +197,78 @@ function LocalPlayerController() {
     );
 }
 
+
+// ============================================================
+// TREE
+// ============================================================
+
 function Tree({
     position,
 }: {
     position: [number, number, number];
 }) {
+
     return (
-        <group position={position}>
+        <group
+            position={position}
+        >
+
+            {/* Trunk */}
+
             <mesh
-                position={[0, 1.5, 0]}
+                position={[
+                    0,
+                    1.5,
+                    0,
+                ]}
                 castShadow
             >
                 <cylinderGeometry
-                    args={[0.3, 0.4, 3, 8]}
+                    args={[
+                        0.3,
+                        0.4,
+                        3,
+                        8,
+                    ]}
                 />
+
                 <meshStandardMaterial
                     color="#78350f"
                 />
             </mesh>
 
+
+            {/* Leaves */}
+
             <mesh
-                position={[0, 3.5, 0]}
+                position={[
+                    0,
+                    3.5,
+                    0,
+                ]}
                 castShadow
             >
                 <coneGeometry
-                    args={[1.5, 3, 8]}
+                    args={[
+                        1.5,
+                        3,
+                        8,
+                    ]}
                 />
+
                 <meshStandardMaterial
                     color="#166534"
                 />
             </mesh>
+
         </group>
     );
 }
+
+
+// ============================================================
+// ROCK
+// ============================================================
 
 function Rock({
     position,
@@ -106,54 +277,103 @@ function Rock({
     position: [number, number, number];
     scale?: number;
 }) {
+
     return (
         <mesh
             position={position}
             scale={scale}
             castShadow
         >
-            <dodecahedronGeometry args={[1, 0]} />
-            <meshStandardMaterial color="#6b7280" />
+            <dodecahedronGeometry
+                args={[1, 0]}
+            />
+
+            <meshStandardMaterial
+                color="#6b7280"
+            />
         </mesh>
     );
 }
+
+
+// ============================================================
+// HOUSE
+// ============================================================
 
 function House({
     position,
 }: {
     position: [number, number, number];
 }) {
+
     return (
-        <group position={position}>
+        <group
+            position={position}
+        >
+
+            {/* House body */}
+
             <mesh
-                position={[0, 1.5, 0]}
+                position={[
+                    0,
+                    1.5,
+                    0,
+                ]}
                 castShadow
             >
                 <boxGeometry
-                    args={[5, 3, 5]}
+                    args={[
+                        5,
+                        3,
+                        5,
+                    ]}
                 />
+
                 <meshStandardMaterial
                     color="#d1d5db"
                 />
             </mesh>
 
+
+            {/* Roof */}
+
             <mesh
-                position={[0, 3.8, 0]}
-                rotation={[0, Math.PI / 4, 0]}
+                position={[
+                    0,
+                    3.8,
+                    0,
+                ]}
+                rotation={[
+                    0,
+                    Math.PI / 4,
+                    0,
+                ]}
                 castShadow
             >
                 <coneGeometry
-                    args={[4, 2, 4]}
+                    args={[
+                        4,
+                        2,
+                        4,
+                    ]}
                 />
+
                 <meshStandardMaterial
                     color="#991b1b"
                 />
             </mesh>
+
         </group>
     );
 }
 
+
+// ============================================================
+// ROAD
+// ============================================================
+
 function Road() {
+
     return (
         <mesh
             rotation={[
@@ -161,10 +381,17 @@ function Road() {
                 0,
                 0,
             ]}
-            position={[0, 0.01, 0]}
+            position={[
+                0,
+                0.01,
+                0,
+            ]}
         >
             <planeGeometry
-                args={[8, 100]}
+                args={[
+                    8,
+                    100,
+                ]}
             />
 
             <meshStandardMaterial
@@ -174,10 +401,20 @@ function Road() {
     );
 }
 
+
+// ============================================================
+// GAME WORLD
+// ============================================================
+
 export default function GameWorld() {
+
     return (
         <group>
-            {/* Ground */}
+
+            {/* ==================================================
+                GROUND
+            ================================================== */}
+
             <mesh
                 rotation={[
                     -Math.PI / 2,
@@ -187,7 +424,10 @@ export default function GameWorld() {
                 receiveShadow
             >
                 <planeGeometry
-                    args={[100, 100]}
+                    args={[
+                        100,
+                        100,
+                    ]}
                 />
 
                 <meshStandardMaterial
@@ -195,10 +435,18 @@ export default function GameWorld() {
                 />
             </mesh>
 
-            {/* Road */}
+
+            {/* ==================================================
+                ROAD
+            ================================================== */}
+
             <Road />
 
-            {/* Houses */}
+
+            {/* ==================================================
+                HOUSES
+            ================================================== */}
+
             <House
                 position={[
                     -12,
@@ -223,7 +471,11 @@ export default function GameWorld() {
                 ]}
             />
 
-            {/* Trees */}
+
+            {/* ==================================================
+                TREES
+            ================================================== */}
+
             <Tree
                 position={[
                     -8,
@@ -288,7 +540,11 @@ export default function GameWorld() {
                 ]}
             />
 
-            {/* Rocks */}
+
+            {/* ==================================================
+                ROCKS
+            ================================================== */}
+
             <Rock
                 position={[
                     -5,
@@ -324,8 +580,20 @@ export default function GameWorld() {
                 scale={1.2}
             />
 
-            {/* Player */}
+
+            {/* ==================================================
+                LOCAL PLAYER
+            ================================================== */}
+
             <LocalPlayerController />
+
+
+            {/* ==================================================
+                OTHER ONLINE PLAYERS
+            ================================================== */}
+
+            <RemotePlayers />
+
         </group>
     );
 }
