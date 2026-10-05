@@ -630,8 +630,8 @@ function LocalPlayerController({
 
             player.rotation.y =
                 Math.atan2(
-                    -directionX,
-                    -directionZ
+                    directionX,
+                    directionZ
                 );
 
         }
