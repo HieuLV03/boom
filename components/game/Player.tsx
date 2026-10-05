@@ -30,15 +30,15 @@ export default function Player({
 
 
     return (
-        <group
-            ref={groupRef}
-            position={position}
-            rotation={[
-                0,
-                rotation,
-                0,
-            ]}
-        >
+    <group
+    ref={groupRef}
+    position={position}
+    rotation={[
+        0,
+        rotation + Math.PI,
+        0,
+    ]}
+>
 
             {/* ==================================================
                 BODY
