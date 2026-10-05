@@ -178,40 +178,54 @@ function LocalPlayerController({
 
     useEffect(() => {
 
-        if (!room) {
-            return;
-        }
-
-
-        const serverPlayer =
-            room.state?.players?.get(
-                room.sessionId
-            );
-
-
-        if (!serverPlayer) {
-            return;
-        }
-
-
         const player =
             playerRef.current;
-
 
         if (!player) {
             return;
         }
 
 
+        // ----------------------------------------------------
+        // CÓ ROOM
+        // ----------------------------------------------------
+
+        if (room) {
+
+            const serverPlayer =
+                room.state?.players?.get(
+                    room.sessionId
+                );
+
+
+            if (serverPlayer) {
+
+                player.position.set(
+                    serverPlayer.x ?? 0,
+                    serverPlayer.y ?? 0,
+                    serverPlayer.z ?? 0
+                );
+
+
+                player.rotation.y =
+                    serverPlayer.rotation ?? 0;
+
+                return;
+            }
+        }
+
+
+        // ----------------------------------------------------
+        // KHÔNG CÓ ROOM
+        // ----------------------------------------------------
+
         player.position.set(
-            serverPlayer.x ?? 0,
-            serverPlayer.y ?? 0,
-            serverPlayer.z ?? 0
+            0,
+            0,
+            5
         );
 
-
-        player.rotation.y =
-            serverPlayer.rotation ?? 0;
+        player.rotation.y = 0;
 
     }, [room, playerRef]);
 
@@ -225,11 +239,14 @@ function LocalPlayerController({
         const player =
             playerRef.current;
 
-
-        if (!player || !room) {
+        if (!player) {
             return;
         }
 
+
+        // ====================================================
+        // JOYSTICK
+        // ====================================================
 
         const {
             x,
@@ -245,15 +262,13 @@ function LocalPlayerController({
             );
 
 
-        if (
-            magnitude < 0.05
-        ) {
+        if (magnitude < 0.05) {
             return;
         }
 
 
         // ====================================================
-        // CAMERA ROTATION
+        // CAMERA
         // ====================================================
 
         const {
@@ -263,15 +278,15 @@ function LocalPlayerController({
 
 
         // ====================================================
-        // MOVEMENT SPEED
+        // CAMERA FORWARD
         // ====================================================
 
-        const speed = 5;
-
-
-        // ====================================================
-        // DIRECTION RELATIVE TO CAMERA
-        // ====================================================
+        // Camera đang nhìn về phía -Z khi yaw = 0.
+        //
+        // Joystick UP:
+        // y = -1
+        //
+        // => nhân vật phải đi về phía camera đang nhìn.
 
         const forwardX =
             -Math.sin(yaw);
@@ -279,6 +294,10 @@ function LocalPlayerController({
         const forwardZ =
             -Math.cos(yaw);
 
+
+        // ====================================================
+        // CAMERA RIGHT
+        // ====================================================
 
         const rightX =
             Math.cos(yaw);
@@ -288,86 +307,106 @@ function LocalPlayerController({
 
 
         // ====================================================
-        // FINAL MOVEMENT
+        // JOYSTICK → WORLD
         // ====================================================
+
+        // x:
+        // -1 = trái
+        // +1 = phải
+        //
+        // y:
+        // -1 = lên
+        // +1 = xuống
+        //
+        // Vì forward đang biểu diễn hướng đi tới,
+        // joystick UP (y = -1) phải dùng -y.
 
         const moveX =
             rightX * x +
-            forwardX * -y;
-
+            forwardX * (-y);
 
         const moveZ =
             rightZ * x +
-            forwardZ * -y;
+            forwardZ * (-y);
 
 
-        const moveLength =
+        // ====================================================
+        // NORMALIZE
+        // ====================================================
+
+        const length =
             Math.sqrt(
                 moveX * moveX +
                 moveZ * moveZ
             );
 
 
-        if (
-            moveLength < 0.001
-        ) {
+        if (length < 0.001) {
             return;
         }
 
 
-        const normalizedX =
-            moveX /
-            moveLength;
+        const directionX =
+            moveX / length;
+
+        const directionZ =
+            moveZ / length;
 
 
-        const normalizedZ =
-            moveZ /
-            moveLength;
+        // ====================================================
+        // APPLY MOVEMENT
+        // ====================================================
+
+        const speed = 5;
 
 
         player.position.x +=
-            normalizedX *
+            directionX *
             speed *
             delta;
 
 
         player.position.z +=
-            normalizedZ *
+            directionZ *
             speed *
             delta;
 
 
         // ====================================================
-        // PLAYER ROTATION
+        // ROTATION
         // ====================================================
 
         player.rotation.y =
             Math.atan2(
-                normalizedX,
-                normalizedZ
+                directionX,
+                directionZ
             );
 
 
         // ====================================================
-        // SEND TO SERVER
+        // MULTIPLAYER
         // ====================================================
 
-        room.send(
-            "move",
-            {
-                x:
-                    player.position.x,
+        if (room) {
 
-                y:
-                    player.position.y,
+            room.send(
+                "move",
+                {
+                    x:
+                        player.position.x,
 
-                z:
-                    player.position.z,
+                    y:
+                        player.position.y,
 
-                rotation:
-                    player.rotation.y,
-            }
-        );
+                    z:
+                        player.position.z,
+
+                    rotation:
+                        player.rotation.y,
+                }
+            );
+        }
+
     });
 
 
@@ -385,6 +424,7 @@ function LocalPlayerController({
         </group>
     );
 }
+
 
 
 // ============================================================
