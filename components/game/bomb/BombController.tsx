@@ -29,15 +29,19 @@ import {
 // ============================================================
 
 type BombState = {
+
     id: string;
 
     x: number;
+
     y: number;
+
     z: number;
 
     remaining: number;
 
     exploded: boolean;
+
 };
 
 
@@ -46,7 +50,9 @@ type BombState = {
 // ============================================================
 
 type Props = {
+
     playerRef: RefObject<Group | null>;
+
 };
 
 
@@ -84,12 +90,33 @@ export default function BombController({
     // STATE
     // ========================================================
 
+    /*
+     * QUAN TRỌNG:
+     *
+     * Không còn:
+     *
+     *     bomb: BombState | null
+     *
+     * Mà dùng Map:
+     *
+     *     bombId -> BombState
+     *
+     * Ví dụ:
+     *
+     *     A -> bomb player 1
+     *     B -> bomb player 2
+     *     C -> bomb player 1
+     */
+
     const [
-        bomb,
-        setBomb,
+        bombs,
+        setBombs,
     ] =
-        useState<BombState | null>(
-            null
+        useState<
+            Map<string, BombState>
+        >(
+            () =>
+                new Map()
         );
 
 
@@ -100,16 +127,15 @@ export default function BombController({
     /*
      * Request cuối cùng đã xử lý.
      */
+
     const lastProcessedRequest =
         useRef(0);
 
 
     /*
      * Room hiện tại.
-     *
-     * Dùng để phát hiện khi người chơi
-     * vào một trận mới.
      */
+
     const lastRoom =
         useRef<any>(null);
 
@@ -120,41 +146,14 @@ export default function BombController({
 
     useEffect(() => {
 
-        /*
-         * ====================================================
-         * KHÔNG CÓ ROOM
-         * ====================================================
-         */
-
         if (!room) {
             return;
         }
 
 
-        /*
-         * ====================================================
-         * ROOM MỚI
-         * ====================================================
-         *
-         * Đây là phần quan trọng nhất.
-         *
-         * Khi vào trận mới, bombRequest có thể vẫn giữ
-         * giá trị của trận trước.
-         *
-         * Ví dụ:
-         *
-         * trận cũ:
-         * bombRequest = 1
-         *
-         * trận mới:
-         * bombRequest vẫn = 1
-         *
-         * Nếu lastProcessedRequest = 0 thì component
-         * sẽ hiểu nhầm đây là request mới.
-         *
-         * Vì vậy khi phát hiện room mới, chúng ta đồng bộ
-         * lastProcessedRequest với bombRequest hiện tại.
-         */
+        // ====================================================
+        // NEW ROOM
+        // ====================================================
 
         if (
             lastRoom.current !== room
@@ -171,60 +170,56 @@ export default function BombController({
 
 
             /*
-             * Đánh dấu request cũ là đã xử lý.
-             *
-             * KHÔNG gửi plantBomb ở đây.
+             * Không gửi request cũ.
              */
+
             lastProcessedRequest.current =
                 bombRequest;
 
 
-            /*
-             * Lưu room hiện tại.
-             */
             lastRoom.current =
                 room;
 
 
             /*
-             * Xóa bomb UI cũ nếu có.
+             * Xóa toàn bộ bomb của room cũ.
              */
-            setBomb(null);
+
+            setBombs(
+                new Map()
+            );
 
 
             return;
+
         }
 
 
-        /*
-         * ====================================================
-         * KHÔNG CÓ REQUEST MỚI
-         * ====================================================
-         */
+        // ====================================================
+        // NO NEW REQUEST
+        // ====================================================
 
         if (
             bombRequest ===
             lastProcessedRequest.current
         ) {
+
             return;
+
         }
 
 
-        /*
-         * ====================================================
-         * ĐÁNH DẤU REQUEST
-         * ====================================================
-         */
+        // ====================================================
+        // MARK REQUEST PROCESSED
+        // ====================================================
 
         lastProcessedRequest.current =
             bombRequest;
 
 
-        /*
-         * ====================================================
-         * PLAYER CHƯA SẴN SÀNG
-         * ====================================================
-         */
+        // ====================================================
+        // PLAYER NOT READY
+        // ====================================================
 
         if (!playerRef.current) {
 
@@ -233,14 +228,13 @@ export default function BombController({
             );
 
             return;
+
         }
 
 
-        /*
-         * ====================================================
-         * SEND TO SERVER
-         * ====================================================
-         */
+        // ====================================================
+        // SEND TO SERVER
+        // ====================================================
 
         console.log(
             "[CLIENT BOMB] 💣 Sending plantBomb"
@@ -256,16 +250,6 @@ export default function BombController({
             bombRequest
         );
 
-
-        /*
-         * SERVER sẽ quyết định:
-         *
-         * - vị trí bomb
-         * - countdown
-         * - explosion
-         * - damage
-         * - HP
-         */
 
         room.send(
             "plantBomb"
@@ -290,24 +274,32 @@ export default function BombController({
     useEffect(() => {
 
         if (!room) {
-            setBomb(null);
+
+            setBombs(
+                new Map()
+            );
+
             return;
+
         }
 
 
-        const bombs =
+        const serverBombs =
             room.state?.bombs;
 
 
-        if (!bombs) {
+        if (!serverBombs) {
 
             console.warn(
                 "[CLIENT BOMB] room.state.bombs không tồn tại"
             );
 
-            setBomb(null);
+            setBombs(
+                new Map()
+            );
 
             return;
+
         }
 
 
@@ -316,73 +308,136 @@ export default function BombController({
 
 
         // ====================================================
-        // REFRESH CURRENT BOMB
+        // CONVERT SERVER BOMB
         // ====================================================
 
-        const refreshBomb =
-            () => {
+        const convertBomb =
+            (
+                serverBomb: any
+            ): BombState => {
 
-                let latestBomb:
-                    BombState | null =
-                    null;
+                return {
+
+                    id:
+                        String(
+                            serverBomb.id
+                        ),
+
+                    x:
+                        Number(
+                            serverBomb.x ?? 0
+                        ),
+
+                    y:
+                        Number(
+                            serverBomb.y ?? 0
+                        ),
+
+                    z:
+                        Number(
+                            serverBomb.z ?? 0
+                        ),
+
+                    remaining:
+                        Number(
+                            serverBomb.remaining ?? 0
+                        ),
+
+                    exploded:
+                        Boolean(
+                            serverBomb.exploded
+                        ),
+
+                };
+
+            };
 
 
-                bombs.forEach(
+        // ====================================================
+        // SET / UPDATE BOMB
+        // ====================================================
+
+        const updateBomb =
+            (
+                serverBomb: any
+            ) => {
+
+                const converted =
+                    convertBomb(
+                        serverBomb
+                    );
+
+
+                setBombs(
                     (
-                        serverBomb: any
+                        current
                     ) => {
 
-                        /*
-                         * Game hiện tại chỉ cho
-                         * một bomb client.
-                         *
-                         * Nếu sau này muốn nhiều bomb,
-                         * có thể đổi thành Map.
-                         */
+                        const next =
+                            new Map(
+                                current
+                            );
 
-                        latestBomb = {
 
-                            id:
-                                String(
-                                    serverBomb.id
-                                ),
+                        next.set(
+                            converted.id,
+                            converted
+                        );
 
-                            x:
-                                Number(
-                                    serverBomb.x ??
-                                    0
-                                ),
 
-                            y:
-                                Number(
-                                    serverBomb.y ??
-                                    0
-                                ),
+                        return next;
 
-                            z:
-                                Number(
-                                    serverBomb.z ??
-                                    0
-                                ),
-
-                            remaining:
-                                Number(
-                                    serverBomb.remaining ??
-                                    0
-                                ),
-
-                            exploded:
-                                Boolean(
-                                    serverBomb.exploded
-                                ),
-                        };
                     }
                 );
 
+            };
 
-                setBomb(
-                    latestBomb
+
+        // ====================================================
+        // REMOVE BOMB
+        // ====================================================
+
+        const removeBomb =
+            (
+                serverBomb: any
+            ) => {
+
+                const id =
+                    String(
+                        serverBomb.id
+                    );
+
+
+                setBombs(
+                    (
+                        current
+                    ) => {
+
+                        if (
+                            !current.has(id)
+                        ) {
+
+                            return current;
+
+                        }
+
+
+                        const next =
+                            new Map(
+                                current
+                            );
+
+
+                        next.delete(
+                            id
+                        );
+
+
+                        return next;
+
+                    }
                 );
+
             };
 
 
@@ -390,7 +445,7 @@ export default function BombController({
         // EXISTING BOMBS
         // ====================================================
 
-        bombs.forEach(
+        serverBombs.forEach(
             (
                 serverBomb: any
             ) => {
@@ -399,6 +454,12 @@ export default function BombController({
                     "[CLIENT BOMB] Existing bomb:",
                     serverBomb.id
                 );
+
+
+                updateBomb(
+                    serverBomb
+                );
+
             }
         );
 
@@ -408,33 +469,35 @@ export default function BombController({
         // ====================================================
 
         const removeAdd =
-            $(bombs).onAdd(
+            $(serverBombs).onAdd(
                 (
                     serverBomb: any
                 ) => {
 
                     console.log(
-                        "[CLIENT BOMB] 💣 Bomb received from server:",
+                        "[CLIENT BOMB] 💣 Bomb received:",
                         serverBomb.id
                     );
 
 
-                    refreshBomb();
-
-
                     /*
-                     * Theo dõi thay đổi:
-                     *
-                     * remaining
-                     * exploded
-                     * position
+                     * Thêm bomb mới.
                      */
+
+                    updateBomb(
+                        serverBomb
+                    );
+
+
+                    // ========================================
+                    // LISTEN BOMB CHANGES
+                    // ========================================
 
                     $(serverBomb).onChange(
                         () => {
 
                             console.log(
-                                "[CLIENT BOMB] Bomb state changed:",
+                                "[CLIENT BOMB] Bomb changed:",
                                 serverBomb.id,
                                 {
                                     remaining:
@@ -446,9 +509,13 @@ export default function BombController({
                             );
 
 
-                            refreshBomb();
+                            updateBomb(
+                                serverBomb
+                            );
+
                         }
                     );
+
                 }
             );
 
@@ -458,7 +525,7 @@ export default function BombController({
         // ====================================================
 
         const removeRemove =
-            $(bombs).onRemove(
+            $(serverBombs).onRemove(
                 (
                     serverBomb: any
                 ) => {
@@ -469,45 +536,12 @@ export default function BombController({
                     );
 
 
-                    /*
-                     * Nếu bomb bị server xoá,
-                     * clear UI.
-                     */
-
-                    setBomb(
-                        (
-                            current
-                        ) => {
-
-                            if (
-                                !current
-                            ) {
-                                return null;
-                            }
-
-
-                            if (
-                                current.id ===
-                                String(
-                                    serverBomb.id
-                                )
-                            ) {
-                                return null;
-                            }
-
-
-                            return current;
-                        }
+                    removeBomb(
+                        serverBomb
                     );
+
                 }
             );
-
-
-        // ====================================================
-        // INITIAL STATE
-        // ====================================================
-
-        refreshBomb();
 
 
         // ====================================================
@@ -520,10 +554,14 @@ export default function BombController({
 
             removeRemove?.();
 
+
             /*
-             * Khi rời room, xóa bomb khỏi UI.
+             * Xóa toàn bộ bomb khi room thay đổi.
              */
-            setBomb(null);
+
+            setBombs(
+                new Map()
+            );
 
         };
 
@@ -536,24 +574,57 @@ export default function BombController({
     // RENDER
     // ========================================================
 
-    if (!bomb) {
+    if (
+        bombs.size === 0
+    ) {
+
         return null;
+
     }
 
 
     return (
-        <Bomb
-            position={[
-                bomb.x,
-                bomb.y,
-                bomb.z,
-            ]}
-            remaining={
-                bomb.remaining
+
+        <>
+
+            {
+
+                Array.from(
+                    bombs.values()
+                ).map(
+                    (
+                        bomb
+                    ) => (
+
+                        <Bomb
+
+                            key={
+                                bomb.id
+                            }
+
+                            position={[
+                                bomb.x,
+                                bomb.y,
+                                bomb.z,
+                            ]}
+
+                            remaining={
+                                bomb.remaining
+                            }
+
+                            exploded={
+                                bomb.exploded
+                            }
+
+                        />
+
+                    )
+                )
+
             }
-            exploded={
-                bomb.exploded
-            }
-        />
+
+        </>
+
     );
+
 }
