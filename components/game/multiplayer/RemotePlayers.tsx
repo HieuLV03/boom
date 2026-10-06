@@ -500,6 +500,7 @@ export default function RemotePlayers() {
                 room.sessionId
             );
 
+            
 
             removeAdd?.();
 

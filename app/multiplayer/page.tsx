@@ -1,13 +1,11 @@
+
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import client from "@/lib/colyseus";
-
-import {
-    useMultiplayerStore,
-} from "@/stores/multiplayer.store";
+import { useMultiplayerStore } from "@/stores/multiplayer.store";
 
 
 // ============================================================
@@ -29,24 +27,13 @@ export default function MultiplayerPage() {
 
     const router = useRouter();
 
-
     // ========================================================
     // MULTIPLAYER STORE
     // ========================================================
 
-    const room =
-        useMultiplayerStore(
-            (state) => state.room
-        );
-
     const setRoom =
         useMultiplayerStore(
             (state) => state.setRoom
-        );
-
-    const clearRoom =
-        useMultiplayerStore(
-            (state) => state.clearRoom
         );
 
 
@@ -65,59 +52,6 @@ export default function MultiplayerPage() {
 
 
     // ========================================================
-    // LEAVE OLD ROOM
-    // ========================================================
-
-    async function leaveCurrentRoom() {
-
-        const currentRoom =
-            useMultiplayerStore
-                .getState()
-                .room;
-
-
-        if (!currentRoom) {
-            return;
-        }
-
-
-        console.log(
-            "[ROOM] Leaving old room:",
-            {
-                roomId:
-                    currentRoom.roomId,
-
-                sessionId:
-                    currentRoom.sessionId,
-            }
-        );
-
-
-        try {
-
-            await currentRoom.leave();
-
-        }
-        catch (error) {
-
-            console.warn(
-                "[ROOM] Error leaving old room:",
-                error
-            );
-
-        }
-        finally {
-
-            useMultiplayerStore
-                .getState()
-                .clearRoom();
-
-        }
-
-    }
-
-
-    // ========================================================
     // CREATE ROOM
     // ========================================================
 
@@ -130,41 +64,25 @@ export default function MultiplayerPage() {
             );
 
 
-            // ==================================================
-            // IMPORTANT:
-            // LEAVE OLD ROOM FIRST
-            // ==================================================
-
-            await leaveCurrentRoom();
-
-
-            // ==================================================
+            // ------------------------------------------------
             // GENERATE ROOM CODE
-            // ==================================================
+            // ------------------------------------------------
 
             const code =
                 generateRoomCode();
 
 
             console.log(
-                "========================================"
-            );
-
-            console.log(
-                "[ROOM] Creating new room"
-            );
-
-            console.log(
-                "[ROOM CODE]",
+                "[ROOM CODE CREATED]",
                 code
             );
 
 
-            // ==================================================
+            // ------------------------------------------------
             // CREATE COLYSEUS ROOM
-            // ==================================================
+            // ------------------------------------------------
 
-            const newRoom =
+            const room =
                 await client.create(
                     "battle",
                     {
@@ -178,49 +96,47 @@ export default function MultiplayerPage() {
                 );
 
 
-            // ==================================================
-            // SAVE NEW ROOM
-            // ==================================================
+            // ------------------------------------------------
+            // SAVE ROOM CONNECTION
+            // ------------------------------------------------
 
-            setRoom(
-                newRoom
-            );
+            setRoom(room);
 
 
-            // ==================================================
+            // ------------------------------------------------
             // DEBUG
-            // ==================================================
+            // ------------------------------------------------
 
             console.log(
-                "[ROOM CREATED]",
-                {
-                    roomId:
-                        newRoom.roomId,
+                "[ROOM ID]",
+                room.roomId
+            );
 
-                    sessionId:
-                        newRoom.sessionId,
+            console.log(
+                "[SESSION ID]",
+                room.sessionId
+            );
 
-                    roomCode:
-                        code,
-                }
+            console.log(
+                "[ROOM CODE]",
+                code
+            );
+
+            console.log(
+                "[ROOM CONNECTION SAVED]"
             );
 
 
-            console.log(
-                "[ROOM] New room saved"
-            );
-
-
-            // ==================================================
+            // ------------------------------------------------
             // GO TO GAME
-            // ==================================================
+            // ------------------------------------------------
 
             router.push(
                 `/game?room=${encodeURIComponent(
-                    newRoom.roomId
+                    room.roomId
                 )}` +
                 `&session=${encodeURIComponent(
-                    newRoom.sessionId
+                    room.sessionId
                 )}` +
                 `&code=${encodeURIComponent(
                     code
@@ -235,13 +151,10 @@ export default function MultiplayerPage() {
                 error
             );
 
-
             setStatus(
                 "Không thể tạo phòng"
             );
-
         }
-
     }
 
 
@@ -255,9 +168,9 @@ export default function MultiplayerPage() {
             roomCode.trim();
 
 
-        // ====================================================
-        // VALIDATE
-        // ====================================================
+        // ----------------------------------------------------
+        // VALIDATE ROOM CODE
+        // ----------------------------------------------------
 
         if (
             !/^\d{6}$/.test(code)
@@ -278,33 +191,11 @@ export default function MultiplayerPage() {
             );
 
 
-            // ==================================================
-            // IMPORTANT:
-            // LEAVE OLD ROOM FIRST
-            // ==================================================
+            // ------------------------------------------------
+            // JOIN COLYSEUS ROOM
+            // ------------------------------------------------
 
-            await leaveCurrentRoom();
-
-
-            // ==================================================
-            // JOIN
-            // ==================================================
-
-            console.log(
-                "========================================"
-            );
-
-            console.log(
-                "[ROOM] Joining room"
-            );
-
-            console.log(
-                "[ROOM CODE]",
-                code
-            );
-
-
-            const newRoom =
+            const room =
                 await client.join(
                     "battle",
                     {
@@ -318,49 +209,47 @@ export default function MultiplayerPage() {
                 );
 
 
-            // ==================================================
-            // SAVE NEW ROOM
-            // ==================================================
+            // ------------------------------------------------
+            // SAVE ROOM CONNECTION
+            // ------------------------------------------------
 
-            setRoom(
-                newRoom
-            );
+            setRoom(room);
 
 
-            // ==================================================
+            // ------------------------------------------------
             // DEBUG
-            // ==================================================
+            // ------------------------------------------------
 
             console.log(
-                "[ROOM JOINED]",
-                {
-                    roomId:
-                        newRoom.roomId,
+                "[ROOM ID]",
+                room.roomId
+            );
 
-                    sessionId:
-                        newRoom.sessionId,
+            console.log(
+                "[SESSION ID]",
+                room.sessionId
+            );
 
-                    roomCode:
-                        code,
-                }
+            console.log(
+                "[ROOM CODE]",
+                code
+            );
+
+            console.log(
+                "[ROOM CONNECTION SAVED]"
             );
 
 
-            console.log(
-                "[ROOM] New room saved"
-            );
-
-
-            // ==================================================
+            // ------------------------------------------------
             // GO TO GAME
-            // ==================================================
+            // ------------------------------------------------
 
             router.push(
                 `/game?room=${encodeURIComponent(
-                    newRoom.roomId
+                    room.roomId
                 )}` +
                 `&session=${encodeURIComponent(
-                    newRoom.sessionId
+                    room.sessionId
                 )}` +
                 `&code=${encodeURIComponent(
                     code
@@ -375,13 +264,10 @@ export default function MultiplayerPage() {
                 error
             );
 
-
             setStatus(
                 "Không tìm thấy phòng"
             );
-
         }
-
     }
 
 
@@ -390,7 +276,6 @@ export default function MultiplayerPage() {
     // ========================================================
 
     return (
-
         <main
             style={{
                 minHeight: "100vh",
@@ -428,23 +313,21 @@ export default function MultiplayerPage() {
 
                     display: "flex",
 
-                    flexDirection:
-                        "column",
+                    flexDirection: "column",
 
                     gap: 14,
                 }}
             >
 
-                {/* ==================================================
-                    TITLE
-                ================================================== */}
+                {/* ================================================== */}
+                {/* TITLE */}
+                {/* ================================================== */}
 
                 <h1
                     style={{
                         margin: 0,
 
-                        textAlign:
-                            "center",
+                        textAlign: "center",
 
                         fontSize: 32,
 
@@ -459,8 +342,7 @@ export default function MultiplayerPage() {
                     style={{
                         margin: 0,
 
-                        textAlign:
-                            "center",
+                        textAlign: "center",
 
                         color:
                             "#9ca3af",
@@ -470,16 +352,14 @@ export default function MultiplayerPage() {
                 </p>
 
 
-                {/* ==================================================
-                    NAME
-                ================================================== */}
+                {/* ================================================== */}
+                {/* NAME */}
+                {/* ================================================== */}
 
                 <input
                     value={name}
 
-                    onChange={(
-                        event
-                    ) =>
+                    onChange={(event) =>
                         setName(
                             event.target.value
                         )
@@ -506,16 +386,14 @@ export default function MultiplayerPage() {
                 />
 
 
-                {/* ==================================================
-                    CREATE ROOM
-                ================================================== */}
+                {/* ================================================== */}
+                {/* CREATE ROOM */}
+                {/* ================================================== */}
 
                 <button
                     type="button"
 
-                    onClick={
-                        createRoom
-                    }
+                    onClick={createRoom}
 
                     style={{
                         width: "100%",
@@ -542,17 +420,15 @@ export default function MultiplayerPage() {
                 </button>
 
 
-                {/* ==================================================
-                    DIVIDER
-                ================================================== */}
+                {/* ================================================== */}
+                {/* DIVIDER */}
+                {/* ================================================== */}
 
                 <div
                     style={{
-                        display:
-                            "flex",
+                        display: "flex",
 
-                        alignItems:
-                            "center",
+                        alignItems: "center",
 
                         gap: 10,
 
@@ -590,16 +466,14 @@ export default function MultiplayerPage() {
                 </div>
 
 
-                {/* ==================================================
-                    ROOM CODE
-                ================================================== */}
+                {/* ================================================== */}
+                {/* ROOM CODE */}
+                {/* ================================================== */}
 
                 <input
                     value={roomCode}
 
-                    onChange={(
-                        event
-                    ) => {
+                    onChange={(event) => {
 
                         const value =
                             event.target.value
@@ -612,10 +486,7 @@ export default function MultiplayerPage() {
                                     6
                                 );
 
-                        setRoomCode(
-                            value
-                        );
-
+                        setRoomCode(value);
                     }}
 
                     placeholder="Nhập mã phòng 6 số"
@@ -645,16 +516,14 @@ export default function MultiplayerPage() {
                 />
 
 
-                {/* ==================================================
-                    JOIN ROOM
-                ================================================== */}
+                {/* ================================================== */}
+                {/* JOIN ROOM */}
+                {/* ================================================== */}
 
                 <button
                     type="button"
 
-                    onClick={
-                        joinRoom
-                    }
+                    onClick={joinRoom}
 
                     style={{
                         width: "100%",
@@ -681,9 +550,9 @@ export default function MultiplayerPage() {
                 </button>
 
 
-                {/* ==================================================
-                    STATUS
-                ================================================== */}
+                {/* ================================================== */}
+                {/* STATUS */}
+                {/* ================================================== */}
 
                 <p
                     style={{
@@ -691,8 +560,7 @@ export default function MultiplayerPage() {
 
                         minHeight: 20,
 
-                        textAlign:
-                            "center",
+                        textAlign: "center",
 
                         color:
                             "#9ca3af",
