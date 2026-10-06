@@ -1,9 +1,9 @@
-
 "use client";
 
 import {
     useEffect,
     useRef,
+    useState,
     type RefObject,
 } from "react";
 
@@ -16,6 +16,10 @@ import {
     Vector3,
     type Group,
 } from "three";
+
+import {
+    getStateCallbacks,
+} from "@colyseus/sdk";
 
 import Player from "./Player";
 
@@ -69,6 +73,16 @@ export default function LocalPlayerController({
 
 
     // ========================================================
+    // HP
+    // ========================================================
+
+    const [
+        hp,
+        setHp,
+    ] = useState(100);
+
+
+    // ========================================================
     // VELOCITY
     // ========================================================
 
@@ -77,6 +91,305 @@ export default function LocalPlayerController({
 
     const velocityZ =
         useRef(0);
+
+
+    // ========================================================
+    // REALTIME HP
+    // ========================================================
+
+    useEffect(() => {
+
+        if (!room) {
+            console.log(
+                "[PLAYER] No Colyseus room"
+            );
+
+            return;
+        }
+
+
+        console.log(
+            "[PLAYER] HP listener connected"
+        );
+
+        console.log(
+            "[PLAYER] Session ID:",
+            room.sessionId
+        );
+
+
+        // ====================================================
+        // DIRECT DAMAGE MESSAGE
+        // ====================================================
+
+        const removeDamagedListener =
+            room.onMessage(
+                "playerDamaged",
+                (
+                    message: {
+                        playerId?: string;
+                        damage?: number;
+                        hp?: number;
+                        alive?: boolean;
+                        distance?: number;
+                        bombId?: string;
+                    }
+                ) => {
+
+                    console.log(
+                        "[PLAYER] playerDamaged received:",
+                        message
+                    );
+
+
+                    /*
+                     * Chỉ xử lý damage của
+                     * chính local player.
+                     */
+
+                    if (
+                        message?.playerId !==
+                        room.sessionId
+                    ) {
+                        return;
+                    }
+
+
+                    const newHp =
+                        Number(
+                            message.hp ?? 0
+                        );
+
+
+                    const safeHp =
+                        Math.max(
+                            0,
+                            Math.min(
+                                100,
+                                newHp
+                            )
+                        );
+
+
+                    console.log(
+                        "[PLAYER] ❤️ HP:",
+                        safeHp
+                    );
+
+
+                    setHp(
+                        safeHp
+                    );
+
+                }
+            );
+
+
+        // ====================================================
+        // STATE SYNC FALLBACK
+        // ====================================================
+
+        const playersMap =
+            room.state?.players;
+
+
+        if (!playersMap) {
+
+            console.warn(
+                "[PLAYER] room.state.players not found"
+            );
+
+            return () => {
+
+                removeDamagedListener?.();
+
+            };
+        }
+
+
+        const $ =
+            getStateCallbacks(room);
+
+
+        let hpUnsubscribe:
+            (() => void) | undefined;
+
+
+        // ====================================================
+        // BIND LOCAL PLAYER
+        // ====================================================
+
+        const bindLocalPlayer = (
+            serverPlayer: any
+        ) => {
+
+            if (!serverPlayer) {
+                return;
+            }
+
+
+            console.log(
+                "[PLAYER] Local player state found"
+            );
+
+
+            console.log(
+                "[PLAYER] Initial HP:",
+                serverPlayer.hp
+            );
+
+
+            // ================================================
+            // INITIAL HP
+            // ================================================
+
+            const initialHp =
+                Number(
+                    serverPlayer.hp ?? 100
+                );
+
+
+            const safeInitialHp =
+                Math.max(
+                    0,
+                    Math.min(
+                        100,
+                        initialHp
+                    )
+                );
+
+
+            setHp(
+                safeInitialHp
+            );
+
+
+            // ================================================
+            // REMOVE OLD LISTENER
+            // ================================================
+
+            hpUnsubscribe?.();
+
+
+            // ================================================
+            // STATE CHANGE
+            // ================================================
+
+            hpUnsubscribe =
+                $(serverPlayer).onChange(
+                    () => {
+
+                        const currentHp =
+                            Number(
+                                serverPlayer.hp ??
+                                0
+                            );
+
+
+                        const safeHp =
+                            Math.max(
+                                0,
+                                Math.min(
+                                    100,
+                                    currentHp
+                                )
+                            );
+
+
+                        console.log(
+                            "[PLAYER] HP STATE CHANGE:",
+                            safeHp
+                        );
+
+
+                        setHp(
+                            safeHp
+                        );
+
+                    }
+                );
+
+        };
+
+
+        // ====================================================
+        // EXISTING PLAYER
+        // ====================================================
+
+        const existingPlayer =
+            playersMap.get(
+                room.sessionId
+            );
+
+
+        if (existingPlayer) {
+
+            bindLocalPlayer(
+                existingPlayer
+            );
+
+        } else {
+
+            console.log(
+                "[PLAYER] Waiting for local player state..."
+            );
+
+        }
+
+
+        // ====================================================
+        // PLAYER ADDED
+        // ====================================================
+
+        const removeAddListener =
+            $(playersMap).onAdd(
+                (
+                    serverPlayer: any,
+                    playerId: string
+                ) => {
+
+                    console.log(
+                        "[PLAYER] Player added:",
+                        playerId
+                    );
+
+
+                    if (
+                        playerId !==
+                        room.sessionId
+                    ) {
+                        return;
+                    }
+
+
+                    bindLocalPlayer(
+                        serverPlayer
+                    );
+
+                }
+            );
+
+
+        // ====================================================
+        // CLEANUP
+        // ====================================================
+
+        return () => {
+
+            console.log(
+                "[PLAYER] Cleaning HP listeners"
+            );
+
+
+            removeDamagedListener?.();
+
+            hpUnsubscribe?.();
+
+            removeAddListener?.();
+
+        };
+
+    }, [room]);
 
 
     // ========================================================
@@ -488,6 +801,7 @@ export default function LocalPlayerController({
                 }
             );
         }
+
     });
 
 
@@ -496,16 +810,20 @@ export default function LocalPlayerController({
     // ========================================================
 
     return (
+
         <group
             ref={playerRef}
         >
+
             <Player
                 position={[
                     0,
                     0,
                     0,
                 ]}
+                hp={hp}
             />
+
         </group>
     );
 }

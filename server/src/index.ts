@@ -1,4 +1,3 @@
-
 import {
     Server,
 } from "colyseus";
@@ -14,8 +13,28 @@ const PORT =
     );
 
 
+console.log(
+    "[SERVER] Starting..."
+);
+
+console.log(
+    "[SERVER] PORT:",
+    PORT
+);
+
+console.log(
+    "[SERVER] BattleRoom:",
+    BattleRoom
+);
+
+
 const gameServer =
     new Server();
+
+
+console.log(
+    "[SERVER] Defining room: battle"
+);
 
 
 gameServer
@@ -26,6 +45,11 @@ gameServer
     .filterBy([
         "roomCode",
     ]);
+
+
+console.log(
+    "[SERVER] Room battle registered"
+);
 
 
 gameServer.listen(

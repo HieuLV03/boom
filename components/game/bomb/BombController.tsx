@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -16,32 +15,39 @@ import {
     useBombStore,
 } from "./bomb.store";
 
-type BombState = {
-    id: number;
+import {
+    useMultiplayerStore,
+} from "@/stores/multiplayer.store";
 
-    position: [
-        number,
-        number,
-        number,
-    ];
+import {
+    getStateCallbacks,
+} from "@colyseus/sdk";
+
+
+// ============================================================
+// TYPES
+// ============================================================
+
+type BombState = {
+    id: string;
+
+    x: number;
+    y: number;
+    z: number;
 
     remaining: number;
 
     exploded: boolean;
 };
 
+
+// ============================================================
+// PROPS
+// ============================================================
+
 type Props = {
     playerRef: RefObject<Group | null>;
 };
-
-
-// ============================================================
-// CONFIG
-// ============================================================
-
-const FUSE_TIME = 3;
-
-const EXPLOSION_TIME = 650;
 
 
 // ============================================================
@@ -64,10 +70,24 @@ export default function BombController({
 
 
     // ========================================================
+    // COLYSEUS ROOM
+    // ========================================================
+
+    const room =
+        useMultiplayerStore(
+            (state) =>
+                state.room
+        );
+
+
+    // ========================================================
     // STATE
     // ========================================================
 
-    const [bomb, setBomb] =
+    const [
+        bomb,
+        setBomb,
+    ] =
         useState<BombState | null>(
             null
         );
@@ -80,18 +100,9 @@ export default function BombController({
     const lastProcessedRequest =
         useRef(0);
 
-    const timerRef =
-        useRef<number | null>(null);
-
-    const explosionTimerRef =
-        useRef<number | null>(null);
-
-    const bombId =
-        useRef(0);
-
 
     // ========================================================
-    // PLACE BOMB
+    // SEND BOMB REQUEST TO SERVER
     // ========================================================
 
     useEffect(() => {
@@ -108,233 +119,309 @@ export default function BombController({
 
 
         /*
-         * Đánh dấu request này
+         * Đánh dấu request
          * đã được xử lý.
-         *
-         * Rất quan trọng:
-         * request cũ sẽ không bao giờ
-         * được xử lý lại.
          */
         lastProcessedRequest.current =
             bombRequest;
 
 
         /*
-         * Nếu đang có bomb
-         * thì không đặt thêm.
+         * Chưa connect Colyseus.
          */
-        if (bomb !== null) {
+        if (!room) {
+
+            console.warn(
+                "[CLIENT BOMB] Room chưa sẵn sàng"
+            );
+
             return;
         }
 
 
-        const player =
-            playerRef.current;
+        /*
+         * Player chưa tồn tại.
+         */
+        if (!playerRef.current) {
 
-        if (!player) {
+            console.warn(
+                "[CLIENT BOMB] Player chưa sẵn sàng"
+            );
+
             return;
         }
 
 
-        // ====================================================
-        // BOMB POSITION
-        // ====================================================
+        console.log(
+            "[CLIENT BOMB] 💣 Sending plantBomb"
+        );
 
-        const position: [
-            number,
-            number,
-            number,
-        ] = [
-            player.position.x,
-            0,
-            player.position.z,
-        ];
+        console.log(
+            "[CLIENT BOMB] session:",
+            room.sessionId
+        );
 
 
-        // ====================================================
-        // NEW BOMB ID
-        // ====================================================
-
-        bombId.current += 1;
-
-        const id =
-            bombId.current;
-
-
-        // ====================================================
-        // CREATE BOMB
-        // ====================================================
-
-        setBomb({
-            id,
-
-            position,
-
-            remaining:
-                FUSE_TIME,
-
-            exploded:
-                false,
-        });
+        /*
+         * SERVER sẽ quyết định:
+         *
+         * - vị trí bomb
+         * - countdown
+         * - explosion
+         * - damage
+         * - HP
+         */
+        room.send(
+            "plantBomb"
+        );
 
 
-        // ====================================================
-        // COUNTDOWN
-        // ====================================================
-
-        let remaining =
-            FUSE_TIME;
-
-
-        timerRef.current =
-            window.setInterval(() => {
-
-                remaining -= 1;
-
-
-                // ============================================
-                // EXPLOSION
-                // ============================================
-
-                if (
-                    remaining <= 0
-                ) {
-
-                    if (
-                        timerRef.current !==
-                        null
-                    ) {
-                        window.clearInterval(
-                            timerRef.current
-                        );
-
-                        timerRef.current =
-                            null;
-                    }
-
-
-                    setBomb(
-                        (current) => {
-
-                            if (
-                                !current ||
-                                current.id !== id
-                            ) {
-                                return current;
-                            }
-
-
-                            return {
-                                ...current,
-
-                                remaining: 0,
-
-                                exploded: true,
-                            };
-                        }
-                    );
-
-
-                    // ========================================
-                    // REMOVE EXPLOSION
-                    // ========================================
-
-                    explosionTimerRef.current =
-                        window.setTimeout(() => {
-
-                            setBomb(
-                                (current) => {
-
-                                    if (
-                                        !current ||
-                                        current.id !== id
-                                    ) {
-                                        return current;
-                                    }
-
-                                    return null;
-                                }
-                            );
-
-
-                            explosionTimerRef.current =
-                                null;
-
-                        }, EXPLOSION_TIME);
-
-
-                    return;
-                }
-
-
-                // ============================================
-                // UPDATE COUNTDOWN
-                // ============================================
-
-                setBomb(
-                    (current) => {
-
-                        if (
-                            !current ||
-                            current.id !== id
-                        ) {
-                            return current;
-                        }
-
-
-                        return {
-                            ...current,
-
-                            remaining:
-                                remaining,
-                        };
-                    }
-                );
-
-            }, 1000);
-
+        console.log(
+            "[CLIENT BOMB] ✅ plantBomb sent"
+        );
 
     }, [
         bombRequest,
+        room,
         playerRef,
     ]);
 
 
     // ========================================================
-    // CLEANUP
+    // LISTEN COLYSEUS BOMB STATE
     // ========================================================
 
     useEffect(() => {
 
+        if (!room) {
+            return;
+        }
+
+
+        const bombs =
+            room.state?.bombs;
+
+
+        if (!bombs) {
+
+            console.warn(
+                "[CLIENT BOMB] room.state.bombs không tồn tại"
+            );
+
+            return;
+        }
+
+
+        const $ =
+            getStateCallbacks(room);
+
+
+        // ====================================================
+        // REFRESH CURRENT BOMB
+        // ====================================================
+
+        const refreshBomb =
+            () => {
+
+                let latestBomb:
+                    BombState | null =
+                    null;
+
+
+                bombs.forEach(
+                    (
+                        serverBomb: any
+                    ) => {
+
+                        /*
+                         * Game hiện tại chỉ cho
+                         * một bomb client.
+                         *
+                         * Nếu sau này muốn nhiều bomb,
+                         * có thể đổi thành Map.
+                         */
+                        latestBomb = {
+
+                            id:
+                                String(
+                                    serverBomb.id
+                                ),
+
+                            x:
+                                Number(
+                                    serverBomb.x ??
+                                    0
+                                ),
+
+                            y:
+                                Number(
+                                    serverBomb.y ??
+                                    0
+                                ),
+
+                            z:
+                                Number(
+                                    serverBomb.z ??
+                                    0
+                                ),
+
+                            remaining:
+                                Number(
+                                    serverBomb.remaining ??
+                                    0
+                                ),
+
+                            exploded:
+                                Boolean(
+                                    serverBomb.exploded
+                                ),
+                        };
+                    }
+                );
+
+
+                setBomb(
+                    latestBomb
+                );
+            };
+
+
+        // ====================================================
+        // EXISTING BOMBS
+        // ====================================================
+
+        bombs.forEach(
+            (
+                serverBomb: any
+            ) => {
+
+                console.log(
+                    "[CLIENT BOMB] Existing bomb:",
+                    serverBomb.id
+                );
+            }
+        );
+
+
+        // ====================================================
+        // BOMB ADD
+        // ====================================================
+
+        const removeAdd =
+            $(bombs).onAdd(
+                (
+                    serverBomb: any
+                ) => {
+
+                    console.log(
+                        "[CLIENT BOMB] 💣 Bomb received from server:",
+                        serverBomb.id
+                    );
+
+
+                    refreshBomb();
+
+
+                    /*
+                     * Theo dõi thay đổi:
+                     *
+                     * remaining
+                     * exploded
+                     * position
+                     */
+                    $(serverBomb).onChange(
+                        () => {
+
+                            console.log(
+                                "[CLIENT BOMB] Bomb state changed:",
+                                serverBomb.id,
+                                {
+                                    remaining:
+                                        serverBomb.remaining,
+
+                                    exploded:
+                                        serverBomb.exploded,
+                                }
+                            );
+
+
+                            refreshBomb();
+                        }
+                    );
+                }
+            );
+
+
+        // ====================================================
+        // BOMB REMOVE
+        // ====================================================
+
+        const removeRemove =
+            $(bombs).onRemove(
+                (
+                    serverBomb: any
+                ) => {
+
+                    console.log(
+                        "[CLIENT BOMB] 💨 Bomb removed:",
+                        serverBomb.id
+                    );
+
+
+                    /*
+                     * Nếu bomb bị server xoá,
+                     * clear UI.
+                     */
+                    setBomb(
+                        (
+                            current
+                        ) => {
+
+                            if (
+                                !current
+                            ) {
+                                return null;
+                            }
+
+
+                            if (
+                                current.id ===
+                                String(
+                                    serverBomb.id
+                                )
+                            ) {
+                                return null;
+                            }
+
+
+                            return current;
+                        }
+                    );
+                }
+            );
+
+
+        // ====================================================
+        // INITIAL STATE
+        // ====================================================
+
+        refreshBomb();
+
+
+        // ====================================================
+        // CLEANUP
+        // ====================================================
+
         return () => {
 
-            if (
-                timerRef.current !==
-                null
-            ) {
-                window.clearInterval(
-                    timerRef.current
-                );
+            removeAdd?.();
+            removeRemove?.();
 
-                timerRef.current =
-                    null;
-            }
-
-
-            if (
-                explosionTimerRef.current !==
-                null
-            ) {
-                window.clearTimeout(
-                    explosionTimerRef.current
-                );
-
-                explosionTimerRef.current =
-                    null;
-            }
         };
 
-    }, []);
+    }, [
+        room,
+    ]);
 
 
     // ========================================================
@@ -348,14 +435,14 @@ export default function BombController({
 
     return (
         <Bomb
-            position={
-                bomb.position
-            }
-
+            position={[
+                bomb.x,
+                bomb.y,
+                bomb.z,
+            ]}
             remaining={
                 bomb.remaining
             }
-
             exploded={
                 bomb.exploded
             }

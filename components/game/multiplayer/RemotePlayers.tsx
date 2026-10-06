@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -84,7 +83,16 @@ function RemotePlayer({
         <group ref={groupRef}>
 
             <Player
-                position={[0, 0, 0]}
+                position={[
+                    0,
+                    0,
+                    0,
+                ]}
+                hp={
+                    Number(
+                        player.hp ?? 100
+                    )
+                }
             />
 
         </group>
@@ -143,9 +151,20 @@ export default function RemotePlayers() {
             getStateCallbacks(room);
 
 
-        // ----------------------------------------------------
-        // REFRESH
-        // ----------------------------------------------------
+        // ====================================================
+        // PLAYER CHANGE LISTENERS
+        // ====================================================
+
+        const playerChangeListeners =
+            new Map<
+                string,
+                () => void
+            >();
+
+
+        // ====================================================
+        // REFRESH PLAYERS
+        // ====================================================
 
         const refreshPlayers =
             () => {
@@ -180,32 +199,84 @@ export default function RemotePlayers() {
 
 
                 setPlayers(result);
+
             };
 
 
         // ====================================================
-        // QUAN TRỌNG
-        // ====================================================
-        //
-        // Đăng ký listener TRƯỚC khi refresh.
-        //
-        // Tránh trường hợp:
-        //
-        // refresh()
-        // ↓
-        // player mới xuất hiện
-        // ↓
-        // onAdd chưa được đăng ký
-        // ↓
-        // mất event
-        //
+        // BIND PLAYER CHANGE
         // ====================================================
 
+        const bindPlayerChange =
+            (
+                player: any,
+                id: string
+            ) => {
+
+                // Không cần theo dõi chính mình
+                if (
+                    id ===
+                    room.sessionId
+                ) {
+                    return;
+                }
+
+
+                // Đã bind rồi thì không bind lại
+                if (
+                    playerChangeListeners.has(
+                        id
+                    )
+                ) {
+                    return;
+                }
+
+
+                const unsubscribe =
+                    $(player).onChange(
+                        () => {
+
+                            // Server thay đổi:
+                            //
+                            // player.hp
+                            //
+                            // player.x
+                            //
+                            // player.z
+                            //
+                            // player.alive
+                            //
+                            // ...
+
+                            refreshPlayers();
+
+                        }
+                    );
+
+
+                if (
+                    typeof unsubscribe ===
+                    "function"
+                ) {
+
+                    playerChangeListeners.set(
+                        id,
+                        unsubscribe
+                    );
+
+                }
+
+            };
+
+
+        // ====================================================
+        // PLAYER ADD
+        // ====================================================
 
         const removeAddListener =
             $(playersMap).onAdd(
                 (
-                    _player: any,
+                    player: any,
                     id: string
                 ) => {
 
@@ -217,11 +288,26 @@ export default function RemotePlayers() {
                     }
 
 
+                    // Quan trọng:
+                    //
+                    // Player mới join cũng phải
+                    // được đăng ký onChange().
+                    //
+                    bindPlayerChange(
+                        player,
+                        id
+                    );
+
+
                     refreshPlayers();
 
                 }
             );
 
+
+        // ====================================================
+        // PLAYER REMOVE
+        // ====================================================
 
         const removeRemoveListener =
             $(playersMap).onRemove(
@@ -238,6 +324,30 @@ export default function RemotePlayers() {
                     }
 
 
+                    // Hủy listener của player
+                    // đã rời phòng.
+
+                    const unsubscribe =
+                        playerChangeListeners.get(
+                            id
+                        );
+
+
+                    if (
+                        typeof unsubscribe ===
+                        "function"
+                    ) {
+
+                        unsubscribe();
+
+                    }
+
+
+                    playerChangeListeners.delete(
+                        id
+                    );
+
+
                     refreshPlayers();
 
                 }
@@ -245,8 +355,26 @@ export default function RemotePlayers() {
 
 
         // ====================================================
-        // SAU KHI LISTENER ĐÃ ĐƯỢC ĐĂNG KÝ
-        // MỚI ĐỌC STATE HIỆN TẠI
+        // BIND PLAYERS ĐÃ TỒN TẠI
+        // ====================================================
+
+        playersMap.forEach(
+            (
+                player: any,
+                id: string
+            ) => {
+
+                bindPlayerChange(
+                    player,
+                    id
+                );
+
+            }
+        );
+
+
+        // ====================================================
+        // INITIAL REFRESH
         // ====================================================
 
         refreshPlayers();
@@ -261,6 +389,20 @@ export default function RemotePlayers() {
             removeAddListener?.();
 
             removeRemoveListener?.();
+
+
+            playerChangeListeners.forEach(
+                (
+                    unsubscribe
+                ) => {
+
+                    unsubscribe();
+
+                }
+            );
+
+
+            playerChangeListeners.clear();
 
         };
 

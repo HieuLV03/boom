@@ -1,10 +1,8 @@
-
 import {
     Schema,
     MapSchema,
     type,
 } from "@colyseus/schema";
-
 
 // ============================================================
 // PLAYER
@@ -36,7 +34,6 @@ export class PlayerState extends Schema {
     @type("boolean")
     alive: boolean = true;
 }
-
 
 // ============================================================
 // BOMB
@@ -78,7 +75,6 @@ export class BombState extends Schema {
     explosionType: string = "circle";
 }
 
-
 // ============================================================
 // BATTLE STATE
 // ============================================================
@@ -88,15 +84,9 @@ export class BattleState extends Schema {
     @type("string")
     roomCode: string = "";
 
-    @type({
-        map: PlayerState,
-    })
-    players =
-        new MapSchema<PlayerState>();
+    @type({ map: PlayerState })
+    players = new MapSchema<PlayerState>();
 
-    @type({
-        map: BombState,
-    })
-    bombs =
-        new MapSchema<BombState>();
+    @type({ map: BombState })
+    bombs = new MapSchema<BombState>();
 }
