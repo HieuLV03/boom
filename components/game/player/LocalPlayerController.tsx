@@ -392,57 +392,25 @@ export default function LocalPlayerController({
     }, [room]);
 
 
-    // ========================================================
-    // INITIAL SPAWN
-    // ========================================================
+// ========================================================
+// INITIAL SPAWN
+// ========================================================
 
-    useEffect(() => {
+useEffect(() => {
 
-        const player =
-            playerRef.current;
+    const player =
+        playerRef.current;
 
-        if (!player) {
-            return;
-        }
-
-
-        // ====================================================
-        // SERVER SPAWN
-        // ====================================================
-
-        if (room) {
-
-            const serverPlayer =
-                room.state?.players?.get(
-                    room.sessionId
-                );
+    if (!player) {
+        return;
+    }
 
 
-            if (serverPlayer) {
+    // ====================================================
+    // CHƯA CÓ ROOM
+    // ====================================================
 
-                player.position.set(
-                    serverPlayer.x ?? 0,
-                    serverPlayer.y ?? 0,
-                    serverPlayer.z ?? 0
-                );
-
-
-                player.rotation.y =
-                    serverPlayer.rotation ?? 0;
-
-
-                velocityX.current = 0;
-
-                velocityZ.current = 0;
-
-                return;
-            }
-        }
-
-
-        // ====================================================
-        // LOCAL SPAWN
-        // ====================================================
+    if (!room) {
 
         player.position.set(
             0,
@@ -453,12 +421,78 @@ export default function LocalPlayerController({
         player.rotation.y = 0;
 
         velocityX.current = 0;
-
         velocityZ.current = 0;
 
-    }, [room, playerRef]);
+        return;
+    }
 
 
+    // ====================================================
+    // SERVER PLAYER
+    // ====================================================
+
+    const serverPlayer =
+        room.state?.players?.get(
+            room.sessionId
+        );
+
+
+    if (!serverPlayer) {
+
+        console.log(
+            "[PLAYER] Waiting for server player..."
+        );
+
+        return;
+    }
+
+
+    console.log(
+        "[PLAYER] Spawn from server:",
+        {
+            id:
+                room.sessionId,
+
+            x:
+                serverPlayer.x,
+
+            y:
+                serverPlayer.y,
+
+            z:
+                serverPlayer.z,
+
+            rotation:
+                serverPlayer.rotation,
+        }
+    );
+
+
+    player.position.set(
+        Number(
+            serverPlayer.x ?? 0
+        ),
+
+        Number(
+            serverPlayer.y ?? 0
+        ),
+
+        Number(
+            serverPlayer.z ?? 0
+        )
+    );
+
+
+    player.rotation.y =
+        Number(
+            serverPlayer.rotation ?? 0
+        );
+
+
+    velocityX.current = 0;
+    velocityZ.current = 0;
+
+}, [room, playerRef]);
     // ========================================================
     // MOVEMENT
     // ========================================================
