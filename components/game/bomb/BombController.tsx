@@ -97,8 +97,21 @@ export default function BombController({
     // REFS
     // ========================================================
 
+    /*
+     * Request cuối cùng đã xử lý.
+     */
     const lastProcessedRequest =
         useRef(0);
+
+
+    /*
+     * Room hiện tại.
+     *
+     * Dùng để phát hiện khi người chơi
+     * vào một trận mới.
+     */
+    const lastRoom =
+        useRef<any>(null);
 
 
     // ========================================================
@@ -108,8 +121,87 @@ export default function BombController({
     useEffect(() => {
 
         /*
-         * Không có request mới.
+         * ====================================================
+         * KHÔNG CÓ ROOM
+         * ====================================================
          */
+
+        if (!room) {
+            return;
+        }
+
+
+        /*
+         * ====================================================
+         * ROOM MỚI
+         * ====================================================
+         *
+         * Đây là phần quan trọng nhất.
+         *
+         * Khi vào trận mới, bombRequest có thể vẫn giữ
+         * giá trị của trận trước.
+         *
+         * Ví dụ:
+         *
+         * trận cũ:
+         * bombRequest = 1
+         *
+         * trận mới:
+         * bombRequest vẫn = 1
+         *
+         * Nếu lastProcessedRequest = 0 thì component
+         * sẽ hiểu nhầm đây là request mới.
+         *
+         * Vì vậy khi phát hiện room mới, chúng ta đồng bộ
+         * lastProcessedRequest với bombRequest hiện tại.
+         */
+
+        if (
+            lastRoom.current !== room
+        ) {
+
+            console.log(
+                "[CLIENT BOMB] 🔄 New room detected"
+            );
+
+            console.log(
+                "[CLIENT BOMB] Current bombRequest:",
+                bombRequest
+            );
+
+
+            /*
+             * Đánh dấu request cũ là đã xử lý.
+             *
+             * KHÔNG gửi plantBomb ở đây.
+             */
+            lastProcessedRequest.current =
+                bombRequest;
+
+
+            /*
+             * Lưu room hiện tại.
+             */
+            lastRoom.current =
+                room;
+
+
+            /*
+             * Xóa bomb UI cũ nếu có.
+             */
+            setBomb(null);
+
+
+            return;
+        }
+
+
+        /*
+         * ====================================================
+         * KHÔNG CÓ REQUEST MỚI
+         * ====================================================
+         */
+
         if (
             bombRequest ===
             lastProcessedRequest.current
@@ -119,29 +211,21 @@ export default function BombController({
 
 
         /*
-         * Đánh dấu request
-         * đã được xử lý.
+         * ====================================================
+         * ĐÁNH DẤU REQUEST
+         * ====================================================
          */
+
         lastProcessedRequest.current =
             bombRequest;
 
 
         /*
-         * Chưa connect Colyseus.
+         * ====================================================
+         * PLAYER CHƯA SẴN SÀNG
+         * ====================================================
          */
-        if (!room) {
 
-            console.warn(
-                "[CLIENT BOMB] Room chưa sẵn sàng"
-            );
-
-            return;
-        }
-
-
-        /*
-         * Player chưa tồn tại.
-         */
         if (!playerRef.current) {
 
             console.warn(
@@ -152,6 +236,12 @@ export default function BombController({
         }
 
 
+        /*
+         * ====================================================
+         * SEND TO SERVER
+         * ====================================================
+         */
+
         console.log(
             "[CLIENT BOMB] 💣 Sending plantBomb"
         );
@@ -159,6 +249,11 @@ export default function BombController({
         console.log(
             "[CLIENT BOMB] session:",
             room.sessionId
+        );
+
+        console.log(
+            "[CLIENT BOMB] request:",
+            bombRequest
         );
 
 
@@ -171,6 +266,7 @@ export default function BombController({
          * - damage
          * - HP
          */
+
         room.send(
             "plantBomb"
         );
@@ -194,6 +290,7 @@ export default function BombController({
     useEffect(() => {
 
         if (!room) {
+            setBomb(null);
             return;
         }
 
@@ -207,6 +304,8 @@ export default function BombController({
             console.warn(
                 "[CLIENT BOMB] room.state.bombs không tồn tại"
             );
+
+            setBomb(null);
 
             return;
         }
@@ -240,6 +339,7 @@ export default function BombController({
                          * Nếu sau này muốn nhiều bomb,
                          * có thể đổi thành Map.
                          */
+
                         latestBomb = {
 
                             id:
@@ -329,6 +429,7 @@ export default function BombController({
                      * exploded
                      * position
                      */
+
                     $(serverBomb).onChange(
                         () => {
 
@@ -372,6 +473,7 @@ export default function BombController({
                      * Nếu bomb bị server xoá,
                      * clear UI.
                      */
+
                     setBomb(
                         (
                             current
@@ -415,7 +517,13 @@ export default function BombController({
         return () => {
 
             removeAdd?.();
+
             removeRemove?.();
+
+            /*
+             * Khi rời room, xóa bomb khỏi UI.
+             */
+            setBomb(null);
 
         };
 
