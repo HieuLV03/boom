@@ -6,9 +6,13 @@ import {
     useState,
 } from "react";
 
-import { useFrame } from "@react-three/fiber";
+import {
+    useFrame,
+} from "@react-three/fiber";
 
-import type { Group } from "three";
+import type {
+    Group,
+} from "three";
 
 import {
     getStateCallbacks,
@@ -45,42 +49,55 @@ function RemotePlayer({
         useRef<Group>(null);
 
 
+    // ========================================================
+    // FRAME
+    // ========================================================
+
     useFrame(() => {
 
         const group =
             groupRef.current;
 
-        if (!group || !player) {
+
+        if (
+            !group ||
+            !player
+        ) {
             return;
         }
 
 
-        // ----------------------------------------------------
+        // ====================================================
         // POSITION
-        // ----------------------------------------------------
+        // ====================================================
 
-        group.position.x =
-            player.x ?? 0;
-
-        group.position.y =
-            player.y ?? 0;
-
-        group.position.z =
-            player.z ?? 0;
+        group.position.set(
+            Number(player.x ?? 0),
+            Number(player.y ?? 0),
+            Number(player.z ?? 0)
+        );
 
 
-        // ----------------------------------------------------
+        // ====================================================
         // ROTATION
-        // ----------------------------------------------------
+        // ====================================================
 
         group.rotation.y =
-            player.rotation ?? 0;
+            Number(
+                player.rotation ?? 0
+            );
 
     });
 
 
+    // ========================================================
+    // RENDER
+    // ========================================================
+
     return (
-        <group ref={groupRef}>
+        <group
+            ref={groupRef}
+        >
 
             <Player
                 position={[
@@ -88,6 +105,7 @@ function RemotePlayer({
                     0,
                     0,
                 ]}
+                rotation={0}
                 hp={
                     Number(
                         player.hp ?? 100
@@ -106,28 +124,44 @@ function RemotePlayer({
 
 export default function RemotePlayers() {
 
+    // ========================================================
+    // ROOM
+    // ========================================================
+
     const room =
         useMultiplayerStore(
-            (state) => state.room
+            (state) =>
+                state.room
         );
 
+
+    // ========================================================
+    // PLAYERS
+    // ========================================================
 
     const [
         players,
         setPlayers,
     ] =
-        useState<RemotePlayerData[]>(
-            []
-        );
+        useState<
+            RemotePlayerData[]
+        >([]);
 
 
     // ========================================================
-    // SYNC PLAYERS
+    // SYNC
     // ========================================================
 
     useEffect(() => {
 
+        /*
+         * Không có room
+         */
         if (!room) {
+
+            console.log(
+                "[REMOTE] No room"
+            );
 
             setPlayers([]);
 
@@ -135,11 +169,24 @@ export default function RemotePlayers() {
         }
 
 
+        console.log(
+            "[REMOTE] Room connected:",
+            room.sessionId
+        );
+
+
         const playersMap =
             room.state?.players;
 
 
+        /*
+         * Room chưa có players
+         */
         if (!playersMap) {
+
+            console.warn(
+                "[REMOTE] room.state.players not found"
+            );
 
             setPlayers([]);
 
@@ -152,18 +199,7 @@ export default function RemotePlayers() {
 
 
         // ====================================================
-        // PLAYER CHANGE LISTENERS
-        // ====================================================
-
-        const playerChangeListeners =
-            new Map<
-                string,
-                () => void
-            >();
-
-
-        // ====================================================
-        // REFRESH PLAYERS
+        // REFRESH
         // ====================================================
 
         const refreshPlayers =
@@ -180,7 +216,10 @@ export default function RemotePlayers() {
                         id: string
                     ) => {
 
-                        // Không render chính mình
+                        /*
+                         * Không render chính mình
+                         */
+
                         if (
                             id ===
                             room.sessionId
@@ -194,26 +233,52 @@ export default function RemotePlayers() {
                             player,
                         });
 
+
+                        console.log(
+                            "[REMOTE] Player:",
+                            id,
+                            "position:",
+                            player.x,
+                            player.y,
+                            player.z
+                        );
+
                     }
                 );
 
 
-                setPlayers(result);
+                setPlayers(
+                    result
+                );
 
             };
 
 
         // ====================================================
-        // BIND PLAYER CHANGE
+        // PLAYER STATE LISTENERS
         // ====================================================
 
-        const bindPlayerChange =
+        const playerListeners =
+            new Map<
+                string,
+                () => void
+            >();
+
+
+        // ====================================================
+        // BIND PLAYER
+        // ====================================================
+
+        const bindPlayer =
             (
                 player: any,
                 id: string
             ) => {
 
-                // Không cần theo dõi chính mình
+                /*
+                 * Không bind local player
+                 */
+
                 if (
                     id ===
                     room.sessionId
@@ -222,9 +287,12 @@ export default function RemotePlayers() {
                 }
 
 
-                // Đã bind rồi thì không bind lại
+                /*
+                 * Đã bind
+                 */
+
                 if (
-                    playerChangeListeners.has(
+                    playerListeners.has(
                         id
                     )
                 ) {
@@ -232,23 +300,39 @@ export default function RemotePlayers() {
                 }
 
 
+                console.log(
+                    "[REMOTE] Binding player:",
+                    id
+                );
+
+
                 const unsubscribe =
                     $(player).onChange(
                         () => {
 
-                            // Server thay đổi:
-                            //
-                            // player.hp
-                            //
-                            // player.x
-                            //
-                            // player.z
-                            //
-                            // player.alive
-                            //
-                            // ...
+                            /*
+                             * Schema object tự cập nhật.
+                             *
+                             * RemotePlayer đọc trực tiếp
+                             * player.x / player.z trong useFrame.
+                             *
+                             * Không nhất thiết phải setState
+                             * cho mỗi movement.
+                             */
 
-                            refreshPlayers();
+                            console.log(
+                                "[REMOTE] Update:",
+                                id,
+                                {
+                                    x: player.x,
+                                    y: player.y,
+                                    z: player.z,
+                                    rotation:
+                                        player.rotation,
+                                    hp:
+                                        player.hp,
+                                }
+                            );
 
                         }
                     );
@@ -259,7 +343,7 @@ export default function RemotePlayers() {
                     "function"
                 ) {
 
-                    playerChangeListeners.set(
+                    playerListeners.set(
                         id,
                         unsubscribe
                     );
@@ -267,6 +351,44 @@ export default function RemotePlayers() {
                 }
 
             };
+
+
+        // ====================================================
+        // EXISTING PLAYERS
+        // ====================================================
+
+        console.log(
+            "[REMOTE] Existing players:",
+            playersMap.size
+        );
+
+
+        playersMap.forEach(
+            (
+                player: any,
+                id: string
+            ) => {
+
+                console.log(
+                    "[REMOTE] Existing player:",
+                    id
+                );
+
+
+                bindPlayer(
+                    player,
+                    id
+                );
+
+            }
+        );
+
+
+        // ====================================================
+        // INITIAL REFRESH
+        // ====================================================
+
+        refreshPlayers();
 
 
         // ====================================================
@@ -280,24 +402,43 @@ export default function RemotePlayers() {
                     id: string
                 ) => {
 
+                    console.log(
+                        "[REMOTE] 🧍 Player added:",
+                        id
+                    );
+
+
+                    /*
+                     * Local player
+                     */
+
                     if (
                         id ===
                         room.sessionId
                     ) {
+
+                        console.log(
+                            "[REMOTE] Local player ignored:",
+                            id
+                        );
+
                         return;
                     }
 
 
-                    // Quan trọng:
-                    //
-                    // Player mới join cũng phải
-                    // được đăng ký onChange().
-                    //
-                    bindPlayerChange(
+                    /*
+                     * Bind Schema
+                     */
+
+                    bindPlayer(
                         player,
                         id
                     );
 
+
+                    /*
+                     * Refresh React list
+                     */
 
                     refreshPlayers();
 
@@ -316,19 +457,14 @@ export default function RemotePlayers() {
                     id: string
                 ) => {
 
-                    if (
-                        id ===
-                        room.sessionId
-                    ) {
-                        return;
-                    }
+                    console.log(
+                        "[REMOTE] ❌ Player removed:",
+                        id
+                    );
 
-
-                    // Hủy listener của player
-                    // đã rời phòng.
 
                     const unsubscribe =
-                        playerChangeListeners.get(
+                        playerListeners.get(
                             id
                         );
 
@@ -343,7 +479,7 @@ export default function RemotePlayers() {
                     }
 
 
-                    playerChangeListeners.delete(
+                    playerListeners.delete(
                         id
                     );
 
@@ -355,43 +491,22 @@ export default function RemotePlayers() {
 
 
         // ====================================================
-        // BIND PLAYERS ĐÃ TỒN TẠI
-        // ====================================================
-
-        playersMap.forEach(
-            (
-                player: any,
-                id: string
-            ) => {
-
-                bindPlayerChange(
-                    player,
-                    id
-                );
-
-            }
-        );
-
-
-        // ====================================================
-        // INITIAL REFRESH
-        // ====================================================
-
-        refreshPlayers();
-
-
-        // ====================================================
         // CLEANUP
         // ====================================================
 
         return () => {
+
+            console.log(
+                "[REMOTE] Cleanup"
+            );
+
 
             removeAddListener?.();
 
             removeRemoveListener?.();
 
 
-            playerChangeListeners.forEach(
+            playerListeners.forEach(
                 (
                     unsubscribe
                 ) => {
@@ -402,7 +517,9 @@ export default function RemotePlayers() {
             );
 
 
-            playerChangeListeners.clear();
+            playerListeners.clear();
+
+            setPlayers([]);
 
         };
 
