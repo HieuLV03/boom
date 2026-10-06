@@ -1,16 +1,36 @@
 
 "use client";
 
-import { useRef, useState } from "react";
+import {
+    useRef,
+    useState,
+} from "react";
 
 import {
     useMovementStore,
 } from "@/stores/movement.store";
 
+import "./VirtualJoystick.css";
+
+
+// ============================================================
+// TYPES
+// ============================================================
+
+type JoystickPosition = {
+    x: number;
+    y: number;
+};
+
+
+// ============================================================
+// COMPONENT
+// ============================================================
+
 export default function VirtualJoystick() {
 
     const [position, setPosition] =
-        useState({
+        useState<JoystickPosition>({
             x: 0,
             y: 0,
         });
@@ -160,9 +180,23 @@ export default function VirtualJoystick() {
     // POINTER END
     // ============================================================
 
-    function end() {
+    function end(
+        event?: React.PointerEvent<HTMLDivElement>
+    ) {
 
         active.current = false;
+
+
+        if (
+            event &&
+            event.currentTarget.hasPointerCapture(
+                event.pointerId
+            )
+        ) {
+            event.currentTarget.releasePointerCapture(
+                event.pointerId
+            );
+        }
 
 
         setPosition({
@@ -181,31 +215,7 @@ export default function VirtualJoystick() {
 
     return (
         <div
-            style={{
-                position: "absolute",
-
-                left: 24,
-
-                bottom: 80,
-
-                width: 130,
-
-                height: 130,
-
-                borderRadius: "50%",
-
-                background:
-                    "rgba(255,255,255,.12)",
-
-                border:
-                    "2px solid rgba(255,255,255,.25)",
-
-                touchAction: "none",
-
-                pointerEvents: "auto",
-
-                userSelect: "none",
-            }}
+            className="virtual-joystick"
 
             onPointerDown={start}
 
@@ -214,40 +224,12 @@ export default function VirtualJoystick() {
             onPointerUp={end}
 
             onPointerCancel={end}
-
-            onPointerLeave={(event) => {
-
-                if (
-                    active.current &&
-                    event.currentTarget.hasPointerCapture(
-                        event.pointerId
-                    )
-                ) {
-                    return;
-                }
-            }}
         >
 
             <div
+                className="virtual-joystick-knob"
+
                 style={{
-                    position: "absolute",
-
-                    left: "50%",
-
-                    top: "50%",
-
-                    width: 58,
-
-                    height: 58,
-
-                    borderRadius: "50%",
-
-                    background:
-                        "rgba(255,255,255,.45)",
-
-                    boxShadow:
-                        "0 4px 15px rgba(0,0,0,.3)",
-
                     transform: `
                         translate(
                             calc(-50% + ${position.x}px),

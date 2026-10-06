@@ -308,7 +308,7 @@ export default function GameHUD() {
             <div
                 style={{
                     position: "absolute",
-                    left: 18,
+                    left: 567,
                     bottom: 30,
                     width: 180,
                 }}

@@ -21,7 +21,7 @@ import {
 
 import GameWorld from "../GameWorld";
 import GameHUD from "../GameHUD";
-import VirtualJoystick from "../VirtualJoystick";
+import VirtualJoystick from "../VirtualJoystick/VirtualJoystick";
 import TouchCamera from "../TouchCamera";
 
 import {
