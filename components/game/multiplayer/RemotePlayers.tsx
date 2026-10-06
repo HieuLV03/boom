@@ -134,18 +134,17 @@ function RemotePlayer({
             ref={groupRef}
         >
 
-            <Player
-                position={[
-                    0,
-                    0,
-                    0,
-                ]}
-                hp={
-                    Number(
-                        player.hp ?? 100
-                    )
-                }
-            />
+      <Player
+    position={[
+        0,
+        0,
+        0,
+    ]}
+    name={
+        player.name ||
+        "Player"
+    }
+/>
 
         </group>
     );

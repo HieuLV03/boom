@@ -10,6 +10,10 @@ import {
     DEFAULT_APPEARANCE,
 } from "./player.config";
 
+import {
+    Text,
+} from "@react-three/drei";
+
 
 // ============================================================
 // TYPES
@@ -27,7 +31,7 @@ type Props = {
 
     appearance?: PlayerAppearance;
 
-    hp?: number;
+    name?: string;
 
 };
 
@@ -48,25 +52,20 @@ export default function Player({
 
     appearance = DEFAULT_APPEARANCE,
 
-    hp = 100,
+    name = "Player",
 
 }: Props) {
 
     // ========================================================
-    // SAFE HP
+    // SAFE NAME
     // ========================================================
 
-    const safeHp =
-        Math.max(
-            0,
-            Math.min(
-                100,
-                Number(hp) || 0
-            )
-        );
-
-    const hpPercent =
-        safeHp / 100;
+    const safeName =
+        String(
+            name || "Player"
+        )
+            .trim()
+            .slice(0, 20);
 
 
     // ========================================================
@@ -97,85 +96,26 @@ export default function Player({
 
 
             {/* ==================================================
-                HP BAR
+                PLAYER NAME
             ================================================== */}
-
-            <group
-                position={[
-                    0,
-                    2.65,
-                    0,
-                ]}
-            >
-
-                {/* ==================================================
-                    HP BAR BACKGROUND
-                ================================================== */}
-
-                <mesh>
-
-                    <planeGeometry
-                        args={[
-                            1.2,
-                            0.12,
-                        ]}
-                    />
-
-                    <meshBasicMaterial
-                        color="#222222"
-                        depthTest={false}
-                    />
-
-                </mesh>
-
-
-                {/* ==================================================
-                    HP BAR
-                ================================================== */}
-
-                {safeHp > 0 && (
-
-                    <mesh
-
-                        position={[
-                            -0.6 +
-                                (
-                                    1.2 *
-                                    hpPercent
-                                ) / 2,
-
-                            0,
-
-                            0.01,
-                        ]}
-
-                        scale={[
-                            hpPercent,
-                            1,
-                            1,
-                        ]}
-
-                    >
-
-                        <planeGeometry
-                            args={[
-                                1.2,
-                                0.12,
-                            ]}
-                        />
-
-                        <meshBasicMaterial
-                            color="#22C55E"
-                            depthTest={false}
-                        />
-
-                    </mesh>
-
-                )}
-
-            </group>
-
+<Text
+    position={[
+        0,
+        2.65,
+        0,
+    ]}
+    fontSize={0.28}
+    color="#ffffff"
+    anchorX="center"
+    anchorY="middle"
+    outlineWidth={0.025}
+    outlineColor="#000000"
+    renderOrder={100}
+>
+    {safeName}
+</Text>
         </group>
 
     );
+
 }

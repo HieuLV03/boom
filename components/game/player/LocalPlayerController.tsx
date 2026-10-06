@@ -73,13 +73,23 @@ export default function LocalPlayerController({
 
 
     // ========================================================
-    // HP
+    // PLAYER NAME
     // ========================================================
 
     const [
-        hp,
-        setHp,
-    ] = useState(100);
+        playerName,
+        setPlayerName,
+    ] = useState("Player");
+
+
+    // ========================================================
+    // PLAYER ALIVE
+    // ========================================================
+
+    const [
+        isDead,
+        setIsDead,
+    ] = useState(false);
 
 
     // ========================================================
@@ -94,22 +104,26 @@ export default function LocalPlayerController({
 
 
     // ========================================================
-    // REALTIME HP
+    // REALTIME PLAYER STATE
     // ========================================================
 
     useEffect(() => {
 
         if (!room) {
+
             console.log(
                 "[PLAYER] No Colyseus room"
             );
+
+            setPlayerName("Player");
+            setIsDead(false);
 
             return;
         }
 
 
         console.log(
-            "[PLAYER] HP listener connected"
+            "[PLAYER] Player state listener connected"
         );
 
         console.log(
@@ -119,74 +133,7 @@ export default function LocalPlayerController({
 
 
         // ====================================================
-        // DIRECT DAMAGE MESSAGE
-        // ====================================================
-
-        const removeDamagedListener =
-            room.onMessage(
-                "playerDamaged",
-                (
-                    message: {
-                        playerId?: string;
-                        damage?: number;
-                        hp?: number;
-                        alive?: boolean;
-                        distance?: number;
-                        bombId?: string;
-                    }
-                ) => {
-
-                    console.log(
-                        "[PLAYER] playerDamaged received:",
-                        message
-                    );
-
-
-                    /*
-                     * Chỉ xử lý damage của
-                     * chính local player.
-                     */
-
-                    if (
-                        message?.playerId !==
-                        room.sessionId
-                    ) {
-                        return;
-                    }
-
-
-                    const newHp =
-                        Number(
-                            message.hp ?? 0
-                        );
-
-
-                    const safeHp =
-                        Math.max(
-                            0,
-                            Math.min(
-                                100,
-                                newHp
-                            )
-                        );
-
-
-                    console.log(
-                        "[PLAYER] ❤️ HP:",
-                        safeHp
-                    );
-
-
-                    setHp(
-                        safeHp
-                    );
-
-                }
-            );
-
-
-        // ====================================================
-        // STATE SYNC FALLBACK
+        // STATE
         // ====================================================
 
         const playersMap =
@@ -199,11 +146,7 @@ export default function LocalPlayerController({
                 "[PLAYER] room.state.players not found"
             );
 
-            return () => {
-
-                removeDamagedListener?.();
-
-            };
+            return;
         }
 
 
@@ -211,7 +154,7 @@ export default function LocalPlayerController({
             getStateCallbacks(room);
 
 
-        let hpUnsubscribe:
+        let playerUnsubscribe:
             (() => void) | undefined;
 
 
@@ -234,76 +177,119 @@ export default function LocalPlayerController({
 
 
             console.log(
-                "[PLAYER] Initial HP:",
+                "[PLAYER] Name:",
+                serverPlayer.name
+            );
+
+
+            console.log(
+                "[PLAYER] HP:",
                 serverPlayer.hp
             );
 
 
-            // ================================================
-            // INITIAL HP
-            // ================================================
-
-            const initialHp =
-                Number(
-                    serverPlayer.hp ?? 100
-                );
-
-
-            const safeInitialHp =
-                Math.max(
-                    0,
-                    Math.min(
-                        100,
-                        initialHp
-                    )
-                );
-
-
-            setHp(
-                safeInitialHp
+            console.log(
+                "[PLAYER] Alive:",
+                serverPlayer.alive
             );
+
+
+            // ================================================
+            // INITIAL NAME
+            // ================================================
+
+            setPlayerName(
+                serverPlayer.name ||
+                "Player"
+            );
+
+
+            // ================================================
+            // INITIAL ALIVE
+            // ================================================
+
+            const alive =
+                serverPlayer.alive !== false;
+
+
+            setIsDead(
+                !alive
+            );
+
+
+            // ================================================
+            // RESET VELOCITY IF DEAD
+            // ================================================
+
+            if (!alive) {
+
+                velocityX.current = 0;
+                velocityZ.current = 0;
+
+            }
 
 
             // ================================================
             // REMOVE OLD LISTENER
             // ================================================
 
-            hpUnsubscribe?.();
+            playerUnsubscribe?.();
 
 
             // ================================================
             // STATE CHANGE
             // ================================================
 
-            hpUnsubscribe =
+            playerUnsubscribe =
                 $(serverPlayer).onChange(
                     () => {
 
-                        const currentHp =
-                            Number(
-                                serverPlayer.hp ??
-                                0
-                            );
+                        // ====================================
+                        // NAME
+                        // ====================================
 
-
-                        const safeHp =
-                            Math.max(
-                                0,
-                                Math.min(
-                                    100,
-                                    currentHp
-                                )
-                            );
-
-
-                        console.log(
-                            "[PLAYER] HP STATE CHANGE:",
-                            safeHp
+                        setPlayerName(
+                            serverPlayer.name ||
+                            "Player"
                         );
 
 
-                        setHp(
-                            safeHp
+                        // ====================================
+                        // ALIVE
+                        // ====================================
+
+                        const currentAlive =
+                            serverPlayer.alive !== false;
+
+
+                        setIsDead(
+                            !currentAlive
+                        );
+
+
+                        // ====================================
+                        // DEAD
+                        // ====================================
+
+                        if (!currentAlive) {
+
+                            velocityX.current = 0;
+                            velocityZ.current = 0;
+
+                            console.log(
+                                "[PLAYER] 💀 Player died"
+                            );
+
+                            return;
+                        }
+
+
+                        // ====================================
+                        // ALIVE
+                        // ====================================
+
+                        console.log(
+                            "[PLAYER] ❤️ Player alive"
                         );
 
                     }
@@ -358,7 +344,9 @@ export default function LocalPlayerController({
                         playerId !==
                         room.sessionId
                     ) {
+
                         return;
+
                     }
 
 
@@ -377,13 +365,11 @@ export default function LocalPlayerController({
         return () => {
 
             console.log(
-                "[PLAYER] Cleaning HP listeners"
+                "[PLAYER] Cleaning player listeners"
             );
 
 
-            removeDamagedListener?.();
-
-            hpUnsubscribe?.();
+            playerUnsubscribe?.();
 
             removeAddListener?.();
 
@@ -392,107 +378,146 @@ export default function LocalPlayerController({
     }, [room]);
 
 
-// ========================================================
-// INITIAL SPAWN
-// ========================================================
+    // ========================================================
+    // INITIAL SPAWN
+    // ========================================================
 
-useEffect(() => {
+    useEffect(() => {
 
-    const player =
-        playerRef.current;
+        const player =
+            playerRef.current;
 
-    if (!player) {
-        return;
-    }
+        if (!player) {
+            return;
+        }
 
 
-    // ====================================================
-    // CHƯA CÓ ROOM
-    // ====================================================
+        // ====================================================
+        // CHƯA CÓ ROOM
+        // ====================================================
 
-    if (!room) {
+        if (!room) {
 
-        player.position.set(
-            0,
-            0,
-            5
+            player.position.set(
+                0,
+                0,
+                5
+            );
+
+            player.rotation.y = 0;
+
+            velocityX.current = 0;
+            velocityZ.current = 0;
+
+            return;
+        }
+
+
+        // ====================================================
+        // SERVER PLAYER
+        // ====================================================
+
+        const serverPlayer =
+            room.state?.players?.get(
+                room.sessionId
+            );
+
+
+        if (!serverPlayer) {
+
+            console.log(
+                "[PLAYER] Waiting for server player..."
+            );
+
+            return;
+        }
+
+
+        console.log(
+            "[PLAYER] Spawn from server:",
+            {
+                id:
+                    room.sessionId,
+
+                name:
+                    serverPlayer.name,
+
+                x:
+                    serverPlayer.x,
+
+                y:
+                    serverPlayer.y,
+
+                z:
+                    serverPlayer.z,
+
+                rotation:
+                    serverPlayer.rotation,
+
+                alive:
+                    serverPlayer.alive,
+            }
         );
 
-        player.rotation.y = 0;
+
+        // ====================================================
+        // PLAYER NAME
+        // ====================================================
+
+        setPlayerName(
+            serverPlayer.name ||
+            "Player"
+        );
+
+
+        // ====================================================
+        // PLAYER ALIVE
+        // ====================================================
+
+        setIsDead(
+            serverPlayer.alive === false
+        );
+
+
+        // ====================================================
+        // POSITION
+        // ====================================================
+
+        player.position.set(
+            Number(
+                serverPlayer.x ?? 0
+            ),
+
+            Number(
+                serverPlayer.y ?? 0
+            ),
+
+            Number(
+                serverPlayer.z ?? 0
+            )
+        );
+
+
+        // ====================================================
+        // ROTATION
+        // ====================================================
+
+        player.rotation.y =
+            Number(
+                serverPlayer.rotation ?? 0
+            );
+
+
+        // ====================================================
+        // RESET VELOCITY
+        // ====================================================
 
         velocityX.current = 0;
         velocityZ.current = 0;
 
-        return;
-    }
+    }, [room, playerRef]);
 
 
-    // ====================================================
-    // SERVER PLAYER
-    // ====================================================
-
-    const serverPlayer =
-        room.state?.players?.get(
-            room.sessionId
-        );
-
-
-    if (!serverPlayer) {
-
-        console.log(
-            "[PLAYER] Waiting for server player..."
-        );
-
-        return;
-    }
-
-
-    console.log(
-        "[PLAYER] Spawn from server:",
-        {
-            id:
-                room.sessionId,
-
-            x:
-                serverPlayer.x,
-
-            y:
-                serverPlayer.y,
-
-            z:
-                serverPlayer.z,
-
-            rotation:
-                serverPlayer.rotation,
-        }
-    );
-
-
-    player.position.set(
-        Number(
-            serverPlayer.x ?? 0
-        ),
-
-        Number(
-            serverPlayer.y ?? 0
-        ),
-
-        Number(
-            serverPlayer.z ?? 0
-        )
-    );
-
-
-    player.rotation.y =
-        Number(
-            serverPlayer.rotation ?? 0
-        );
-
-
-    velocityX.current = 0;
-    velocityZ.current = 0;
-
-}, [room, playerRef]);
     // ========================================================
     // MOVEMENT
     // ========================================================
@@ -503,6 +528,19 @@ useEffect(() => {
             playerRef.current;
 
         if (!player) {
+            return;
+        }
+
+
+        // ====================================================
+        // DEAD
+        // ====================================================
+
+        if (isDead) {
+
+            velocityX.current = 0;
+            velocityZ.current = 0;
+
             return;
         }
 
@@ -606,6 +644,7 @@ useEffect(() => {
             forwardX = 0;
 
             forwardZ = -1;
+
         }
 
 
@@ -659,8 +698,8 @@ useEffect(() => {
         } else {
 
             moveX = 0;
-
             moveZ = 0;
+
         }
 
 
@@ -714,8 +753,9 @@ useEffect(() => {
 
 
         if (
-            Math.abs(differenceX) <=
-            step
+            Math.abs(
+                differenceX
+            ) <= step
         ) {
 
             velocityX.current =
@@ -724,8 +764,11 @@ useEffect(() => {
         } else {
 
             velocityX.current +=
-                Math.sign(differenceX) *
+                Math.sign(
+                    differenceX
+                ) *
                 step;
+
         }
 
 
@@ -739,8 +782,9 @@ useEffect(() => {
 
 
         if (
-            Math.abs(differenceZ) <=
-            step
+            Math.abs(
+                differenceZ
+            ) <= step
         ) {
 
             velocityZ.current =
@@ -749,8 +793,11 @@ useEffect(() => {
         } else {
 
             velocityZ.current +=
-                Math.sign(differenceZ) *
+                Math.sign(
+                    differenceZ
+                ) *
                 step;
+
         }
 
 
@@ -779,6 +826,7 @@ useEffect(() => {
             player.position.z +=
                 velocityZ.current *
                 delta;
+
         }
 
 
@@ -805,6 +853,7 @@ useEffect(() => {
                     directionX,
                     directionZ
                 );
+
         }
 
 
@@ -834,6 +883,7 @@ useEffect(() => {
                         player.rotation.y,
                 }
             );
+
         }
 
     });
@@ -855,9 +905,11 @@ useEffect(() => {
                     0,
                     0,
                 ]}
-                hp={hp}
+                name={playerName}
             />
 
         </group>
+
     );
+
 }
