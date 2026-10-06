@@ -1,106 +1,173 @@
 
 "use client";
 
-import Ground from "./Ground";
-import Road from "./Road";
-import House from "./House";
-import Tree from "./Tree";
-import Rock from "./Rock";
+import { Box } from "@react-three/drei";
+
+import {
+    CELL_SIZE,
+    MAP_WIDTH,
+    MAP_HEIGHT,
+    MAZE_MAP,
+} from "./maze.config";
+
+
+// ============================================================
+// TROPICAL VILLAGE / MAZE MAP
+// ============================================================
 
 export default function TropicalVillage() {
+
+    // ========================================================
+    // MAP OFFSET
+    // ========================================================
+
+    const offsetX =
+        Math.floor(MAP_WIDTH / 2);
+
+    const offsetZ =
+        Math.floor(MAP_HEIGHT / 2);
+
+
+    // ========================================================
+    // WALL SIZE
+    // ========================================================
+
+    const WALL_HEIGHT = 2;
+
+    const WALL_TOP_HEIGHT = 0.12;
+
+
+    // ========================================================
+    // RENDER
+    // ========================================================
+
     return (
         <group>
 
-            {/* ================================================== */}
-            {/* GROUND */}
-            {/* ================================================== */}
+            {/* ==================================================
+                GROUND
+                ================================================== */}
 
-            <Ground />
+            <mesh
+                position={[
+                    0,
+                    -0.08,
+                    0,
+                ]}
+                receiveShadow
+            >
 
+                <boxGeometry
+                    args={[
+                        MAP_WIDTH * CELL_SIZE,
+                        0.16,
+                        MAP_HEIGHT * CELL_SIZE,
+                    ]}
+                />
 
-            {/* ================================================== */}
-            {/* ROAD */}
-            {/* ================================================== */}
+                <meshStandardMaterial
+                    color="#6fa34a"
+                />
 
-            <Road />
-
-
-            {/* ================================================== */}
-            {/* HOUSES */}
-            {/* ================================================== */}
-
-            <House
-                position={[-12, 0, -12]}
-            />
-
-            <House
-                position={[12, 0, -18]}
-            />
-
-            <House
-                position={[-15, 0, 18]}
-            />
+            </mesh>
 
 
-            {/* ================================================== */}
-            {/* TREES */}
-            {/* ================================================== */}
+            {/* ==================================================
+                MAZE WALLS
+                ================================================== */}
 
-            <Tree
-                position={[-8, 0, -5]}
-            />
+            {MAZE_MAP.map(
+                (row, z) =>
+                    row
+                        .split("")
+                        .map((cell, x) => {
 
-            <Tree
-                position={[9, 0, -7]}
-            />
+                            // ------------------------------------
+                            // FLOOR / SPAWN
+                            // ------------------------------------
 
-            <Tree
-                position={[15, 0, 3]}
-            />
-
-            <Tree
-                position={[-12, 0, 8]}
-            />
-
-            <Tree
-                position={[8, 0, 15]}
-            />
-
-            <Tree
-                position={[-20, 0, -22]}
-            />
-
-            <Tree
-                position={[22, 0, -25]}
-            />
-
-            <Tree
-                position={[-25, 0, 25]}
-            />
+                            if (cell !== "#") {
+                                return null;
+                            }
 
 
-            {/* ================================================== */}
-            {/* ROCKS */}
-            {/* ================================================== */}
+                            // ------------------------------------
+                            // WORLD POSITION
+                            // ------------------------------------
 
-            <Rock
-                position={[-5, 0.5, -15]}
-            />
+                            const worldX =
+                                (x - offsetX) *
+                                CELL_SIZE;
 
-            <Rock
-                position={[7, 0.5, 8]}
-                scale={1.4}
-            />
+                            const worldZ =
+                                (z - offsetZ) *
+                                CELL_SIZE;
 
-            <Rock
-                position={[-18, 0.5, 5]}
-                scale={0.8}
-            />
 
-            <Rock
-                position={[20, 0.5, 15]}
-                scale={1.2}
-            />
+                            // ------------------------------------
+                            // WALL
+                            // ------------------------------------
+
+                            return (
+                                <group
+                                    key={`${x}-${z}`}
+                                    position={[
+                                        worldX,
+                                        WALL_HEIGHT / 2,
+                                        worldZ,
+                                    ]}
+                                >
+
+                                    {/* =================================
+                                        MAIN WALL
+                                        ================================= */}
+
+                                    <Box
+                                        args={[
+                                            CELL_SIZE,
+                                            WALL_HEIGHT,
+                                            CELL_SIZE,
+                                        ]}
+                                        castShadow
+                                        receiveShadow
+                                    >
+
+                                        <meshStandardMaterial
+                                            color="#7c4a2d"
+                                        />
+
+                                    </Box>
+
+
+                                    {/* =================================
+                                        GRASS TOP
+                                        ================================= */}
+
+                                    <Box
+                                        position={[
+                                            0,
+                                            WALL_HEIGHT / 2 +
+                                            WALL_TOP_HEIGHT / 2,
+                                            0,
+                                        ]}
+                                        args={[
+                                            CELL_SIZE * 0.9,
+                                            WALL_TOP_HEIGHT,
+                                            CELL_SIZE * 0.9,
+                                        ]}
+                                        castShadow
+                                    >
+
+                                        <meshStandardMaterial
+                                            color="#4f7d32"
+                                        />
+
+                                    </Box>
+
+                                </group>
+                            );
+                        })
+            )}
 
         </group>
     );

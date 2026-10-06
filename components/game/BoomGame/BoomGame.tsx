@@ -5,28 +5,46 @@ import {
     useRef,
 } from "react";
 
-import { Canvas } from "@react-three/fiber";
-import { PerspectiveCamera } from "@react-three/drei";
-import { useRouter } from "next/navigation";
+import "./BoomGame.css";
 
-import GameWorld from "./GameWorld";
-import GameHUD from "./GameHUD";
-import VirtualJoystick from "./VirtualJoystick";
-import TouchCamera from "./TouchCamera";
+import {
+    Canvas,
+} from "@react-three/fiber";
+
+import {
+    PerspectiveCamera,
+} from "@react-three/drei";
+
+import {
+    useRouter,
+} from "next/navigation";
+
+import GameWorld from "../GameWorld";
+import GameHUD from "../GameHUD";
+import VirtualJoystick from "../VirtualJoystick";
+import TouchCamera from "../TouchCamera";
 
 import {
     useBombStore,
-} from "./bomb/bomb.store";
+} from "../bomb/bomb.store";
 
 import {
     useMultiplayerStore,
 } from "@/stores/multiplayer.store";
 
 
+// ============================================================
+// TYPES
+// ============================================================
+
 type Props = {
     roomCode?: string;
 };
 
+
+// ============================================================
+// BOOM GAME
+// ============================================================
 
 export default function BoomGame({
     roomCode = "",
@@ -35,9 +53,9 @@ export default function BoomGame({
     const router = useRouter();
 
 
-    // ==================================================
+    // ============================================================
     // ROOM
-    // ==================================================
+    // ============================================================
 
     const room =
         useMultiplayerStore(
@@ -46,9 +64,9 @@ export default function BoomGame({
         );
 
 
-    // ==================================================
+    // ============================================================
     // BOMB
-    // ==================================================
+    // ============================================================
 
     const requestBomb =
         useBombStore(
@@ -57,9 +75,9 @@ export default function BoomGame({
         );
 
 
-    // ==================================================
+    // ============================================================
     // LEAVE LOCK
-    // ==================================================
+    // ============================================================
 
     /*
      * Tránh gọi room.leave() nhiều lần.
@@ -81,9 +99,9 @@ export default function BoomGame({
         useRef(false);
 
 
-    // ==================================================
+    // ============================================================
     // BROWSER / PAGE LEAVE
-    // ==================================================
+    // ============================================================
 
     useEffect(() => {
 
@@ -95,6 +113,7 @@ export default function BoomGame({
         /*
          * Room hiện tại được capture vào effect.
          */
+
         const currentRoom =
             room;
 
@@ -111,9 +130,9 @@ export default function BoomGame({
         );
 
 
-        // ==================================================
+        // ========================================================
         // LEAVE ROOM
-        // ==================================================
+        // ========================================================
 
         const leaveRoom =
             () => {
@@ -148,6 +167,7 @@ export default function BoomGame({
                      *
                      * Browser đang rời page.
                      */
+
                     currentRoom.leave();
 
                 }
@@ -163,14 +183,15 @@ export default function BoomGame({
             };
 
 
-        // ==================================================
+        // ========================================================
         // PAGE HIDDEN
-        // ==================================================
+        // ========================================================
 
         /*
          * pagehide đáng tin cậy hơn beforeunload
          * cho mobile/browser lifecycle.
          */
+
         const handlePageHide =
             () => {
 
@@ -183,9 +204,9 @@ export default function BoomGame({
             };
 
 
-        // ==================================================
+        // ========================================================
         // BEFORE UNLOAD
-        // ==================================================
+        // ========================================================
 
         const handleBeforeUnload =
             () => {
@@ -211,9 +232,9 @@ export default function BoomGame({
         );
 
 
-        // ==================================================
+        // ========================================================
         // CLEANUP
-        // ==================================================
+        // ========================================================
 
         return () => {
 
@@ -233,15 +254,16 @@ export default function BoomGame({
     }, [room]);
 
 
-    // ==================================================
+    // ============================================================
     // OUT BUTTON
-    // ==================================================
+    // ============================================================
 
     async function handleLeaveGame() {
 
         /*
          * Chặn click nhiều lần.
          */
+
         if (
             leavingRef.current
         ) {
@@ -262,9 +284,9 @@ export default function BoomGame({
         );
 
 
-        // ==================================================
+        // ========================================================
         // LEAVE COLYSEUS
-        // ==================================================
+        // ========================================================
 
         if (room) {
 
@@ -309,9 +331,9 @@ export default function BoomGame({
         }
 
 
-        // ==================================================
+        // ========================================================
         // CLEAR ROOM
-        // ==================================================
+        // ========================================================
 
         useMultiplayerStore
             .getState()
@@ -323,9 +345,9 @@ export default function BoomGame({
         );
 
 
-        // ==================================================
+        // ========================================================
         // RETURN
-        // ==================================================
+        // ========================================================
 
         router.replace(
             "/multiplayer"
@@ -334,29 +356,27 @@ export default function BoomGame({
     }
 
 
-    // ==================================================
+    // ============================================================
     // RENDER
-    // ==================================================
+    // ============================================================
 
     return (
-        <div
-            style={{
-                position: "fixed",
-                inset: 0,
-                overflow: "hidden",
-                background: "#87ceeb",
-            }}
-        >
 
-            {/* ==================================================
+        <div className="boom-game">
+
+            {/* ====================================================
                 3D GAME
-            ================================================== */}
+            ==================================================== */}
 
             <Canvas
                 shadows
-                dpr={[1, 1.5]}
+                dpr={[
+                    1,
+                    1.5,
+                ]}
                 gl={{
-                    antialias: false,
+                    antialias:
+                        false,
                 }}
             >
 
@@ -399,12 +419,13 @@ export default function BoomGame({
             </Canvas>
 
 
-            {/* ==================================================
+            {/* ====================================================
                 OUT
-            ================================================== */}
+            ==================================================== */}
 
             <button
                 type="button"
+                className="boom-game__out"
                 onPointerDown={(
                     event
                 ) => {
@@ -414,111 +435,25 @@ export default function BoomGame({
                     handleLeaveGame();
 
                 }}
-                style={{
-                    position: "absolute",
-
-                    top: 16,
-                    left: 16,
-
-                    zIndex: 100,
-
-                    padding:
-                        "9px 16px",
-
-                    border:
-                        "1px solid rgba(255,255,255,.25)",
-
-                    borderRadius: 10,
-
-                    background:
-                        "rgba(220,38,38,.85)",
-
-                    backdropFilter:
-                        "blur(8px)",
-
-                    color: "#fff",
-
-                    fontSize: 14,
-
-                    fontWeight: 800,
-
-                    cursor: "pointer",
-
-                    boxShadow:
-                        "0 4px 12px rgba(0,0,0,.3)",
-
-                    touchAction:
-                        "manipulation",
-
-                    userSelect:
-                        "none",
-
-                    WebkitTapHighlightColor:
-                        "transparent",
-                }}
             >
                 OUT
             </button>
 
 
-            {/* ==================================================
+            {/* ====================================================
                 ROOM CODE
-            ================================================== */}
+            ==================================================== */}
 
             {roomCode && (
 
                 <div
-                    style={{
-                        position: "absolute",
-
-                        top: 16,
-                        left: "50%",
-
-                        transform:
-                            "translateX(-50%)",
-
-                        padding:
-                            "8px 16px",
-
-                        background:
-                            "rgba(0, 0, 0, 0.65)",
-
-                        backdropFilter:
-                            "blur(8px)",
-
-                        border:
-                            "1px solid rgba(255,255,255,.2)",
-
-                        borderRadius: 12,
-
-                        color: "#fff",
-
-                        fontSize: 14,
-
-                        fontWeight: 600,
-
-                        zIndex: 20,
-
-                        pointerEvents:
-                            "none",
-
-                        textAlign:
-                            "center",
-                    }}
+                    className="boom-game__room-code"
                 >
 
-                    Mã phòng:{" "}
+                    Mã phòng:
 
                     <span
-                        style={{
-                            marginLeft: 6,
-
-                            fontSize: 18,
-
-                            letterSpacing: 3,
-
-                            fontWeight: 800,
-                        }}
+                        className="boom-game__room-code-number"
                     >
                         {roomCode}
                     </span>
@@ -528,50 +463,33 @@ export default function BoomGame({
             )}
 
 
-            {/* ==================================================
+            {/* ====================================================
                 HUD
-            ================================================== */}
+            ==================================================== */}
 
             <GameHUD />
 
 
-            {/* ==================================================
+            {/* ====================================================
                 LEFT JOYSTICK
-            ================================================== */}
+            ==================================================== */}
 
             <VirtualJoystick />
 
 
-            {/* ==================================================
+            {/* ====================================================
                 RIGHT CAMERA
-            ================================================== */}
+            ==================================================== */}
 
             <TouchCamera />
 
 
-            {/* ==================================================
+            {/* ====================================================
                 ACTION BUTTONS
-            ================================================== */}
+            ==================================================== */}
 
             <div
-                style={{
-                    position: "absolute",
-
-                    right: 24,
-                    bottom: 80,
-
-                    display: "flex",
-
-                    flexDirection:
-                        "column",
-
-                    gap: 14,
-
-                    pointerEvents:
-                        "auto",
-
-                    zIndex: 10,
-                }}
+                className="boom-game__actions"
             >
 
                 {/* ==================================================
@@ -580,6 +498,10 @@ export default function BoomGame({
 
                 <button
                     type="button"
+                    className="
+                        boom-game__action
+                        boom-game__bomb-button
+                    "
                     onPointerDown={(
                         event
                     ) => {
@@ -588,41 +510,6 @@ export default function BoomGame({
 
                         requestBomb();
 
-                    }}
-                    style={{
-                        width: 64,
-                        height: 64,
-
-                        borderRadius:
-                            "50%",
-
-                        border:
-                            "2px solid rgba(255,255,255,.25)",
-
-                        background:
-                            "rgba(0,0,0,.55)",
-
-                        color: "#fff",
-
-                        fontSize: 30,
-
-                        display:
-                            "flex",
-
-                        alignItems:
-                            "center",
-
-                        justifyContent:
-                            "center",
-
-                        touchAction:
-                            "manipulation",
-
-                        userSelect:
-                            "none",
-
-                        WebkitTapHighlightColor:
-                            "transparent",
                     }}
                 >
                     💣
@@ -635,32 +522,10 @@ export default function BoomGame({
 
                 <button
                     type="button"
-                    style={{
-                        width: 64,
-                        height: 64,
-
-                        borderRadius:
-                            "50%",
-
-                        border:
-                            "2px solid rgba(255,255,255,.25)",
-
-                        background:
-                            "rgba(0,0,0,.55)",
-
-                        color: "#fff",
-
-                        fontSize: 28,
-
-                        display:
-                            "flex",
-
-                        alignItems:
-                            "center",
-
-                        justifyContent:
-                            "center",
-                    }}
+                    className="
+                        boom-game__action
+                        boom-game__jump-button
+                    "
                 >
                     🦘
                 </button>
@@ -668,5 +533,7 @@ export default function BoomGame({
             </div>
 
         </div>
+
     );
+
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -30,6 +31,10 @@ import {
 import {
     useMultiplayerStore,
 } from "@/stores/multiplayer.store";
+
+import {
+    canMoveTo,
+} from "../maps/tropical-village/maze.config";
 
 
 // ============================================================
@@ -68,7 +73,8 @@ export default function LocalPlayerController({
 
     const room =
         useMultiplayerStore(
-            (state) => state.room
+            (state) =>
+                state.room
         );
 
 
@@ -101,6 +107,39 @@ export default function LocalPlayerController({
 
     const velocityZ =
         useRef(0);
+
+
+    // ========================================================
+    // BOMB COLLISION
+    // ========================================================
+    //
+    // Cho phép player đi ra khỏi quả bom mà mình đang đứng trên.
+    //
+    // Ví dụ:
+    //
+    //        💣
+    //        👤 →
+    //
+    // Player vừa đặt bom sẽ không bị khóa cứng.
+    //
+    // Sau khi player rời khỏi vùng bom:
+    //
+    //        💣    👤
+    //
+    // Nếu quay lại:
+    //
+    //        👤 → 💣
+    //
+    // sẽ bị chặn.
+    //
+    // ========================================================
+
+    const bombEscape =
+        useRef<
+            Set<string>
+        >(
+            new Set()
+        );
 
 
     // ========================================================
@@ -195,7 +234,7 @@ export default function LocalPlayerController({
 
 
             // ================================================
-            // INITIAL NAME
+            // NAME
             // ================================================
 
             setPlayerName(
@@ -205,7 +244,7 @@ export default function LocalPlayerController({
 
 
             // ================================================
-            // INITIAL ALIVE
+            // ALIVE
             // ================================================
 
             const alive =
@@ -218,7 +257,7 @@ export default function LocalPlayerController({
 
 
             // ================================================
-            // RESET VELOCITY IF DEAD
+            // RESET VELOCITY
             // ================================================
 
             if (!alive) {
@@ -276,11 +315,14 @@ export default function LocalPlayerController({
                             velocityX.current = 0;
                             velocityZ.current = 0;
 
+
                             console.log(
                                 "[PLAYER] 💀 Player died"
                             );
 
+
                             return;
+
                         }
 
 
@@ -314,7 +356,8 @@ export default function LocalPlayerController({
                 existingPlayer
             );
 
-        } else {
+        }
+        else {
 
             console.log(
                 "[PLAYER] Waiting for local player state..."
@@ -346,7 +389,6 @@ export default function LocalPlayerController({
                     ) {
 
                         return;
-
                     }
 
 
@@ -373,6 +415,9 @@ export default function LocalPlayerController({
 
             removeAddListener?.();
 
+
+            bombEscape.current.clear();
+
         };
 
     }, [room]);
@@ -387,13 +432,14 @@ export default function LocalPlayerController({
         const player =
             playerRef.current;
 
+
         if (!player) {
             return;
         }
 
 
         // ====================================================
-        // CHƯA CÓ ROOM
+        // NO ROOM
         // ====================================================
 
         if (!room) {
@@ -484,6 +530,7 @@ export default function LocalPlayerController({
         // ====================================================
 
         player.position.set(
+
             Number(
                 serverPlayer.x ?? 0
             ),
@@ -495,6 +542,7 @@ export default function LocalPlayerController({
             Number(
                 serverPlayer.z ?? 0
             )
+
         );
 
 
@@ -515,7 +563,12 @@ export default function LocalPlayerController({
         velocityX.current = 0;
         velocityZ.current = 0;
 
-    }, [room, playerRef]);
+        bombEscape.current.clear();
+
+    }, [
+        room,
+        playerRef,
+    ]);
 
 
     // ========================================================
@@ -526,6 +579,7 @@ export default function LocalPlayerController({
 
         const player =
             playerRef.current;
+
 
         if (!player) {
             return;
@@ -571,9 +625,12 @@ export default function LocalPlayerController({
         // DEAD ZONE
         // ====================================================
 
-        const DEAD_ZONE = 0.08;
+        const DEAD_ZONE =
+            0.08;
 
-        let strength = 0;
+
+        let strength =
+            0;
 
 
         if (
@@ -597,6 +654,7 @@ export default function LocalPlayerController({
                     1,
                     strength
                 );
+
         }
 
 
@@ -639,10 +697,10 @@ export default function LocalPlayerController({
             forwardZ /=
                 forwardLength;
 
-        } else {
+        }
+        else {
 
             forwardX = 0;
-
             forwardZ = -1;
 
         }
@@ -660,7 +718,7 @@ export default function LocalPlayerController({
 
 
         // ====================================================
-        // JOYSTICK -> CAMERA SPACE
+        // JOYSTICK → CAMERA SPACE
         // ====================================================
 
         let moveX =
@@ -695,7 +753,8 @@ export default function LocalPlayerController({
             moveZ /=
                 movementLength;
 
-        } else {
+        }
+        else {
 
             moveX = 0;
             moveZ = 0;
@@ -707,7 +766,9 @@ export default function LocalPlayerController({
         // SPEED
         // ====================================================
 
-        const MAX_SPEED = 5.5;
+        const MAX_SPEED =
+            5.5;
+
 
         const targetSpeed =
             MAX_SPEED *
@@ -718,6 +779,7 @@ export default function LocalPlayerController({
             moveX *
             targetSpeed;
 
+
         const targetVelocityZ =
             moveZ *
             targetSpeed;
@@ -727,9 +789,11 @@ export default function LocalPlayerController({
         // ACCELERATION
         // ====================================================
 
-        const ACCELERATION = 18;
+        const ACCELERATION =
+            18;
 
-        const DECELERATION = 22;
+        const DECELERATION =
+            22;
 
 
         const acceleration =
@@ -761,7 +825,8 @@ export default function LocalPlayerController({
             velocityX.current =
                 targetVelocityX;
 
-        } else {
+        }
+        else {
 
             velocityX.current +=
                 Math.sign(
@@ -790,7 +855,8 @@ export default function LocalPlayerController({
             velocityZ.current =
                 targetVelocityZ;
 
-        } else {
+        }
+        else {
 
             velocityZ.current +=
                 Math.sign(
@@ -802,7 +868,7 @@ export default function LocalPlayerController({
 
 
         // ====================================================
-        // APPLY MOVEMENT
+        // CURRENT SPEED
         // ====================================================
 
         const currentSpeed =
@@ -814,18 +880,255 @@ export default function LocalPlayerController({
             );
 
 
+        // ====================================================
+        // NEXT POSITION
+        // ====================================================
+
+        const nextX =
+            player.position.x +
+            velocityX.current *
+            delta;
+
+
+        const nextZ =
+            player.position.z +
+            velocityZ.current *
+            delta;
+
+
+        // ====================================================
+        // GET SERVER BOMBS
+        // ====================================================
+
+        const serverBombs =
+            room?.state?.bombs
+                ? Array.from(
+                    room.state.bombs.values()
+                )
+                : [];
+
+
+        // ====================================================
+        // BOMB COLLISION CONSTANTS
+        // ====================================================
+
+        const PLAYER_RADIUS =
+            0.35;
+
+        const BOMB_RADIUS =
+            0.55;
+
+        const BOMB_COLLISION_DISTANCE =
+            PLAYER_RADIUS +
+            BOMB_RADIUS;
+
+
+        // ====================================================
+        // CHECK BOMB COLLISION
+        // ====================================================
+
+        const canMoveAroundBombs =
+            (
+                targetX: number,
+                targetZ: number
+            ): boolean => {
+
+                for (
+                    const bomb
+                    of serverBombs
+                ) {
+
+                    const bombId =
+                        String(
+                            (bomb as any).id
+                        );
+
+
+                    const bombX =
+                        Number(
+                            (bomb as any).x ?? 0
+                        );
+
+                    const bombZ =
+                        Number(
+                            (bomb as any).z ?? 0
+                        );
+
+
+                    const dx =
+                        targetX -
+                        bombX;
+
+                    const dz =
+                        targetZ -
+                        bombZ;
+
+
+                    const distance =
+                        Math.sqrt(
+                            dx * dx +
+                            dz * dz
+                        );
+
+
+                    // ========================================
+                    // PLAYER ĐANG Ở TRONG BOM
+                    // ========================================
+                    //
+                    // Cho phép thoát khỏi bomb.
+                    //
+                    // ========================================
+
+                    const currentDX =
+                        player.position.x -
+                        bombX;
+
+                    const currentDZ =
+                        player.position.z -
+                        bombZ;
+
+
+                    const currentDistance =
+                        Math.sqrt(
+                            currentDX *
+                                currentDX +
+                            currentDZ *
+                                currentDZ
+                        );
+
+
+                    if (
+                        currentDistance <
+                        BOMB_COLLISION_DISTANCE
+                    ) {
+
+                        bombEscape.current.add(
+                            bombId
+                        );
+
+                        continue;
+
+                    }
+
+
+                    // ========================================
+                    // ĐÃ THOÁT BOM
+                    // ========================================
+
+                    if (
+                        bombEscape.current.has(
+                            bombId
+                        )
+                    ) {
+
+                        /*
+                         * Player đã ra khỏi bomb.
+                         *
+                         * Từ đây bomb trở thành vật cản.
+                         */
+
+                        if (
+                            currentDistance >
+                            BOMB_COLLISION_DISTANCE +
+                            0.05
+                        ) {
+
+                            bombEscape.current.delete(
+                                bombId
+                            );
+
+                        }
+
+                    }
+
+
+                    // ========================================
+                    // COLLISION
+                    // ========================================
+
+                    if (
+                        !bombEscape.current.has(
+                            bombId
+                        ) &&
+                        distance <
+                        BOMB_COLLISION_DISTANCE
+                    ) {
+
+                        return false;
+
+                    }
+
+                }
+
+
+                return true;
+
+            };
+
+
+        // ====================================================
+        // COLLISION
+        // ====================================================
+
         if (
             currentSpeed >
             0.001
         ) {
 
-            player.position.x +=
-                velocityX.current *
-                delta;
+            // ==================================================
+            // MOVE X
+            // ==================================================
 
-            player.position.z +=
-                velocityZ.current *
-                delta;
+            const canMoveX =
+                canMoveTo(
+                    nextX,
+                    player.position.z
+                ) &&
+                canMoveAroundBombs(
+                    nextX,
+                    player.position.z
+                );
+
+
+            if (canMoveX) {
+
+                player.position.x =
+                    nextX;
+
+            }
+            else {
+
+                velocityX.current = 0;
+
+            }
+
+
+            // ==================================================
+            // MOVE Z
+            // ==================================================
+
+            const canMoveZ =
+                canMoveTo(
+                    player.position.x,
+                    nextZ
+                ) &&
+                canMoveAroundBombs(
+                    player.position.x,
+                    nextZ
+                );
+
+
+            if (canMoveZ) {
+
+                player.position.z =
+                    nextZ;
+
+            }
+            else {
+
+                velocityZ.current = 0;
+
+            }
 
         }
 
@@ -834,18 +1137,27 @@ export default function LocalPlayerController({
         // PLAYER ROTATION
         // ====================================================
 
+        const actualSpeed =
+            Math.sqrt(
+                velocityX.current *
+                    velocityX.current +
+                velocityZ.current *
+                    velocityZ.current
+            );
+
+
         if (
-            currentSpeed >
+            actualSpeed >
             0.05
         ) {
 
             const directionX =
                 velocityX.current /
-                currentSpeed;
+                actualSpeed;
 
             const directionZ =
                 velocityZ.current /
-                currentSpeed;
+                actualSpeed;
 
 
             player.rotation.y =
@@ -863,8 +1175,8 @@ export default function LocalPlayerController({
 
         if (
             room &&
-            currentSpeed >
-                0.001
+            actualSpeed >
+            0.001
         ) {
 
             room.send(

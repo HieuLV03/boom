@@ -9,7 +9,7 @@ import {
     useSearchParams,
 } from "next/navigation";
 
-import BoomGame from "@/components/game/BoomGame";
+import BoomGame from "@/components/game/BoomGame/BoomGame";
 
 
 // ============================================================
