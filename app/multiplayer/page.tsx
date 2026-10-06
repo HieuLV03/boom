@@ -570,7 +570,6 @@ export default function MultiplayerPage() {
                 >
                     {status}
                 </p>
-
             </div>
 
         </main>
