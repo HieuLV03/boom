@@ -1,3 +1,4 @@
+
 import {
     Client,
     Room,
@@ -27,6 +28,8 @@ interface BattleRoomOptions extends RoomOptions {
 // ============================================================
 // CONFIG
 // ============================================================
+
+const MAX_HP = 100;
 
 const BOMB_DELAY = 3000;
 
@@ -88,6 +91,22 @@ export class BattleRoom extends Room<{
 
 
     // ========================================================
+    // HOST
+    // ========================================================
+
+    /*
+     * SessionId của người đang giữ quyền HOST.
+     *
+     * Người đầu tiên vào phòng sẽ trở thành HOST.
+     *
+     * Khi HOST rời:
+     * → chuyển cho người chơi còn lại.
+     */
+
+    private hostSessionId: string | null = null;
+
+
+    // ========================================================
     // CREATE
     // ========================================================
 
@@ -112,6 +131,7 @@ export class BattleRoom extends Room<{
 
         this.state.roomCode =
             roomCode;
+
 
         console.log(
             `[ROOM] Code: ${this.state.roomCode}`
@@ -212,10 +232,6 @@ export class BattleRoom extends Room<{
             (
                 client
             ) => {
-
-                // ============================================
-                // MESSAGE RECEIVED
-                // ============================================
 
                 console.log("");
                 console.log(
@@ -710,7 +726,7 @@ export class BattleRoom extends Room<{
 
                 const oldHp =
                     Number(
-                        player.hp ?? 100
+                        player.hp ?? MAX_HP
                     );
 
 
@@ -902,12 +918,54 @@ export class BattleRoom extends Room<{
 
 
         // ====================================================
-        // CREATE PLAYER
+        // DETERMINE HOST
+        // ====================================================
+
+        const isFirstPlayer =
+            this.state.players.size === 0;
+
+
+        if (
+            this.hostSessionId === null ||
+            !this.state.players.has(
+                this.hostSessionId
+            )
+        ) {
+
+            this.hostSessionId =
+                client.sessionId;
+
+        }
+
+
+        const isHost =
+            this.hostSessionId ===
+            client.sessionId;
+
+
+        console.log(
+            `[ROOM] Role: ${
+                isHost
+                    ? "HOST"
+                    : "GUEST"
+            }`
+        );
+
+
+        // ====================================================
+        // CREATE NEW PLAYER
         // ====================================================
 
         const player =
             new PlayerState();
 
+
+        /*
+         * ID luôn là sessionId mới.
+         *
+         * Đây là điểm quan trọng khi người chơi
+         * rời rồi vào lại.
+         */
 
         player.id =
             client.sessionId;
@@ -945,8 +1003,14 @@ export class BattleRoom extends Room<{
         // STATS
         // ====================================================
 
+        /*
+         * Luôn tạo HP mới.
+         *
+         * Không lấy HP từ client.
+         */
+
         player.hp =
-            100;
+            MAX_HP;
 
         player.alive =
             true;
@@ -963,6 +1027,25 @@ export class BattleRoom extends Room<{
 
 
         // ====================================================
+        // SEND HOST INFO
+        // ====================================================
+
+        /*
+         * Gửi cho tất cả client:
+         *
+         * ai đang là HOST.
+         */
+
+        this.broadcast(
+            "hostChanged",
+            {
+                hostSessionId:
+                    this.hostSessionId,
+            }
+        );
+
+
+        // ====================================================
         // LOG
         // ====================================================
 
@@ -975,6 +1058,14 @@ export class BattleRoom extends Room<{
         );
 
         console.log(
+            `       role: ${
+                isHost
+                    ? "HOST"
+                    : "GUEST"
+            }`
+        );
+
+        console.log(
             `       position: ${player.x}, ${player.y}, ${player.z}`
         );
 
@@ -984,6 +1075,10 @@ export class BattleRoom extends Room<{
 
         console.log(
             `       alive: ${player.alive}`
+        );
+
+        console.log(
+            `[ROOM] Host: ${this.hostSessionId}`
         );
 
         console.log(
@@ -1002,15 +1097,127 @@ export class BattleRoom extends Room<{
         code?: number
     ) {
 
+        console.log("");
         console.log(
-            `[ROOM] Player left: ${client.sessionId}`
+            "================================================"
+        );
+        console.log(
+            "[ROOM] Player left"
+        );
+        console.log(
+            `       sessionId: ${client.sessionId}`
+        );
+        console.log(
+            `       code: ${code ?? "unknown"}`
+        );
+        console.log(
+            "================================================"
         );
 
+
+        // ====================================================
+        // WAS HOST?
+        // ====================================================
+
+        const wasHost =
+            this.hostSessionId ===
+            client.sessionId;
+
+
+        // ====================================================
+        // REMOVE PLAYER
+        // ====================================================
 
         this.state.players.delete(
             client.sessionId
         );
 
+
+        console.log(
+            `[ROOM] Removed player: ${client.sessionId}`
+        );
+
+
+        // ====================================================
+        // HOST LEAVE
+        // ====================================================
+
+        if (wasHost) {
+
+            console.log(
+                "[ROOM] HOST left"
+            );
+
+
+            /*
+             * Tìm player còn lại đầu tiên.
+             */
+
+            const remainingPlayers =
+                Array.from(
+                    this.state.players.keys()
+                );
+
+
+            if (
+                remainingPlayers.length > 0
+            ) {
+
+                /*
+                 * Chuyển quyền HOST.
+                 */
+
+                this.hostSessionId =
+                    remainingPlayers[0];
+
+
+                console.log(
+                    `[ROOM] New HOST: ${this.hostSessionId}`
+                );
+
+            }
+            else {
+
+                /*
+                 * Không còn ai.
+                 */
+
+                this.hostSessionId =
+                    null;
+
+
+                console.log(
+                    "[ROOM] No players remaining"
+                );
+
+            }
+
+        }
+
+
+        // ====================================================
+        // BROADCAST HOST
+        // ====================================================
+
+        this.broadcast(
+            "hostChanged",
+            {
+                hostSessionId:
+                    this.hostSessionId,
+            }
+        );
+
+
+        // ====================================================
+        // LOG
+        // ====================================================
+
+        console.log(
+            `[ROOM] Host: ${
+                this.hostSessionId ??
+                "none"
+            }`
+        );
 
         console.log(
             `[ROOM] Players: ${this.state.players.size}`
