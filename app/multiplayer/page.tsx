@@ -1,11 +1,20 @@
 
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import {
+    useEffect,
+    useState,
+} from "react";
+
+import {
+    useRouter,
+} from "next/navigation";
 
 import client from "@/lib/colyseus";
-import { useMultiplayerStore } from "@/stores/multiplayer.store";
+
+import {
+    useMultiplayerStore,
+} from "@/stores/multiplayer.store";
 
 
 // ============================================================
@@ -13,9 +22,12 @@ import { useMultiplayerStore } from "@/stores/multiplayer.store";
 // ============================================================
 
 function generateRoomCode(): string {
+
     return Math.floor(
-        100000 + Math.random() * 900000
+        100000 +
+        Math.random() * 900000
     ).toString();
+
 }
 
 
@@ -25,7 +37,9 @@ function generateRoomCode(): string {
 
 export default function MultiplayerPage() {
 
-    const router = useRouter();
+    const router =
+        useRouter();
+
 
     // ========================================================
     // MULTIPLAYER STORE
@@ -33,22 +47,98 @@ export default function MultiplayerPage() {
 
     const setRoom =
         useMultiplayerStore(
-            (state) => state.setRoom
+            (state) =>
+                state.setRoom
         );
+
+    const clearRoom =
+        useMultiplayerStore(
+            (state) =>
+                state.clearRoom
+        );
+
+
+    // ========================================================
+    // CLEAR OLD ROOM
+    // ========================================================
+
+    useEffect(() => {
+
+        const oldRoom =
+            useMultiplayerStore
+                .getState()
+                .room;
+
+
+        if (!oldRoom) {
+            return;
+        }
+
+
+        console.log(
+            "[MULTIPLAYER] Old room detected:",
+            {
+                roomId:
+                    oldRoom.roomId,
+
+                sessionId:
+                    oldRoom.sessionId,
+            }
+        );
+
+
+        /*
+         * Đảm bảo connection cũ không còn
+         * khi người chơi quay về màn Multiplayer.
+         */
+
+        try {
+
+            oldRoom.leave();
+
+        }
+        catch (error) {
+
+            console.warn(
+                "[MULTIPLAYER] Old room leave error:",
+                error
+            );
+
+        }
+
+
+        clearRoom();
+
+
+        console.log(
+            "[MULTIPLAYER] Old room cleared"
+        );
+
+    }, [clearRoom]);
 
 
     // ========================================================
     // LOCAL STATE
     // ========================================================
 
-    const [name, setName] =
-        useState("");
+    const [
+        name,
+        setName,
+    ] = useState("");
 
-    const [roomCode, setRoomCode] =
-        useState("");
 
-    const [status, setStatus] =
-        useState("Chưa kết nối");
+    const [
+        roomCode,
+        setRoomCode,
+    ] = useState("");
+
+
+    const [
+        status,
+        setStatus,
+    ] = useState(
+        "Chưa kết nối"
+    );
 
 
     // ========================================================
@@ -154,7 +244,9 @@ export default function MultiplayerPage() {
             setStatus(
                 "Không thể tạo phòng"
             );
+
         }
+
     }
 
 
@@ -181,6 +273,7 @@ export default function MultiplayerPage() {
             );
 
             return;
+
         }
 
 
@@ -267,7 +360,9 @@ export default function MultiplayerPage() {
             setStatus(
                 "Không tìm thấy phòng"
             );
+
         }
+
     }
 
 
@@ -276,34 +371,45 @@ export default function MultiplayerPage() {
     // ========================================================
 
     return (
+
         <main
             style={{
-                minHeight: "100vh",
+                minHeight:
+                    "100vh",
 
-                display: "flex",
+                display:
+                    "flex",
 
-                alignItems: "center",
+                alignItems:
+                    "center",
 
-                justifyContent: "center",
+                justifyContent:
+                    "center",
 
-                padding: 20,
+                padding:
+                    20,
 
                 background:
                     "#111827",
 
-                color: "#fff",
+                color:
+                    "#fff",
             }}
         >
 
             <div
                 style={{
-                    width: "100%",
+                    width:
+                        "100%",
 
-                    maxWidth: 420,
+                    maxWidth:
+                        420,
 
-                    padding: 24,
+                    padding:
+                        24,
 
-                    borderRadius: 20,
+                    borderRadius:
+                        20,
 
                     background:
                         "#1f2937",
@@ -311,27 +417,30 @@ export default function MultiplayerPage() {
                     boxSizing:
                         "border-box",
 
-                    display: "flex",
+                    display:
+                        "flex",
 
-                    flexDirection: "column",
+                    flexDirection:
+                        "column",
 
-                    gap: 14,
+                    gap:
+                        14,
                 }}
             >
 
-                {/* ================================================== */}
-                {/* TITLE */}
-                {/* ================================================== */}
-
                 <h1
                     style={{
-                        margin: 0,
+                        margin:
+                            0,
 
-                        textAlign: "center",
+                        textAlign:
+                            "center",
 
-                        fontSize: 32,
+                        fontSize:
+                            32,
 
-                        fontWeight: 800,
+                        fontWeight:
+                            800,
                     }}
                 >
                     BOOM
@@ -340,9 +449,11 @@ export default function MultiplayerPage() {
 
                 <p
                     style={{
-                        margin: 0,
+                        margin:
+                            0,
 
-                        textAlign: "center",
+                        textAlign:
+                            "center",
 
                         color:
                             "#9ca3af",
@@ -352,14 +463,18 @@ export default function MultiplayerPage() {
                 </p>
 
 
-                {/* ================================================== */}
-                {/* NAME */}
-                {/* ================================================== */}
+                {/* ==================================================
+                    NAME
+                ================================================== */}
 
                 <input
-                    value={name}
+                    value={
+                        name
+                    }
 
-                    onChange={(event) =>
+                    onChange={(
+                        event
+                    ) =>
                         setName(
                             event.target.value
                         )
@@ -368,82 +483,104 @@ export default function MultiplayerPage() {
                     placeholder="Tên người chơi"
 
                     style={{
-                        width: "100%",
+                        width:
+                            "100%",
 
                         boxSizing:
                             "border-box",
 
-                        padding: 14,
+                        padding:
+                            14,
 
-                        borderRadius: 10,
+                        borderRadius:
+                            10,
 
-                        border: "none",
+                        border:
+                            "none",
 
-                        outline: "none",
+                        outline:
+                            "none",
 
-                        fontSize: 16,
+                        fontSize:
+                            16,
                     }}
                 />
 
 
-                {/* ================================================== */}
-                {/* CREATE ROOM */}
-                {/* ================================================== */}
+                {/* ==================================================
+                    CREATE ROOM
+                ================================================== */}
 
                 <button
                     type="button"
 
-                    onClick={createRoom}
+                    onClick={
+                        createRoom
+                    }
 
                     style={{
-                        width: "100%",
+                        width:
+                            "100%",
 
-                        padding: 14,
+                        padding:
+                            14,
 
-                        border: "none",
+                        border:
+                            "none",
 
-                        borderRadius: 10,
+                        borderRadius:
+                            10,
 
                         background:
                             "#2563eb",
 
-                        color: "#fff",
+                        color:
+                            "#fff",
 
-                        fontSize: 16,
+                        fontSize:
+                            16,
 
-                        fontWeight: 700,
+                        fontWeight:
+                            700,
 
-                        cursor: "pointer",
+                        cursor:
+                            "pointer",
                     }}
                 >
                     Tạo phòng
                 </button>
 
 
-                {/* ================================================== */}
-                {/* DIVIDER */}
-                {/* ================================================== */}
+                {/* ==================================================
+                    DIVIDER
+                ================================================== */}
 
                 <div
                     style={{
-                        display: "flex",
+                        display:
+                            "flex",
 
-                        alignItems: "center",
+                        alignItems:
+                            "center",
 
-                        gap: 10,
+                        gap:
+                            10,
 
                         color:
                             "#6b7280",
 
-                        fontSize: 13,
+                        fontSize:
+                            13,
                     }}
                 >
 
                     <div
                         style={{
-                            flex: 1,
+                            flex:
+                                1,
 
-                            height: 1,
+                            height:
+                                1,
 
                             background:
                                 "#374151",
@@ -454,9 +591,11 @@ export default function MultiplayerPage() {
 
                     <div
                         style={{
-                            flex: 1,
+                            flex:
+                                1,
 
-                            height: 1,
+                            height:
+                                1,
 
                             background:
                                 "#374151",
@@ -466,14 +605,18 @@ export default function MultiplayerPage() {
                 </div>
 
 
-                {/* ================================================== */}
-                {/* ROOM CODE */}
-                {/* ================================================== */}
+                {/* ==================================================
+                    ROOM CODE
+                ================================================== */}
 
                 <input
-                    value={roomCode}
+                    value={
+                        roomCode
+                    }
 
-                    onChange={(event) => {
+                    onChange={(
+                        event
+                    ) => {
 
                         const value =
                             event.target.value
@@ -486,92 +629,123 @@ export default function MultiplayerPage() {
                                     6
                                 );
 
-                        setRoomCode(value);
+                        setRoomCode(
+                            value
+                        );
+
                     }}
 
                     placeholder="Nhập mã phòng 6 số"
 
                     inputMode="numeric"
 
-                    maxLength={6}
+                    maxLength={
+                        6
+                    }
 
                     style={{
-                        width: "100%",
+                        width:
+                            "100%",
 
                         boxSizing:
                             "border-box",
 
-                        padding: 14,
+                        padding:
+                            14,
 
-                        borderRadius: 10,
+                        borderRadius:
+                            10,
 
-                        border: "none",
+                        border:
+                            "none",
 
-                        outline: "none",
+                        outline:
+                            "none",
 
-                        fontSize: 16,
+                        fontSize:
+                            16,
 
-                        letterSpacing: 2,
+                        letterSpacing:
+                            2,
                     }}
                 />
 
 
-                {/* ================================================== */}
-                {/* JOIN ROOM */}
-                {/* ================================================== */}
+                {/* ==================================================
+                    JOIN ROOM
+                ================================================== */}
 
                 <button
                     type="button"
 
-                    onClick={joinRoom}
+                    onClick={
+                        joinRoom
+                    }
 
                     style={{
-                        width: "100%",
+                        width:
+                            "100%",
 
-                        padding: 14,
+                        padding:
+                            14,
 
-                        border: "none",
+                        border:
+                            "none",
 
-                        borderRadius: 10,
+                        borderRadius:
+                            10,
 
                         background:
                             "#374151",
 
-                        color: "#fff",
+                        color:
+                            "#fff",
 
-                        fontSize: 16,
+                        fontSize:
+                            16,
 
-                        fontWeight: 700,
+                        fontWeight:
+                            700,
 
-                        cursor: "pointer",
+                        cursor:
+                            "pointer",
                     }}
                 >
                     Vào phòng
                 </button>
 
 
-                {/* ================================================== */}
-                {/* STATUS */}
-                {/* ================================================== */}
+                {/* ==================================================
+                    STATUS
+                ================================================== */}
 
                 <p
                     style={{
-                        margin: 0,
+                        margin:
+                            0,
 
-                        minHeight: 20,
+                        minHeight:
+                            20,
 
-                        textAlign: "center",
+                        textAlign:
+                            "center",
 
                         color:
                             "#9ca3af",
 
-                        fontSize: 14,
+                        fontSize:
+                            14,
                     }}
                 >
-                    {status}
+                    {
+                        status
+                    }
                 </p>
+
             </div>
 
         </main>
+
     );
+
 }

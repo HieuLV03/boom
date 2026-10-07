@@ -4,6 +4,7 @@
 import {
     useEffect,
     useRef,
+    useState,
 } from "react";
 
 import "./BoomGame.css";
@@ -77,15 +78,37 @@ export default function BoomGame({
 
 
     // ========================================================
-    // LEAVING
+    // LEAVING STATE
     // ========================================================
 
-    const leavingRef =
-        useRef(false);
+    const [
+        isLeaving,
+        setIsLeaving,
+    ] = useState(false);
 
 
     // ========================================================
-    // BROWSER LEAVE
+    // ROOM REF
+    // ========================================================
+    //
+    // Giữ room mới nhất.
+    //
+    // ========================================================
+
+    const roomRef =
+        useRef(room);
+
+
+    useEffect(() => {
+
+        roomRef.current =
+            room;
+
+    }, [room]);
+
+
+    // ========================================================
+    // BROWSER PAGE HIDE
     // ========================================================
 
     useEffect(() => {
@@ -111,32 +134,20 @@ export default function BoomGame({
         );
 
 
-        // ====================================================
-        // PAGE HIDE
-        // ====================================================
-
         const handlePageHide = () => {
 
             /*
-             * pagehide chỉ xảy ra khi browser/page
-             * thực sự bị ẩn hoặc rời đi.
-             *
-             * Không dùng router ở đây.
+             * Nếu OUT đã được bấm,
+             * OUT tự xử lý rồi.
              */
 
-            if (
-                leavingRef.current
-            ) {
+            if (isLeaving) {
                 return;
             }
 
 
-            leavingRef.current =
-                true;
-
-
             console.log(
-                "[ROOM] pagehide → leaving room"
+                "[ROOM] pagehide"
             );
 
 
@@ -156,25 +167,13 @@ export default function BoomGame({
 
 
             /*
-             * Clear Zustand ngay.
+             * Browser đang rời page.
+             * Không cần router ở đây.
              */
 
-            const latestRoom =
-                useMultiplayerStore
-                    .getState()
-                    .room;
-
-
-            if (
-                latestRoom?.roomId ===
-                currentRoom.roomId
-            ) {
-
-                useMultiplayerStore
-                    .getState()
-                    .clearRoom();
-
-            }
+            useMultiplayerStore
+                .getState()
+                .clearRoom();
 
         };
 
@@ -185,10 +184,6 @@ export default function BoomGame({
         );
 
 
-        // ====================================================
-        // CLEANUP
-        // ====================================================
-
         return () => {
 
             window.removeEventListener(
@@ -198,7 +193,7 @@ export default function BoomGame({
 
         };
 
-    }, [room]);
+    }, [room, isLeaving]);
 
 
     // ========================================================
@@ -208,18 +203,17 @@ export default function BoomGame({
     async function handleLeaveGame() {
 
         /*
-         * Nếu đang leave rồi thì bỏ qua.
+         * Chống click nhiều lần.
          */
 
-        if (
-            leavingRef.current
-        ) {
+        if (isLeaving) {
+
             return;
+
         }
 
 
-        leavingRef.current =
-            true;
+        setIsLeaving(true);
 
 
         console.log("");
@@ -235,9 +229,7 @@ export default function BoomGame({
 
 
         const currentRoom =
-            useMultiplayerStore
-                .getState()
-                .room;
+            roomRef.current;
 
 
         // ====================================================
@@ -247,7 +239,7 @@ export default function BoomGame({
         if (currentRoom) {
 
             console.log(
-                "[ROOM] Leaving:",
+                "[ROOM] Leaving room:",
                 {
                     roomId:
                         currentRoom.roomId,
@@ -263,14 +255,14 @@ export default function BoomGame({
                 await currentRoom.leave();
 
                 console.log(
-                    "[ROOM] ✅ Left successfully"
+                    "[ROOM] ✅ Colyseus leave success"
                 );
 
             }
             catch (error) {
 
                 console.warn(
-                    "[ROOM] ⚠️ Leave error:",
+                    "[ROOM] ⚠️ Colyseus leave error:",
                     error
                 );
 
@@ -290,40 +282,26 @@ export default function BoomGame({
         // CLEAR ROOM
         // ====================================================
 
-        const latestRoom =
-            useMultiplayerStore
-                .getState()
-                .room;
+        useMultiplayerStore
+            .getState()
+            .clearRoom();
 
-
-        if (
-            !currentRoom ||
-            latestRoom?.roomId ===
-                currentRoom.roomId
-        ) {
-
-            useMultiplayerStore
-                .getState()
-                .clearRoom();
-
-
-            console.log(
-                "[ROOM] Local room cleared"
-            );
-
-        }
-
-
-        // ====================================================
-        // GO MULTIPLAYER
-        // ====================================================
 
         console.log(
-            "[ROOM] Navigating to /multiplayer"
+            "[ROOM] ✅ Zustand room cleared"
         );
 
 
-        router.replace(
+        // ====================================================
+        // NAVIGATE
+        // ====================================================
+
+        console.log(
+            "[ROOM] → /multiplayer"
+        );
+
+
+        router.push(
             "/multiplayer"
         );
 
@@ -401,8 +379,11 @@ export default function BoomGame({
                 type="button"
                 className="boom-game__out"
                 onClick={handleLeaveGame}
+                disabled={isLeaving}
             >
-                OUT
+                {isLeaving
+                    ? "..."
+                    : "OUT"}
             </button>
 
 
@@ -458,6 +439,10 @@ export default function BoomGame({
                 className="boom-game__actions"
             >
 
+                {/* ==================================================
+                    BOMB
+                ================================================== */}
+
                 <button
                     type="button"
                     className="
@@ -477,6 +462,10 @@ export default function BoomGame({
                     💣
                 </button>
 
+
+                {/* ==================================================
+                    JUMP
+                ================================================== */}
 
                 <button
                     type="button"

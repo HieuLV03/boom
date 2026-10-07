@@ -8,10 +8,15 @@ import {
 } from "react";
 
 import {
+    useRouter,
     useSearchParams,
 } from "next/navigation";
 
 import BoomGame from "@/components/game/BoomGame/BoomGame";
+
+import {
+    useMultiplayerStore,
+} from "@/stores/multiplayer.store";
 
 import "./page.css";
 
@@ -22,18 +27,100 @@ import "./page.css";
 
 function GamePageContent() {
 
+    const router =
+        useRouter();
+
+
     const searchParams =
         useSearchParams();
+
+
+    // ========================================================
+    // ROOM CODE
+    // ========================================================
 
     const roomCode =
         searchParams.get("code") || "";
 
 
-    const [ready, setReady] =
-        useState(false);
+    // ========================================================
+    // ROOM
+    // ========================================================
 
-    const [isLandscape, setIsLandscape] =
-        useState(true);
+    const room =
+        useMultiplayerStore(
+            (state) =>
+                state.room
+        );
+
+
+    // ========================================================
+    // LOCAL STATE
+    // ========================================================
+
+    const [
+        ready,
+        setReady,
+    ] = useState(false);
+
+
+    const [
+        isLandscape,
+        setIsLandscape,
+    ] = useState(true);
+
+
+    // ========================================================
+    // ROOM GUARD
+    // ========================================================
+    //
+    // Nếu /game không còn room Colyseus,
+    // tuyệt đối không được render game.
+    //
+    // ========================================================
+
+    useEffect(() => {
+
+        if (room) {
+
+            console.log(
+                "[GAME PAGE] Active room:",
+                {
+                    roomId:
+                        room.roomId,
+
+                    sessionId:
+                        room.sessionId,
+                }
+            );
+
+            return;
+        }
+
+
+        /*
+         * Không có room.
+         *
+         * Có thể xảy ra khi:
+         *
+         * 1. Người chơi bấm OUT.
+         * 2. Connection bị mất.
+         * 3. Người chơi truy cập /game trực tiếp.
+         */
+
+        console.log(
+            "[GAME PAGE] ❌ No active room"
+        );
+
+
+        router.replace(
+            "/multiplayer"
+        );
+
+    }, [
+        room,
+        router,
+    ]);
 
 
     // ========================================================
@@ -42,32 +129,38 @@ function GamePageContent() {
 
     useEffect(() => {
 
-        const checkOrientation = () => {
+        const checkOrientation =
+            () => {
 
-            const isMobile =
-                window.matchMedia(
-                    "(max-width: 800px)"
-                ).matches;
-
-            const landscape =
-                window.matchMedia(
-                    "(orientation: landscape)"
-                ).matches;
+                const isMobile =
+                    window.matchMedia(
+                        "(max-width: 800px)"
+                    ).matches;
 
 
-            /*
-             * Desktop:
-             * Không bắt xoay.
-             *
-             * Mobile:
-             * Bắt buộc phải xoay ngang.
-             */
-            setIsLandscape(
-                !isMobile || landscape
-            );
+                const landscape =
+                    window.matchMedia(
+                        "(orientation: landscape)"
+                    ).matches;
 
-            setReady(true);
-        };
+
+                /*
+                 * Desktop:
+                 * Không bắt xoay.
+                 *
+                 * Mobile:
+                 * Bắt buộc phải xoay ngang.
+                 */
+
+                setIsLandscape(
+                    !isMobile ||
+                    landscape
+                );
+
+
+                setReady(true);
+
+            };
 
 
         checkOrientation();
@@ -77,6 +170,7 @@ function GamePageContent() {
             "resize",
             checkOrientation
         );
+
 
         window.addEventListener(
             "orientationchange",
@@ -91,13 +185,34 @@ function GamePageContent() {
                 checkOrientation
             );
 
+
             window.removeEventListener(
                 "orientationchange",
                 checkOrientation
             );
+
         };
 
     }, []);
+
+
+    // ========================================================
+    // NO ROOM
+    // ========================================================
+    //
+    // Không render BoomGame nếu không còn room.
+    //
+    // ========================================================
+
+    if (!room) {
+
+        return (
+            <div className="game-loading">
+                Đang thoát phòng...
+            </div>
+        );
+
+    }
 
 
     // ========================================================
@@ -111,6 +226,7 @@ function GamePageContent() {
                 Đang tải game...
             </div>
         );
+
     }
 
 
@@ -123,43 +239,59 @@ function GamePageContent() {
         return (
             <div className="landscape-gate">
 
-                {/* PHONE */}
+                {/* ==================================================
+                    PHONE
+                ================================================== */}
+
                 <div className="landscape-phone">
                     📱
                 </div>
 
 
-                {/* ARROW */}
+                {/* ==================================================
+                    ARROW
+                ================================================== */}
+
                 <div className="landscape-arrow">
                     ↔️
                 </div>
 
 
-                {/* TITLE */}
+                {/* ==================================================
+                    TITLE
+                ================================================== */}
+
                 <div className="landscape-title">
                     XOAY NGANG ĐIỆN THOẠI
                 </div>
 
 
-                {/* DESCRIPTION */}
+                {/* ==================================================
+                    DESCRIPTION
+                ================================================== */}
+
                 <div className="landscape-description">
                     Vui lòng xoay điện thoại sang
                     chế độ ngang để chơi game.
                 </div>
 
 
-                {/* HINT */}
+                {/* ==================================================
+                    HINT
+                ================================================== */}
+
                 <div className="landscape-hint">
                     Game yêu cầu màn hình ngang
                 </div>
 
             </div>
         );
+
     }
 
 
     // ========================================================
-    // LANDSCAPE
+    // LANDSCAPE + ROOM
     // ========================================================
 
     return (
@@ -167,6 +299,7 @@ function GamePageContent() {
             roomCode={roomCode}
         />
     );
+
 }
 
 
@@ -189,4 +322,5 @@ export default function GamePage() {
 
         </Suspense>
     );
+
 }
