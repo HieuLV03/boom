@@ -1,4 +1,3 @@
-
 // ============================================================
 // TROPICAL VILLAGE MAZE
 // ============================================================
@@ -31,7 +30,7 @@ export const MAZE_MAP = [
     "#...#.......#...#.......#...#.#",
     "#.#.#.#####.#.#####.#####.#.#.#",
     "#.#.#.....#.#.....#.....#.#.#.#",
-    "#.#.#####.#.#####.#####.#.#.#.#",
+    "#.#.#####.#.#####.#####.#.#.#",
     "#.#.......#...#...#.....#...#.#",
     "#.#######.###.#.###.#######.#.#",
     "#.........#...#.....#.........#",
@@ -49,14 +48,10 @@ export const MAZE_MAP = [
 ] as const;
 
 
-// ============================================================
-// TYPES
-// ============================================================
-
 export type MazeCell =
-    | "#"
-    | "."
-    | "P";
+    "#" |
+    "." |
+    "P";
 
 
 // ============================================================
@@ -75,7 +70,8 @@ export function getMazeCell(
         return "#";
     }
 
-    const row = MAZE_MAP[cellZ];
+    const row =
+        MAZE_MAP[cellZ];
 
     if (
         cellX < 0 ||
@@ -97,15 +93,34 @@ export function isWalkableCell(
     cellZ: number,
 ): boolean {
 
-    return getMazeCell(
-        cellX,
-        cellZ,
-    ) !== "#";
+    return (
+        getMazeCell(
+            cellX,
+            cellZ,
+        ) !== "#"
+    );
+
 }
 
 
 // ============================================================
-// WORLD -> CELL
+// WORLD → CELL
+// ============================================================
+//
+// World:
+//   center = 0,0
+//
+// Cell:
+//   center cell = 15,15
+//
+// CELL_SIZE = 2
+//
+// Ví dụ:
+//
+// cell 15 → world 0
+// cell 16 → world 2
+// cell 14 → world -2
+//
 // ============================================================
 
 export function worldToCell(
@@ -113,28 +128,41 @@ export function worldToCell(
     z: number,
 ) {
 
+    const centerX =
+        Math.floor(
+            MAP_WIDTH / 2
+        );
+
+    const centerZ =
+        Math.floor(
+            MAP_HEIGHT / 2
+        );
+
+
     const cellX =
         Math.floor(
-            x / CELL_SIZE +
-            0.5
+            x / CELL_SIZE + 0.5
         ) +
-        Math.floor(MAP_WIDTH / 2);
+        centerX;
+
 
     const cellZ =
         Math.floor(
-            z / CELL_SIZE +
-            0.5
+            z / CELL_SIZE + 0.5
         ) +
-        Math.floor(MAP_HEIGHT / 2);
+        centerZ;
+
 
     return {
         cellX,
         cellZ,
     };
+
 }
 
+
 // ============================================================
-// CELL -> WORLD
+// CELL → WORLD
 // ============================================================
 
 export function cellToWorld(
@@ -142,27 +170,56 @@ export function cellToWorld(
     cellZ: number,
 ) {
 
+    const centerX =
+        Math.floor(
+            MAP_WIDTH / 2
+        );
+
+    const centerZ =
+        Math.floor(
+            MAP_HEIGHT / 2
+        );
+
+
     return {
+
         x:
             (
                 cellX -
-                Math.floor(MAP_WIDTH / 2)
+                centerX
             ) *
             CELL_SIZE,
 
         z:
             (
                 cellZ -
-                Math.floor(MAP_HEIGHT / 2)
+                centerZ
             ) *
             CELL_SIZE,
+
     };
+
 }
 
 
 // ============================================================
-// COLLISION
+// CIRCLE VS WALL
 // ============================================================
+//
+// Player = circle
+// Wall   = square
+//
+// Không dùng 4 góc player nữa.
+//
+// Điều này giúp player:
+//
+// - đi sát tường
+// - trượt dọc tường
+// - không bị kẹt ở góc
+// - không bị "dính" khi đi chéo
+//
+// ============================================================
+
 export function canMoveTo(
     x: number,
     z: number,
@@ -175,19 +232,20 @@ export function canMoveTo(
             z,
         );
 
+
     // ========================================================
     // CHECK NEARBY CELLS
     // ========================================================
 
     for (
-        let offsetZ = -1;
-        offsetZ <= 1;
+        let offsetZ = -2;
+        offsetZ <= 2;
         offsetZ++
     ) {
 
         for (
-            let offsetX = -1;
-            offsetX <= 1;
+            let offsetX = -2;
+            offsetX <= 2;
             offsetX++
         ) {
 
@@ -198,6 +256,7 @@ export function canMoveTo(
             const cellZ =
                 center.cellZ +
                 offsetZ;
+
 
             // ------------------------------------------------
             // WALKABLE
@@ -212,6 +271,7 @@ export function canMoveTo(
                 continue;
             }
 
+
             // ------------------------------------------------
             // WALL CENTER
             // ------------------------------------------------
@@ -222,8 +282,10 @@ export function canMoveTo(
                     cellZ,
                 );
 
+
             const half =
                 CELL_SIZE / 2;
+
 
             const minX =
                 wall.x - half;
@@ -237,8 +299,9 @@ export function canMoveTo(
             const maxZ =
                 wall.z + half;
 
+
             // ------------------------------------------------
-            // CLOSEST POINT
+            // CLOSEST POINT ON WALL
             // ------------------------------------------------
 
             const closestX =
@@ -250,6 +313,7 @@ export function canMoveTo(
                     ),
                 );
 
+
             const closestZ =
                 Math.max(
                     minZ,
@@ -259,19 +323,24 @@ export function canMoveTo(
                     ),
                 );
 
+
             // ------------------------------------------------
             // DISTANCE
             // ------------------------------------------------
 
             const dx =
-                x - closestX;
+                x -
+                closestX;
 
             const dz =
-                z - closestZ;
+                z -
+                closestZ;
+
 
             const distanceSquared =
                 dx * dx +
                 dz * dz;
+
 
             // ------------------------------------------------
             // COLLISION
@@ -283,9 +352,82 @@ export function canMoveTo(
             ) {
 
                 return false;
+
             }
+
         }
+
     }
 
+
     return true;
+
+}
+
+
+// ============================================================
+// SPAWN POINTS
+// ============================================================
+
+export function getSpawnCells() {
+
+    const result: Array<{
+        cellX: number;
+        cellZ: number;
+    }> = [];
+
+
+    for (
+        let cellZ = 0;
+        cellZ < MAP_HEIGHT;
+        cellZ++
+    ) {
+
+        for (
+            let cellX = 0;
+            cellX < MAP_WIDTH;
+            cellX++
+        ) {
+
+            if (
+                getMazeCell(
+                    cellX,
+                    cellZ,
+                ) === "P"
+            ) {
+
+                result.push({
+                    cellX,
+                    cellZ,
+                });
+
+            }
+
+        }
+
+    }
+
+
+    return result;
+
+}
+
+
+// ============================================================
+// SPAWN WORLD POSITIONS
+// ============================================================
+
+export function getSpawnPositions() {
+
+    return getSpawnCells().map(
+        ({
+            cellX,
+            cellZ,
+        }) =>
+            cellToWorld(
+                cellX,
+                cellZ,
+            )
+    );
+
 }
