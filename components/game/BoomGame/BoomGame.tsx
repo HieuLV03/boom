@@ -109,128 +109,43 @@ export default function BoomGame({
 
 
     // ========================================================
-    // ROOM ON LEAVE
+    // CONNECTION LOG ONLY
+    // ========================================================
+    //
+    // IMPORTANT:
+    //
+    // Không đăng ký room.onLeave() ở đây.
+    //
+    // GamePage là nơi duy nhất xử lý onLeave.
+    //
     // ========================================================
 
     useEffect(() => {
 
         if (!room) {
-
             return;
-
         }
 
 
-        const currentRoom =
-            room;
-
-
         console.log(
-            "[ROOM] Connected:",
+            "[ROOM] BoomGame connected:",
             {
                 roomId:
-                    currentRoom.roomId,
+                    room.roomId,
 
                 sessionId:
-                    currentRoom.sessionId,
+                    room.sessionId,
             }
         );
 
-
-        // ----------------------------------------------------
-        // COLYSEUS LEAVE
-        // ----------------------------------------------------
-
-        currentRoom.onLeave?.(
-            (
-                code
-            ) => {
-
-                console.log(
-                    "[ROOM] onLeave:",
-                    {
-                        roomId:
-                            currentRoom.roomId,
-
-                        sessionId:
-                            currentRoom.sessionId,
-
-                        code,
-                    }
-                );
-
-
-                const latestRoom =
-                    useMultiplayerStore
-                        .getState()
-                        .room;
-
-
-                // --------------------------------------------
-                // Chỉ clear room hiện tại
-                // --------------------------------------------
-
-                if (
-                    latestRoom ===
-                    currentRoom
-                ) {
-
-                    useMultiplayerStore
-                        .getState()
-                        .clearRoom();
-
-                }
-
-
-                // --------------------------------------------
-                // Nếu không phải OUT chủ động
-                // --------------------------------------------
-
-                if (
-                    !leavingRef.current
-                ) {
-
-                    leavingRef.current =
-                        true;
-
-
-                    setIsLeaving(
-                        true
-                    );
-
-
-                    router.replace(
-                        "/multiplayer"
-                    );
-
-                }
-
-            }
-        );
-
-
-        // ====================================================
-        // IMPORTANT
-        // ====================================================
-        //
-        // Không gọi unsubscribe ở đây.
-        //
-        // @colyseus/sdk version hiện tại của bạn
-        // không trả về unsubscribe function từ onLeave().
-        //
-        // ====================================================
-
-    }, [
-        room,
-        router,
-    ]);
+    }, [room]);
 
 
     // ========================================================
     // OUT
     // ========================================================
 
-    function handleLeaveGame() {
+    async function handleLeaveGame() {
 
         // ----------------------------------------------------
         // Chống click nhiều lần
@@ -269,78 +184,109 @@ export default function BoomGame({
         );
 
 
+        // ====================================================
+        // GET CURRENT ROOM
+        // ====================================================
+
         const currentRoom =
             roomRef.current;
+
+
+        if (!currentRoom) {
+
+            console.warn(
+                "[ROOM] No active room"
+            );
+
+
+            useMultiplayerStore
+                .getState()
+                .clearRoom();
+
+
+            router.replace(
+                "/multiplayer"
+            );
+
+
+            return;
+
+        }
+
+
+        console.log(
+            "[ROOM] Leaving:",
+            {
+                roomId:
+                    currentRoom.roomId,
+
+                sessionId:
+                    currentRoom.sessionId,
+            }
+        );
 
 
         // ====================================================
         // LEAVE COLYSEUS
         // ====================================================
         //
-        // Gọi leave ngay nhưng KHÔNG await.
+        // QUAN TRỌNG:
+        //
+        // Chờ leave() hoàn thành trước khi clear store.
         //
         // ====================================================
 
+        try {
+
+            await currentRoom.leave();
+
+
+            console.log(
+                "[ROOM] ✅ Colyseus leave success"
+            );
+
+        } catch (error) {
+
+            console.warn(
+                "[ROOM] ⚠️ Colyseus leave error:",
+                error
+            );
+
+        }
+
+
+        // ====================================================
+        // CLEAR ONLY OLD ROOM
+        // ====================================================
+
+        const activeRoom =
+            useMultiplayerStore
+                .getState()
+                .room;
+
+
         if (
+            activeRoom ===
             currentRoom
         ) {
 
+            useMultiplayerStore
+                .getState()
+                .clearRoom();
+
+
             console.log(
-                "[ROOM] Leaving:",
-                {
-                    roomId:
-                        currentRoom.roomId,
-
-                    sessionId:
-                        currentRoom.sessionId,
-                }
+                "[ROOM] ✅ Old room cleared"
             );
-
-
-            currentRoom
-                .leave()
-                .then(() => {
-
-                    console.log(
-                        "[ROOM] ✅ Colyseus leave success"
-                    );
-
-                })
-                .catch((error) => {
-
-                    console.warn(
-                        "[ROOM] ⚠️ Colyseus leave error:",
-                        error
-                    );
-
-                });
 
         }
         else {
 
-            console.warn(
-                "[ROOM] No active room"
+            console.log(
+                "[ROOM] Store already contains another room"
             );
 
         }
-
-
-        // ====================================================
-        // CLEAR ZUSTAND
-        // ====================================================
-        //
-        // Không chờ Colyseus.
-        //
-        // ====================================================
-
-        useMultiplayerStore
-            .getState()
-            .clearRoom();
-
-
-        console.log(
-            "[ROOM] ✅ Zustand room cleared"
-        );
 
 
         // ====================================================
