@@ -31,6 +31,10 @@ interface BattleRoomOptions extends RoomOptions {
 
 const MAX_HP = 100;
 
+const MATCH_DURATION = 180;
+
+const RESPAWN_DELAY = 3000;
+
 const BOMB_DELAY = 3000;
 
 const BOMB_RADIUS = 4;
@@ -94,16 +98,8 @@ export class BattleRoom extends Room<{
     // HOST
     // ========================================================
 
-    /*
-     * SessionId của người đang giữ quyền HOST.
-     *
-     * Người đầu tiên vào phòng sẽ trở thành HOST.
-     *
-     * Khi HOST rời:
-     * → chuyển cho người chơi còn lại.
-     */
-
-    private hostSessionId: string | null = null;
+    private hostSessionId:
+        string | null = null;
 
 
     // ========================================================
@@ -115,10 +111,18 @@ export class BattleRoom extends Room<{
     ) {
 
         console.log("");
-        console.log("================================================");
-        console.log("[ROOM] CREATE");
-        console.log(`       roomId: ${this.roomId}`);
-        console.log("================================================");
+        console.log(
+            "================================================"
+        );
+        console.log(
+            "[ROOM] CREATE"
+        );
+        console.log(
+            `       roomId: ${this.roomId}`
+        );
+        console.log(
+            "================================================"
+        );
 
 
         // ====================================================
@@ -139,6 +143,103 @@ export class BattleRoom extends Room<{
 
 
         // ====================================================
+        // MATCH TIMER
+        // ====================================================
+
+        this.state.timeRemaining =
+            MATCH_DURATION;
+
+        this.state.gameOver =
+            false;
+
+
+        console.log(
+            `[GAME] Match duration: ${MATCH_DURATION}s`
+        );
+
+
+        /*
+         * Server authoritative timer.
+         *
+         * Mỗi 1 giây giảm 1.
+         */
+
+        this.clock.setInterval(
+            () => {
+
+                // --------------------------------------------
+                // GAME ALREADY OVER
+                // --------------------------------------------
+
+                if (
+                    this.state.gameOver
+                ) {
+                    return;
+                }
+
+
+                // --------------------------------------------
+                // DECREASE TIMER
+                // --------------------------------------------
+
+                this.state.timeRemaining =
+                    Math.max(
+                        0,
+                        this.state.timeRemaining - 1
+                    );
+
+
+                console.log(
+                    `[GAME] Time remaining: ${this.state.timeRemaining}s`
+                );
+
+
+                // --------------------------------------------
+                // GAME OVER
+                // --------------------------------------------
+
+                if (
+                    this.state.timeRemaining <= 0
+                ) {
+
+                    this.state.timeRemaining =
+                        0;
+
+                    this.state.gameOver =
+                        true;
+
+
+                    console.log("");
+                    console.log(
+                        "================================================"
+                    );
+                    console.log(
+                        "[GAME] ⏰ GAME OVER"
+                    );
+                    console.log(
+                        "================================================"
+                    );
+
+
+                    /*
+                     * Thông báo cho tất cả client.
+                     */
+
+                    this.broadcast(
+                        "gameOver",
+                        {
+                            reason: "time",
+                        }
+                    );
+
+                }
+
+            },
+            1000
+        );
+
+
+        // ====================================================
         // MOVE
         // ====================================================
 
@@ -149,10 +250,22 @@ export class BattleRoom extends Room<{
                 message
             ) => {
 
+                // --------------------------------------------
+                // GAME OVER
+                // --------------------------------------------
+
+                if (
+                    this.state.gameOver
+                ) {
+                    return;
+                }
+
+
                 const player =
                     this.state.players.get(
                         client.sessionId
                     );
+
 
                 if (!player) {
                     return;
@@ -160,7 +273,7 @@ export class BattleRoom extends Room<{
 
 
                 // --------------------------------------------
-                // DEAD PLAYER CANNOT MOVE
+                // DEAD PLAYER
                 // --------------------------------------------
 
                 if (!player.alive) {
@@ -241,6 +354,22 @@ export class BattleRoom extends Room<{
                 console.log(
                     `       sessionId: ${client.sessionId}`
                 );
+
+
+                // ============================================
+                // GAME OVER
+                // ============================================
+
+                if (
+                    this.state.gameOver
+                ) {
+
+                    console.log(
+                        "[BOMB] ❌ Game already over"
+                    );
+
+                    return;
+                }
 
 
                 // ============================================
@@ -534,6 +663,225 @@ export class BattleRoom extends Room<{
 
 
     // ========================================================
+    // RANDOM SPAWN
+    // ========================================================
+
+    private getRandomSpawnPosition() {
+
+        /*
+         * Các vị trí spawn hợp lệ trên map.
+         *
+         * Bạn có thể thay đổi tọa độ
+         * theo map thực tế.
+         */
+
+        const spawnPoints = [
+
+            {
+                x: -9,
+                y: 0,
+                z: -9,
+            },
+
+            {
+                x: 0,
+                y: 0,
+                z: -9,
+            },
+
+            {
+                x: 9,
+                y: 0,
+                z: -9,
+            },
+
+            {
+                x: -9,
+                y: 0,
+                z: 0,
+            },
+
+            {
+                x: 9,
+                y: 0,
+                z: 0,
+            },
+
+            {
+                x: -9,
+                y: 0,
+                z: 9,
+            },
+
+            {
+                x: 0,
+                y: 0,
+                z: 9,
+            },
+
+            {
+                x: 9,
+                y: 0,
+                z: 9,
+            },
+
+        ];
+
+
+        const index =
+            Math.floor(
+                Math.random() *
+                spawnPoints.length
+            );
+
+
+        return spawnPoints[index];
+
+    }
+
+
+    // ========================================================
+    // RESPAWN PLAYER
+    // ========================================================
+
+    private respawnPlayer(
+        sessionId: string
+    ) {
+
+        // ====================================================
+        // GET PLAYER
+        // ====================================================
+
+        const player =
+            this.state.players.get(
+                sessionId
+            );
+
+
+        if (!player) {
+
+            console.log(
+                `[RESPAWN] ❌ Player not found: ${sessionId}`
+            );
+
+            return;
+        }
+
+
+        // ====================================================
+        // GAME OVER
+        // ====================================================
+
+        if (
+            this.state.gameOver
+        ) {
+
+            console.log(
+                `[RESPAWN] ❌ Game already over: ${sessionId}`
+            );
+
+            return;
+        }
+
+
+        // ====================================================
+        // RANDOM SPAWN
+        // ====================================================
+
+        const spawn =
+            this.getRandomSpawnPosition();
+
+
+        // ====================================================
+        // POSITION
+        // ====================================================
+
+        player.x =
+            spawn.x;
+
+        player.y =
+            spawn.y;
+
+        player.z =
+            spawn.z;
+
+        player.rotation =
+            0;
+
+
+        // ====================================================
+        // RESET HP
+        // ====================================================
+
+        player.hp =
+            MAX_HP;
+
+        player.alive =
+            true;
+
+
+        // ====================================================
+        // BROADCAST
+        // ====================================================
+
+        this.broadcast(
+            "playerRespawned",
+            {
+                playerId:
+                    sessionId,
+
+                x:
+                    player.x,
+
+                y:
+                    player.y,
+
+                z:
+                    player.z,
+
+                rotation:
+                    player.rotation,
+
+                hp:
+                    player.hp,
+
+                alive:
+                    player.alive,
+            }
+        );
+
+
+        // ====================================================
+        // LOG
+        // ====================================================
+
+        console.log("");
+        console.log(
+            "================================================"
+        );
+        console.log(
+            "[RESPAWN] 🔄 PLAYER RESPAWNED"
+        );
+        console.log(
+            `          player: ${player.name}`
+        );
+        console.log(
+            `          sessionId: ${sessionId}`
+        );
+        console.log(
+            `          position: ${player.x}, ${player.y}, ${player.z}`
+        );
+        console.log(
+            `          HP: ${player.hp}`
+        );
+        console.log(
+            "================================================"
+        );
+
+    }
+
+
+    // ========================================================
     // EXPLODE BOMB
     // ========================================================
 
@@ -726,7 +1074,8 @@ export class BattleRoom extends Room<{
 
                 const oldHp =
                     Number(
-                        player.hp ?? MAX_HP
+                        player.hp ??
+                        MAX_HP
                     );
 
 
@@ -773,6 +1122,27 @@ export class BattleRoom extends Room<{
 
                     player.alive =
                         false;
+
+
+                    console.log(
+                        `[BOMB] ☠️ ${player.name} DIED`
+                    );
+
+
+                    // ========================================
+                    // RESPAWN AFTER 3 SECONDS
+                    // ========================================
+
+                    this.clock.setTimeout(
+                        () => {
+
+                            this.respawnPlayer(
+                                sessionId
+                            );
+
+                        },
+                        RESPAWN_DELAY
+                    );
 
                 }
 
@@ -921,10 +1291,6 @@ export class BattleRoom extends Room<{
         // DETERMINE HOST
         // ====================================================
 
-        const isFirstPlayer =
-            this.state.players.size === 0;
-
-
         if (
             this.hostSessionId === null ||
             !this.state.players.has(
@@ -959,13 +1325,6 @@ export class BattleRoom extends Room<{
         const player =
             new PlayerState();
 
-
-        /*
-         * ID luôn là sessionId mới.
-         *
-         * Đây là điểm quan trọng khi người chơi
-         * rời rồi vào lại.
-         */
 
         player.id =
             client.sessionId;
@@ -1003,12 +1362,6 @@ export class BattleRoom extends Room<{
         // STATS
         // ====================================================
 
-        /*
-         * Luôn tạo HP mới.
-         *
-         * Không lấy HP từ client.
-         */
-
         player.hp =
             MAX_HP;
 
@@ -1017,7 +1370,7 @@ export class BattleRoom extends Room<{
 
 
         // ====================================================
-        // ADD PLAYER
+        // ADD
         // ====================================================
 
         this.state.players.set(
@@ -1027,14 +1380,8 @@ export class BattleRoom extends Room<{
 
 
         // ====================================================
-        // SEND HOST INFO
+        // HOST INFO
         // ====================================================
-
-        /*
-         * Gửi cho tất cả client:
-         *
-         * ai đang là HOST.
-         */
 
         this.broadcast(
             "hostChanged",
@@ -1149,10 +1496,6 @@ export class BattleRoom extends Room<{
             );
 
 
-            /*
-             * Tìm player còn lại đầu tiên.
-             */
-
             const remainingPlayers =
                 Array.from(
                     this.state.players.keys()
@@ -1162,10 +1505,6 @@ export class BattleRoom extends Room<{
             if (
                 remainingPlayers.length > 0
             ) {
-
-                /*
-                 * Chuyển quyền HOST.
-                 */
 
                 this.hostSessionId =
                     remainingPlayers[0];
@@ -1177,10 +1516,6 @@ export class BattleRoom extends Room<{
 
             }
             else {
-
-                /*
-                 * Không còn ai.
-                 */
 
                 this.hostSessionId =
                     null;

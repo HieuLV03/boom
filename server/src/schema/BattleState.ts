@@ -1,8 +1,10 @@
+
 import {
     Schema,
     MapSchema,
     type,
 } from "@colyseus/schema";
+
 
 // ============================================================
 // PLAYER
@@ -34,6 +36,7 @@ export class PlayerState extends Schema {
     @type("boolean")
     alive: boolean = true;
 }
+
 
 // ============================================================
 // BOMB
@@ -75,18 +78,65 @@ export class BombState extends Schema {
     explosionType: string = "circle";
 }
 
+
 // ============================================================
 // BATTLE STATE
 // ============================================================
 
 export class BattleState extends Schema {
 
+    // ========================================================
+    // ROOM
+    // ========================================================
+
     @type("string")
     roomCode: string = "";
 
+
+    // ========================================================
+    // GAME TIMER
+    // ========================================================
+
+    /*
+     * Thời gian còn lại của trận đấu.
+     *
+     * 180 = 3 phút.
+     *
+     * Server giảm mỗi giây.
+     */
+
+    @type("number")
+    timeRemaining: number = 180;
+
+
+    // ========================================================
+    // GAME OVER
+    // ========================================================
+
+    /*
+     * false = game đang chơi
+     * true  = trận đã kết thúc
+     */
+
+    @type("boolean")
+    gameOver: boolean = false;
+
+
+    // ========================================================
+    // PLAYERS
+    // ========================================================
+
     @type({ map: PlayerState })
-    players = new MapSchema<PlayerState>();
+    players =
+        new MapSchema<PlayerState>();
+
+
+    // ========================================================
+    // BOMBS
+    // ========================================================
 
     @type({ map: BombState })
-    bombs = new MapSchema<BombState>();
+    bombs =
+        new MapSchema<BombState>();
+
 }
