@@ -294,99 +294,161 @@ export class BattleRoom extends Room<{
         );
 
 
-        // ====================================================
-        // MOVE
-        // ====================================================
+  // ====================================================
+// MOVE
+// ====================================================
 
-        this.onMessage(
-            "move",
-            (
-                client,
-                message
-            ) => {
+this.onMessage(
+    "move",
+    (
+        client,
+        message
+    ) => {
 
-                if (
-                    this.state.gameOver
-                ) {
-                    return;
-                }
-
-
-                const player =
-                    this.state.players.get(
-                        client.sessionId
-                    );
+        if (
+            this.state.gameOver
+        ) {
+            return;
+        }
 
 
-                if (!player) {
-                    return;
-                }
+        const player =
+            this.state.players.get(
+                client.sessionId
+            );
 
 
-                if (!player.alive) {
-                    return;
-                }
+        if (!player) {
+            return;
+        }
 
 
-                const nextX =
-                    typeof message?.x === "number"
-                        ? message.x
-                        : player.x;
+        if (!player.alive) {
+            return;
+        }
 
 
-                const nextY =
-                    typeof message?.y === "number"
-                        ? message.y
-                        : player.y;
+        // ==================================================
+        // READ MESSAGE
+        // ==================================================
+
+        const requestedX =
+            typeof message?.x === "number" &&
+            Number.isFinite(message.x)
+                ? message.x
+                : player.x;
 
 
-                const nextZ =
-                    typeof message?.z === "number"
-                        ? message.z
-                        : player.z;
+        const requestedY =
+            typeof message?.y === "number" &&
+            Number.isFinite(message.y)
+                ? message.y
+                : player.y;
 
 
-                const nextRotation =
-                    typeof message?.rotation === "number"
-                        ? message.rotation
-                        : player.rotation;
+        const requestedZ =
+            typeof message?.z === "number" &&
+            Number.isFinite(message.z)
+                ? message.z
+                : player.z;
 
 
-                // ==================================================
-                // SERVER COLLISION
-                // ==================================================
-
-                const map =
-                    getMapConfig(
-                        this.mapId
-                    );
+        const requestedRotation =
+            typeof message?.rotation === "number" &&
+            Number.isFinite(message.rotation)
+                ? message.rotation
+                : player.rotation;
 
 
-                if (
-                    map.canMoveTo(
-                        nextX,
-                        nextZ
-                    )
-                ) {
+        // ==================================================
+        // MAP
+        // ==================================================
 
-                    player.x =
-                        nextX;
-
-                    player.y =
-                        nextY;
-
-                    player.z =
-                        nextZ;
-
-                }
+        const map =
+            getMapConfig(
+                this.mapId
+            );
 
 
-                player.rotation =
-                    nextRotation;
+        // ==================================================
+        // SERVER-SIDE MOVEMENT
+        //
+        // QUAN TRỌNG:
+        //
+        // Không kiểm tra:
+        //
+        //     canMoveTo(nextX, nextZ)
+        //
+        // vì client đang xử lý X và Z riêng.
+        //
+        // Server cũng phải xử lý X trước,
+        // sau đó Z.
+        // ==================================================
 
-            }
-        );
+        let finalX =
+            player.x;
 
+        let finalZ =
+            player.z;
+
+
+        // ==================================================
+        // MOVE X
+        // ==================================================
+
+        if (
+            map.canMoveTo(
+                requestedX,
+                player.z
+            )
+        ) {
+
+            finalX =
+                requestedX;
+
+        }
+
+
+        // ==================================================
+        // MOVE Z
+        // ==================================================
+
+        if (
+            map.canMoveTo(
+                finalX,
+                requestedZ
+            )
+        ) {
+
+            finalZ =
+                requestedZ;
+
+        }
+
+
+        // ==================================================
+        // APPLY POSITION
+        // ==================================================
+
+        player.x =
+            finalX;
+
+        player.y =
+            requestedY;
+
+        player.z =
+            finalZ;
+
+
+        // ==================================================
+        // ROTATION
+        // ==================================================
+
+        player.rotation =
+            requestedRotation;
+
+    }
+);
 
         // ====================================================
         // PLANT BOMB
