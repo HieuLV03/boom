@@ -1,0 +1,225 @@
+
+/* ============================================================
+   GAME LOADING
+   ============================================================ */
+
+.game-loading {
+    position: fixed;
+
+    inset: 0;
+
+    width: 100vw;
+    height: 100dvh;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    background: #111827;
+
+    color: #ffffff;
+
+    font-size: 18px;
+
+    font-weight: 700;
+
+    user-select: none;
+}
+
+
+/* ============================================================
+   LANDSCAPE GATE
+   ============================================================ */
+
+.landscape-gate {
+    position: fixed;
+
+    inset: 0;
+
+    width: 100vw;
+    height: 100dvh;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 16px;
+
+    padding: 24px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #111827,
+            #020617
+        );
+
+    color: #ffffff;
+
+    text-align: center;
+
+    z-index: 999999;
+
+    overflow: hidden;
+
+    user-select: none;
+
+    touch-action: none;
+}
+
+
+/* ============================================================
+   PHONE
+   ============================================================ */
+
+.landscape-phone {
+    font-size: 72px;
+
+    line-height: 1;
+
+    animation:
+        rotatePhone 1.8s
+        ease-in-out
+        infinite;
+}
+
+
+/* ============================================================
+   ARROW
+   ============================================================ */
+
+.landscape-arrow {
+    font-size: 40px;
+
+    line-height: 1;
+
+    animation:
+        arrowMove 1s
+        ease-in-out
+        infinite;
+}
+
+
+/* ============================================================
+   TITLE
+   ============================================================ */
+
+.landscape-title {
+    font-size: 26px;
+
+    font-weight: 900;
+
+    letter-spacing: 1px;
+
+    text-transform: uppercase;
+}
+
+
+/* ============================================================
+   DESCRIPTION
+   ============================================================ */
+
+.landscape-description {
+    max-width: 320px;
+
+    font-size: 16px;
+
+    line-height: 1.5;
+
+    color: #cbd5e1;
+}
+
+
+/* ============================================================
+   HINT
+   ============================================================ */
+
+.landscape-hint {
+    margin-top: 6px;
+
+    padding:
+        10px 18px;
+
+    border-radius: 999px;
+
+    background:
+        rgba(255, 255, 255, 0.08);
+
+    border:
+        1px solid
+        rgba(255, 255, 255, 0.12);
+
+    color: #94a3b8;
+
+    font-size: 13px;
+
+    font-weight: 600;
+}
+
+
+/* ============================================================
+   PHONE ANIMATION
+   ============================================================ */
+
+@keyframes rotatePhone {
+
+    0% {
+        transform:
+            rotate(0deg);
+    }
+
+    35% {
+        transform:
+            rotate(90deg);
+    }
+
+    65% {
+        transform:
+            rotate(90deg);
+    }
+
+    100% {
+        transform:
+            rotate(0deg);
+    }
+}
+
+
+/* ============================================================
+   ARROW ANIMATION
+   ============================================================ */
+
+@keyframes arrowMove {
+
+    0% {
+        transform:
+            translateX(-8px);
+    }
+
+    50% {
+        transform:
+            translateX(8px);
+    }
+
+    100% {
+        transform:
+            translateX(-8px);
+    }
+}
+
+
+/* ============================================================
+   DESKTOP
+   ============================================================ */
+
+@media (min-width: 801px) {
+
+    .landscape-gate {
+        display: none;
+    }
+
+}
