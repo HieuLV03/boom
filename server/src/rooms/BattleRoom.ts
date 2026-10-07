@@ -13,7 +13,7 @@ import {
 import {
     getMapConfig,
     type MapId,
-} from "../../../shared/maps/map.config";
+} from "../../../shared/maps/map.config.js";
 
 
 // ============================================================
