@@ -72,7 +72,22 @@ function GamePageContent() {
 
 
     // ========================================================
-    // ROOM LIFECYCLE
+    // ROOM CHECK
+    // ========================================================
+    //
+    // GamePage KHÔNG:
+    //
+    // - room.leave()
+    // - room.onLeave()
+    // - clearRoom()
+    //
+    // BoomGame sẽ xử lý OUT.
+    //
+    // GamePage chỉ kiểm tra:
+    //
+    // Có room → chơi
+    // Không có room → về multiplayer
+    //
     // ========================================================
 
     useEffect(() => {
@@ -94,10 +109,6 @@ function GamePageContent() {
         }
 
 
-        const currentRoom =
-            room;
-
-
         console.log(
             "========================================"
         );
@@ -108,86 +119,26 @@ function GamePageContent() {
 
         console.log(
             "[GAME PAGE] roomId:",
-            currentRoom.roomId
+            room.roomId
         );
 
         console.log(
             "[GAME PAGE] sessionId:",
-            currentRoom.sessionId
+            room.sessionId
+        );
+
+        console.log(
+            "[GAME PAGE] roomCode:",
+            roomCode
         );
 
         console.log(
             "========================================"
         );
 
-
-        // ====================================================
-        // ROOM LEAVE
-        // ====================================================
-
-        currentRoom.onLeave?.(
-            (
-                code
-            ) => {
-
-                console.log(
-                    "[GAME PAGE] ❌ Room left:",
-                    {
-                        roomId:
-                            currentRoom.roomId,
-
-                        sessionId:
-                            currentRoom.sessionId,
-
-                        code,
-                    }
-                );
-
-
-                const activeRoom =
-                    useMultiplayerStore
-                        .getState()
-                        .room;
-
-
-                /*
-                 * Chỉ xử lý nếu đây vẫn là
-                 * room hiện tại.
-                 *
-                 * Nếu room cũ leave sau khi
-                 * room mới đã được set thì
-                 * KHÔNG được đụng vào room mới.
-                 */
-
-                if (
-                    activeRoom !==
-                    currentRoom
-                ) {
-
-                    console.log(
-                        "[GAME PAGE] Ignoring old room leave"
-                    );
-
-
-                    return;
-
-                }
-
-
-                useMultiplayerStore
-                    .getState()
-                    .clearRoom();
-
-
-                router.replace(
-                    "/multiplayer"
-                );
-
-            }
-        );
-
     }, [
         room,
+        roomCode,
         router,
     ]);
 
@@ -219,7 +170,9 @@ function GamePageContent() {
                 );
 
 
-                setReady(true);
+                setReady(
+                    true
+                );
 
             };
 
@@ -265,7 +218,9 @@ function GamePageContent() {
 
         return (
             <div className="game-loading">
+
                 Đang quay về phòng...
+
             </div>
         );
 
@@ -280,7 +235,9 @@ function GamePageContent() {
 
         return (
             <div className="game-loading">
+
                 Đang tải game...
+
             </div>
         );
 
@@ -347,7 +304,9 @@ export default function GamePage() {
         <Suspense
             fallback={
                 <div className="game-loading">
+
                     Đang tải game...
+
                 </div>
             }
         >

@@ -1,0 +1,229 @@
+
+/* ============================================================
+   PAGE
+============================================================ */
+
+.multiplayer-page {
+    min-height: 100vh;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 20px;
+
+    box-sizing: border-box;
+
+    background: #111827;
+
+    color: #fff;
+}
+
+
+/* ============================================================
+   CARD
+============================================================ */
+
+.multiplayer-card {
+    width: 100%;
+
+    max-width: 420px;
+
+    padding: 24px;
+
+    border-radius: 20px;
+
+    box-sizing: border-box;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 14px;
+
+    background: #1f2937;
+}
+
+
+/* ============================================================
+   TITLE
+============================================================ */
+
+.multiplayer-title {
+    margin: 0;
+
+    text-align: center;
+
+    font-size: 32px;
+
+    font-weight: 800;
+}
+
+
+/* ============================================================
+   SUBTITLE
+============================================================ */
+
+.multiplayer-subtitle {
+    margin: 0;
+
+    text-align: center;
+
+    color: #9ca3af;
+}
+
+
+/* ============================================================
+   INPUT
+============================================================ */
+
+.multiplayer-input {
+    width: 100%;
+
+    padding: 14px;
+
+    box-sizing: border-box;
+
+    border: none;
+
+    border-radius: 10px;
+
+    outline: none;
+
+    font-size: 16px;
+}
+
+.multiplayer-input:focus {
+    box-shadow: 0 0 0 2px #2563eb;
+}
+
+
+/* ============================================================
+   ROOM CODE
+============================================================ */
+
+.multiplayer-room-code {
+    letter-spacing: 2px;
+}
+
+
+/* ============================================================
+   BUTTON
+============================================================ */
+
+.multiplayer-button {
+    width: 100%;
+
+    padding: 14px;
+
+    border: none;
+
+    border-radius: 10px;
+
+    color: #fff;
+
+    font-size: 16px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        opacity 0.15s ease,
+        transform 0.1s ease;
+}
+
+.multiplayer-button:hover {
+    opacity: 0.9;
+}
+
+.multiplayer-button:active {
+    transform: scale(0.98);
+}
+
+
+/* ============================================================
+   CREATE BUTTON
+============================================================ */
+
+.multiplayer-button-create {
+    background: #2563eb;
+}
+
+
+/* ============================================================
+   JOIN BUTTON
+============================================================ */
+
+.multiplayer-button-join {
+    background: #374151;
+}
+
+
+/* ============================================================
+   DIVIDER
+============================================================ */
+
+.multiplayer-divider {
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    color: #6b7280;
+
+    font-size: 13px;
+}
+
+.multiplayer-divider-line {
+    flex: 1;
+
+    height: 1px;
+
+    background: #374151;
+}
+
+
+/* ============================================================
+   STATUS
+============================================================ */
+
+.multiplayer-status {
+    margin: 0;
+
+    min-height: 20px;
+
+    text-align: center;
+
+    color: #9ca3af;
+
+    font-size: 14px;
+}
+
+
+/* ============================================================
+   MOBILE
+============================================================ */
+
+@media (max-width: 480px) {
+
+    .multiplayer-page {
+        padding: 16px;
+    }
+
+
+    .multiplayer-card {
+        padding: 20px;
+
+        border-radius: 16px;
+    }
+
+
+    .multiplayer-title {
+        font-size: 28px;
+    }
+
+}

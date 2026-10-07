@@ -229,102 +229,169 @@ export default function LocalPlayerController({
     };
 
 
-    // ========================================================
-    // REALTIME PLAYER STATE
-    // ========================================================
 
-    useEffect(() => {
+// ========================================================
+// REALTIME PLAYER STATE
+// ========================================================
 
-        if (!room) {
+useEffect(() => {
 
-            console.log(
-                "[PLAYER] No Colyseus room"
-            );
-
-            setPlayerName(
-                "Player"
-            );
-
-            setIsDead(
-                false
-            );
-
-            lastServerAlive.current =
-                null;
-
-            return;
-        }
-
+    if (!room) {
 
         console.log(
-            "[PLAYER] Player state listener connected"
+            "[PLAYER] ❌ No Colyseus room"
         );
 
-        console.log(
-            "[PLAYER] Session ID:",
-            room.sessionId
+        setPlayerName(
+            "Player"
+        );
+
+        setIsDead(
+            false
+        );
+
+        lastServerAlive.current =
+            null;
+
+        velocityX.current =
+            0;
+
+        velocityZ.current =
+            0;
+
+        return;
+
+    }
+
+
+    console.log(
+        "========================================"
+    );
+
+    console.log(
+        "[PLAYER] 🔄 NEW ROOM"
+    );
+
+    console.log(
+        "[PLAYER] roomId:",
+        room.roomId
+    );
+
+    console.log(
+        "[PLAYER] sessionId:",
+        room.sessionId
+    );
+
+
+    /*
+     * QUAN TRỌNG:
+     *
+     * Mỗi room mới phải reset toàn bộ
+     * local player state.
+     */
+
+    setPlayerName(
+        "Player"
+    );
+
+    setIsDead(
+        false
+    );
+
+    lastServerAlive.current =
+        null;
+
+    velocityX.current =
+        0;
+
+    velocityZ.current =
+        0;
+
+    bombEscape.current.clear();
+
+
+    // ====================================================
+    // PLAYERS MAP
+    // ====================================================
+
+    const playersMap =
+        room.state?.players;
+
+
+    if (!playersMap) {
+
+        console.warn(
+            "[PLAYER] ❌ players map not ready"
+        );
+
+        return;
+
+    }
+
+
+    const $ =
+        getStateCallbacks(
+            room
         );
 
 
-        // ====================================================
-        // PLAYERS MAP
-        // ====================================================
-
-        const playersMap =
-            room.state?.players;
+    let playerUnsubscribe:
+        (() => void) | undefined;
 
 
-        if (!playersMap) {
+    // ====================================================
+    // BIND LOCAL PLAYER
+    // ====================================================
 
-            console.warn(
-                "[PLAYER] room.state.players not found"
-            );
-
-            return;
-        }
-
-
-        const $ =
-            getStateCallbacks(room);
-
-
-        let playerUnsubscribe:
-            (() => void) | undefined;
-
-
-        // ====================================================
-        // BIND LOCAL PLAYER
-        // ====================================================
-
-        const bindLocalPlayer = (
+    const bindLocalPlayer =
+        (
             serverPlayer: any
         ) => {
 
             if (!serverPlayer) {
+
+                console.warn(
+                    "[PLAYER] ❌ Local player is null"
+                );
+
                 return;
+
             }
 
 
             console.log(
-                "[PLAYER] Local player state found"
-            );
+                "[PLAYER] ✅ Local player bound:",
+                {
+                    roomId:
+                        room.roomId,
 
+                    sessionId:
+                        room.sessionId,
 
-            console.log(
-                "[PLAYER] Name:",
-                serverPlayer.name
-            );
+                    id:
+                        serverPlayer.id,
 
+                    name:
+                        serverPlayer.name,
 
-            console.log(
-                "[PLAYER] HP:",
-                serverPlayer.hp
-            );
+                    hp:
+                        serverPlayer.hp,
 
+                    alive:
+                        serverPlayer.alive,
 
-            console.log(
-                "[PLAYER] Alive:",
-                serverPlayer.alive
+                    x:
+                        serverPlayer.x,
+
+                    y:
+                        serverPlayer.y,
+
+                    z:
+                        serverPlayer.z,
+
+                    rotation:
+                        serverPlayer.rotation,
+                }
             );
 
 
@@ -352,15 +419,7 @@ export default function LocalPlayerController({
 
 
             // ================================================
-            // INITIAL STATE
-            // ================================================
-            //
-            // Khi mới join:
-            //
-            // server alive = true
-            //
-            // cần lấy spawn từ server.
-            //
+            // INITIAL POSITION
             // ================================================
 
             if (
@@ -391,11 +450,13 @@ export default function LocalPlayerController({
 
 
             // ================================================
-            // STATE CHANGE
+            // LISTEN PLAYER CHANGES
             // ================================================
 
             playerUnsubscribe =
-                $(serverPlayer).onChange(
+                $(
+                    serverPlayer
+                ).onChange(
                     () => {
 
                         // ====================================
@@ -416,17 +477,9 @@ export default function LocalPlayerController({
                             serverPlayer.alive !== false;
 
 
-                        // ====================================
-                        // PREVIOUS ALIVE
-                        // ====================================
-
                         const previousAlive =
                             lastServerAlive.current;
 
-
-                        // ====================================
-                        // SAVE ALIVE
-                        // ====================================
 
                         lastServerAlive.current =
                             currentAlive;
@@ -436,7 +489,9 @@ export default function LocalPlayerController({
                         // DEAD
                         // ====================================
 
-                        if (!currentAlive) {
+                        if (
+                            !currentAlive
+                        ) {
 
                             setIsDead(
                                 true
@@ -463,48 +518,18 @@ export default function LocalPlayerController({
                         // ====================================
                         // RESPAWN
                         // ====================================
-                        //
-                        // false → true
-                        //
-                        // Đây chính là phần quan trọng.
-                        //
-                        // Server đã chọn spawn mới.
-                        //
-                        // ====================================
 
                         if (
                             previousAlive ===
-                            false &&
+                                false &&
                             currentAlive ===
-                            true
+                                true
                         ) {
 
                             console.log(
                                 "[PLAYER] ❤️ Local player respawned"
                             );
 
-
-                            console.log(
-                                "[PLAYER] New server spawn:",
-                                {
-                                    x:
-                                        serverPlayer.x,
-
-                                    y:
-                                        serverPlayer.y,
-
-                                    z:
-                                        serverPlayer.z,
-
-                                    rotation:
-                                        serverPlayer.rotation,
-                                }
-                            );
-
-
-                            // =================================
-                            // RESET POSITION
-                            // =================================
 
                             resetPositionFromServer(
                                 serverPlayer
@@ -527,90 +552,153 @@ export default function LocalPlayerController({
         };
 
 
-        // ====================================================
-        // EXISTING LOCAL PLAYER
-        // ====================================================
+    // ====================================================
+    // FIND LOCAL PLAYER
+    // ====================================================
 
-        const existingPlayer =
-            playersMap.get(
-                room.sessionId
-            );
+    const findLocalPlayer =
+        () => {
 
-
-        if (existingPlayer) {
-
-            bindLocalPlayer(
-                existingPlayer
-            );
-
-        }
-        else {
-
-            console.log(
-                "[PLAYER] Waiting for local player state..."
-            );
-
-        }
+            const localPlayer =
+                playersMap.get(
+                    room.sessionId
+                );
 
 
-        // ====================================================
-        // PLAYER ADDED
-        // ====================================================
+            if (
+                localPlayer
+            ) {
 
-        const removeAddListener =
-            $(playersMap).onAdd(
-                (
-                    serverPlayer: any,
-                    playerId: string
-                ) => {
+                console.log(
+                    "[PLAYER] 🎯 Found local player:",
+                    {
+                        roomId:
+                            room.roomId,
 
-                    console.log(
-                        "[PLAYER] Player added:",
-                        playerId
-                    );
+                        sessionId:
+                            room.sessionId,
 
+                        id:
+                            localPlayer.id,
 
-                    if (
-                        playerId !==
-                        room.sessionId
-                    ) {
+                        name:
+                            localPlayer.name,
 
-                        return;
+                        hp:
+                            localPlayer.hp,
+
+                        alive:
+                            localPlayer.alive,
                     }
+                );
 
 
-                    bindLocalPlayer(
-                        serverPlayer
-                    );
-
-                }
-            );
+                bindLocalPlayer(
+                    localPlayer
+                );
 
 
-        // ====================================================
-        // CLEANUP
-        // ====================================================
+                return true;
 
-        return () => {
-
-            console.log(
-                "[PLAYER] Cleaning player listeners"
-            );
+            }
 
 
-            playerUnsubscribe?.();
-
-            removeAddListener?.();
-
-
-            bombEscape.current.clear();
-
-            lastServerAlive.current =
-                null;
+            return false;
 
         };
 
-    }, [room]);
+
+    // ====================================================
+    // EXISTING PLAYER
+    // ====================================================
+
+    if (
+        !findLocalPlayer()
+    ) {
+
+        console.log(
+            "[PLAYER] ⏳ Waiting for local player..."
+        );
+
+    }
+
+
+    // ====================================================
+    // PLAYER ADDED
+    // ====================================================
+
+    const removeAddListener =
+        $(playersMap).onAdd(
+            (
+                serverPlayer: any,
+                playerId: string
+            ) => {
+
+                console.log(
+                    "[PLAYER] ➕ Player added:",
+                    {
+                        roomId:
+                            room.roomId,
+
+                        playerId,
+
+                        localSession:
+                            room.sessionId,
+                    }
+                );
+
+
+                if (
+                    playerId !==
+                    room.sessionId
+                ) {
+
+                    return;
+
+                }
+
+
+                bindLocalPlayer(
+                    serverPlayer
+                );
+
+            }
+        );
+
+
+    // ====================================================
+    // CLEANUP
+    // ====================================================
+
+    return () => {
+
+        console.log(
+            "[PLAYER] 🧹 Cleaning room listeners:",
+            {
+                roomId:
+                    room.roomId,
+
+                sessionId:
+                    room.sessionId,
+            }
+        );
+
+
+        playerUnsubscribe?.();
+
+        removeAddListener?.();
+
+
+        bombEscape.current.clear();
+
+        lastServerAlive.current =
+            null;
+
+    };
+
+}, [
+    room,
+]);
 
 
     // ========================================================

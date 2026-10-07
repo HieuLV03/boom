@@ -52,23 +52,7 @@ export default function HomePage() {
                         <strong>AND BOOM</strong>
                     </h1>
 
-                    <p>
-                        Bước vào chiến trường.
-                        <br />
-                        Sống sót là mục tiêu duy nhất.
-                    </p>
-
                     <div className="actions">
-                        <button
-                            className="primaryButton"
-                            onClick={() => router.push("/game")}
-                        >
-                            <span className="buttonIcon">
-                                ▶
-                            </span>
-
-                            CHƠI NGAY
-                        </button>
 
                         <button
                             className="secondaryButton"

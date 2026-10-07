@@ -15,6 +15,8 @@ import {
     useMultiplayerStore,
 } from "@/stores/multiplayer.store";
 
+import "./page.css";
+
 
 // ============================================================
 // GENERATE ROOM CODE
@@ -88,10 +90,6 @@ export default function MultiplayerPage() {
             );
 
 
-            // ------------------------------------------------
-            // GENERATE ROOM CODE
-            // ------------------------------------------------
-
             const code =
                 generateRoomCode();
 
@@ -101,10 +99,6 @@ export default function MultiplayerPage() {
                 code
             );
 
-
-            // ------------------------------------------------
-            // CREATE ROOM
-            // ------------------------------------------------
 
             const room =
                 await client.create(
@@ -119,10 +113,6 @@ export default function MultiplayerPage() {
                     }
                 );
 
-
-            // ------------------------------------------------
-            // SAVE ROOM
-            // ------------------------------------------------
 
             setRoom(room);
 
@@ -154,10 +144,6 @@ export default function MultiplayerPage() {
                 "========================================"
             );
 
-
-            // ------------------------------------------------
-            // GO GAME
-            // ------------------------------------------------
 
             router.push(
                 `/game?room=${encodeURIComponent(
@@ -199,10 +185,6 @@ export default function MultiplayerPage() {
             roomCode.trim();
 
 
-        // ----------------------------------------------------
-        // VALIDATE
-        // ----------------------------------------------------
-
         if (
             !/^\d{6}$/.test(code)
         ) {
@@ -223,10 +205,6 @@ export default function MultiplayerPage() {
             );
 
 
-            // ------------------------------------------------
-            // JOIN ROOM
-            // ------------------------------------------------
-
             const room =
                 await client.join(
                     "battle",
@@ -240,10 +218,6 @@ export default function MultiplayerPage() {
                     }
                 );
 
-
-            // ------------------------------------------------
-            // SAVE ROOM
-            // ------------------------------------------------
 
             setRoom(room);
 
@@ -275,10 +249,6 @@ export default function MultiplayerPage() {
                 "========================================"
             );
 
-
-            // ------------------------------------------------
-            // GO GAME
-            // ------------------------------------------------
 
             router.push(
                 `/game?room=${encodeURIComponent(
@@ -316,93 +286,16 @@ export default function MultiplayerPage() {
 
     return (
 
-        <main
-            style={{
-                minHeight:
-                    "100vh",
+        <main className="multiplayer-page">
 
-                display:
-                    "flex",
+            <div className="multiplayer-card">
 
-                alignItems:
-                    "center",
-
-                justifyContent:
-                    "center",
-
-                padding:
-                    20,
-
-                background:
-                    "#111827",
-
-                color:
-                    "#fff",
-            }}
-        >
-
-            <div
-                style={{
-                    width:
-                        "100%",
-
-                    maxWidth:
-                        420,
-
-                    padding:
-                        24,
-
-                    borderRadius:
-                        20,
-
-                    background:
-                        "#1f2937",
-
-                    boxSizing:
-                        "border-box",
-
-                    display:
-                        "flex",
-
-                    flexDirection:
-                        "column",
-
-                    gap:
-                        14,
-                }}
-            >
-
-                <h1
-                    style={{
-                        margin:
-                            0,
-
-                        textAlign:
-                            "center",
-
-                        fontSize:
-                            32,
-
-                        fontWeight:
-                            800,
-                    }}
-                >
+                <h1 className="multiplayer-title">
                     BOOM
                 </h1>
 
 
-                <p
-                    style={{
-                        margin:
-                            0,
-
-                        textAlign:
-                            "center",
-
-                        color:
-                            "#9ca3af",
-                    }}
-                >
+                <p className="multiplayer-subtitle">
                     Multiplayer
                 </p>
 
@@ -412,42 +305,14 @@ export default function MultiplayerPage() {
                 ================================================== */}
 
                 <input
-                    value={
-                        name
-                    }
-
-                    onChange={(
-                        event
-                    ) =>
+                    className="multiplayer-input"
+                    value={name}
+                    onChange={(event) =>
                         setName(
                             event.target.value
                         )
                     }
-
                     placeholder="Tên người chơi"
-
-                    style={{
-                        width:
-                            "100%",
-
-                        boxSizing:
-                            "border-box",
-
-                        padding:
-                            14,
-
-                        borderRadius:
-                            10,
-
-                        border:
-                            "none",
-
-                        outline:
-                            "none",
-
-                        fontSize:
-                            16,
-                    }}
                 />
 
 
@@ -457,39 +322,8 @@ export default function MultiplayerPage() {
 
                 <button
                     type="button"
-
-                    onClick={
-                        createRoom
-                    }
-
-                    style={{
-                        width:
-                            "100%",
-
-                        padding:
-                            14,
-
-                        border:
-                            "none",
-
-                        borderRadius:
-                            10,
-
-                        background:
-                            "#2563eb",
-
-                        color:
-                            "#fff",
-
-                        fontSize:
-                            16,
-
-                        fontWeight:
-                            700,
-
-                        cursor:
-                            "pointer",
-                    }}
+                    className="multiplayer-button multiplayer-button-create"
+                    onClick={createRoom}
                 >
                     Tạo phòng
                 </button>
@@ -499,52 +333,15 @@ export default function MultiplayerPage() {
                     DIVIDER
                 ================================================== */}
 
-                <div
-                    style={{
-                        display:
-                            "flex",
+                <div className="multiplayer-divider">
 
-                        alignItems:
-                            "center",
+                    <div className="multiplayer-divider-line" />
 
-                        gap:
-                            10,
+                    <span>
+                        HOẶC
+                    </span>
 
-                        color:
-                            "#6b7280",
-
-                        fontSize:
-                            13,
-                    }}
-                >
-
-                    <div
-                        style={{
-                            flex:
-                                1,
-
-                            height:
-                                1,
-
-                            background:
-                                "#374151",
-                        }}
-                    />
-
-                    HOẶC
-
-                    <div
-                        style={{
-                            flex:
-                                1,
-
-                            height:
-                                1,
-
-                            background:
-                                "#374151",
-                        }}
-                    />
+                    <div className="multiplayer-divider-line" />
 
                 </div>
 
@@ -554,13 +351,9 @@ export default function MultiplayerPage() {
                 ================================================== */}
 
                 <input
-                    value={
-                        roomCode
-                    }
-
-                    onChange={(
-                        event
-                    ) => {
+                    className="multiplayer-input multiplayer-room-code"
+                    value={roomCode}
+                    onChange={(event) => {
 
                         const value =
                             event.target.value
@@ -579,40 +372,9 @@ export default function MultiplayerPage() {
                         );
 
                     }}
-
                     placeholder="Nhập mã phòng 6 số"
-
                     inputMode="numeric"
-
-                    maxLength={
-                        6
-                    }
-
-                    style={{
-                        width:
-                            "100%",
-
-                        boxSizing:
-                            "border-box",
-
-                        padding:
-                            14,
-
-                        borderRadius:
-                            10,
-
-                        border:
-                            "none",
-
-                        outline:
-                            "none",
-
-                        fontSize:
-                            16,
-
-                        letterSpacing:
-                            2,
-                    }}
+                    maxLength={6}
                 />
 
 
@@ -622,39 +384,8 @@ export default function MultiplayerPage() {
 
                 <button
                     type="button"
-
-                    onClick={
-                        joinRoom
-                    }
-
-                    style={{
-                        width:
-                            "100%",
-
-                        padding:
-                            14,
-
-                        border:
-                            "none",
-
-                        borderRadius:
-                            10,
-
-                        background:
-                            "#374151",
-
-                        color:
-                            "#fff",
-
-                        fontSize:
-                            16,
-
-                        fontWeight:
-                            700,
-
-                        cursor:
-                            "pointer",
-                    }}
+                    className="multiplayer-button multiplayer-button-join"
+                    onClick={joinRoom}
                 >
                     Vào phòng
                 </button>
@@ -664,27 +395,8 @@ export default function MultiplayerPage() {
                     STATUS
                 ================================================== */}
 
-                <p
-                    style={{
-                        margin:
-                            0,
-
-                        minHeight:
-                            20,
-
-                        textAlign:
-                            "center",
-
-                        color:
-                            "#9ca3af",
-
-                        fontSize:
-                            14,
-                    }}
-                >
-                    {
-                        status
-                    }
+                <p className="multiplayer-status">
+                    {status}
                 </p>
 
             </div>
