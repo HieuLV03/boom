@@ -2,7 +2,6 @@
 "use client";
 
 import {
-    useEffect,
     useState,
 } from "react";
 
@@ -50,71 +49,6 @@ export default function MultiplayerPage() {
             (state) =>
                 state.setRoom
         );
-
-    const clearRoom =
-        useMultiplayerStore(
-            (state) =>
-                state.clearRoom
-        );
-
-
-    // ========================================================
-    // CLEAR OLD ROOM
-    // ========================================================
-
-    useEffect(() => {
-
-        const oldRoom =
-            useMultiplayerStore
-                .getState()
-                .room;
-
-
-        if (!oldRoom) {
-            return;
-        }
-
-
-        console.log(
-            "[MULTIPLAYER] Old room detected:",
-            {
-                roomId:
-                    oldRoom.roomId,
-
-                sessionId:
-                    oldRoom.sessionId,
-            }
-        );
-
-
-        /*
-         * Đảm bảo connection cũ không còn
-         * khi người chơi quay về màn Multiplayer.
-         */
-
-        try {
-
-            oldRoom.leave();
-
-        }
-        catch (error) {
-
-            console.warn(
-                "[MULTIPLAYER] Old room leave error:",
-                error
-            );
-
-        }
-
-
-        clearRoom();
-
-
-        console.log(
-            "[MULTIPLAYER] Old room cleared"
-        );
-
-    }, [clearRoom]);
 
 
     // ========================================================
@@ -169,7 +103,7 @@ export default function MultiplayerPage() {
 
 
             // ------------------------------------------------
-            // CREATE COLYSEUS ROOM
+            // CREATE ROOM
             // ------------------------------------------------
 
             const room =
@@ -187,38 +121,42 @@ export default function MultiplayerPage() {
 
 
             // ------------------------------------------------
-            // SAVE ROOM CONNECTION
+            // SAVE ROOM
             // ------------------------------------------------
 
             setRoom(room);
 
 
-            // ------------------------------------------------
-            // DEBUG
-            // ------------------------------------------------
+            console.log(
+                "========================================"
+            );
 
             console.log(
-                "[ROOM ID]",
+                "[CREATE] Room created"
+            );
+
+            console.log(
+                "[CREATE] roomId:",
                 room.roomId
             );
 
             console.log(
-                "[SESSION ID]",
+                "[CREATE] sessionId:",
                 room.sessionId
             );
 
             console.log(
-                "[ROOM CODE]",
+                "[CREATE] roomCode:",
                 code
             );
 
             console.log(
-                "[ROOM CONNECTION SAVED]"
+                "========================================"
             );
 
 
             // ------------------------------------------------
-            // GO TO GAME
+            // GO GAME
             // ------------------------------------------------
 
             router.push(
@@ -241,6 +179,7 @@ export default function MultiplayerPage() {
                 error
             );
 
+
             setStatus(
                 "Không thể tạo phòng"
             );
@@ -261,7 +200,7 @@ export default function MultiplayerPage() {
 
 
         // ----------------------------------------------------
-        // VALIDATE ROOM CODE
+        // VALIDATE
         // ----------------------------------------------------
 
         if (
@@ -285,7 +224,7 @@ export default function MultiplayerPage() {
 
 
             // ------------------------------------------------
-            // JOIN COLYSEUS ROOM
+            // JOIN ROOM
             // ------------------------------------------------
 
             const room =
@@ -303,38 +242,42 @@ export default function MultiplayerPage() {
 
 
             // ------------------------------------------------
-            // SAVE ROOM CONNECTION
+            // SAVE ROOM
             // ------------------------------------------------
 
             setRoom(room);
 
 
-            // ------------------------------------------------
-            // DEBUG
-            // ------------------------------------------------
+            console.log(
+                "========================================"
+            );
 
             console.log(
-                "[ROOM ID]",
+                "[JOIN] Room joined"
+            );
+
+            console.log(
+                "[JOIN] roomId:",
                 room.roomId
             );
 
             console.log(
-                "[SESSION ID]",
+                "[JOIN] sessionId:",
                 room.sessionId
             );
 
             console.log(
-                "[ROOM CODE]",
+                "[JOIN] roomCode:",
                 code
             );
 
             console.log(
-                "[ROOM CONNECTION SAVED]"
+                "========================================"
             );
 
 
             // ------------------------------------------------
-            // GO TO GAME
+            // GO GAME
             // ------------------------------------------------
 
             router.push(
@@ -356,6 +299,7 @@ export default function MultiplayerPage() {
                 "[JOIN ROOM ERROR]",
                 error
             );
+
 
             setStatus(
                 "Không tìm thấy phòng"
@@ -628,6 +572,7 @@ export default function MultiplayerPage() {
                                     0,
                                     6
                                 );
+
 
                         setRoomCode(
                             value

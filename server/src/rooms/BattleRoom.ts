@@ -133,12 +133,23 @@ export class BattleRoom extends Room<{
             options?.roomCode ||
             generateRoomCode();
 
+        // IMPORTANT:
+        // filterBy(["roomCode"]) ở server entry
+        // sẽ dựa vào metadata này.
+        this.setMetadata({
+            roomCode,
+        });
+
         this.state.roomCode =
             roomCode;
 
 
         console.log(
             `[ROOM] Code: ${this.state.roomCode}`
+        );
+
+        console.log(
+            `[ROOM] Metadata roomCode: ${roomCode}`
         );
 
 
@@ -158,18 +169,12 @@ export class BattleRoom extends Room<{
         );
 
 
-        /*
-         * Server authoritative timer.
-         *
-         * Mỗi 1 giây giảm 1.
-         */
+        // ====================================================
+        // MATCH TIMER
+        // ====================================================
 
         this.clock.setInterval(
             () => {
-
-                // --------------------------------------------
-                // GAME ALREADY OVER
-                // --------------------------------------------
 
                 if (
                     this.state.gameOver
@@ -177,10 +182,6 @@ export class BattleRoom extends Room<{
                     return;
                 }
 
-
-                // --------------------------------------------
-                // DECREASE TIMER
-                // --------------------------------------------
 
                 this.state.timeRemaining =
                     Math.max(
@@ -193,10 +194,6 @@ export class BattleRoom extends Room<{
                     `[GAME] Time remaining: ${this.state.timeRemaining}s`
                 );
 
-
-                // --------------------------------------------
-                // GAME OVER
-                // --------------------------------------------
 
                 if (
                     this.state.timeRemaining <= 0
@@ -220,10 +217,6 @@ export class BattleRoom extends Room<{
                         "================================================"
                     );
 
-
-                    /*
-                     * Thông báo cho tất cả client.
-                     */
 
                     this.broadcast(
                         "gameOver",
@@ -250,10 +243,6 @@ export class BattleRoom extends Room<{
                 message
             ) => {
 
-                // --------------------------------------------
-                // GAME OVER
-                // --------------------------------------------
-
                 if (
                     this.state.gameOver
                 ) {
@@ -272,18 +261,10 @@ export class BattleRoom extends Room<{
                 }
 
 
-                // --------------------------------------------
-                // DEAD PLAYER
-                // --------------------------------------------
-
                 if (!player.alive) {
                     return;
                 }
 
-
-                // --------------------------------------------
-                // POSITION
-                // --------------------------------------------
 
                 if (
                     typeof message?.x ===
@@ -317,10 +298,6 @@ export class BattleRoom extends Room<{
 
                 }
 
-
-                // --------------------------------------------
-                // ROTATION
-                // --------------------------------------------
 
                 if (
                     typeof message?.rotation ===
@@ -356,10 +333,6 @@ export class BattleRoom extends Room<{
                 );
 
 
-                // ============================================
-                // GAME OVER
-                // ============================================
-
                 if (
                     this.state.gameOver
                 ) {
@@ -371,10 +344,6 @@ export class BattleRoom extends Room<{
                     return;
                 }
 
-
-                // ============================================
-                // GET PLAYER
-                // ============================================
 
                 const player =
                     this.state.players.get(
@@ -408,10 +377,6 @@ export class BattleRoom extends Room<{
                     `[BOMB] Player alive: ${player.alive}`
                 );
 
-
-                // ============================================
-                // DEAD PLAYER
-                // ============================================
 
                 if (!player.alive) {
 
@@ -449,10 +414,6 @@ export class BattleRoom extends Room<{
                     "normal";
 
 
-                // ============================================
-                // BOMB POSITION
-                // ============================================
-
                 bomb.x =
                     player.x;
 
@@ -462,10 +423,6 @@ export class BattleRoom extends Room<{
                 bomb.z =
                     player.z;
 
-
-                // ============================================
-                // BOMB CONFIG
-                // ============================================
 
                 bomb.radius =
                     BOMB_RADIUS;
@@ -524,10 +481,6 @@ export class BattleRoom extends Room<{
                     "================================================"
                 );
 
-
-                // ============================================
-                // BROADCAST PLANTED
-                // ============================================
 
                 this.broadcast(
                     "bombPlanted",
@@ -588,10 +541,6 @@ export class BattleRoom extends Room<{
                             );
 
 
-                            // =================================
-                            // GET CURRENT BOMB
-                            // =================================
-
                             const currentBomb =
                                 this.state.bombs.get(
                                     bombId
@@ -610,20 +559,12 @@ export class BattleRoom extends Room<{
                             }
 
 
-                            // =================================
-                            // UPDATE REMAINING
-                            // =================================
-
                             currentBomb.remaining =
                                 Math.max(
                                     0,
                                     remaining
                                 );
 
-
-                            // =================================
-                            // EXPLODE
-                            // =================================
 
                             if (
                                 remaining <= 0
@@ -667,13 +608,6 @@ export class BattleRoom extends Room<{
     // ========================================================
 
     private getRandomSpawnPosition() {
-
-        /*
-         * Các vị trí spawn hợp lệ trên map.
-         *
-         * Bạn có thể thay đổi tọa độ
-         * theo map thực tế.
-         */
 
         const spawnPoints = [
 
@@ -748,10 +682,6 @@ export class BattleRoom extends Room<{
         sessionId: string
     ) {
 
-        // ====================================================
-        // GET PLAYER
-        // ====================================================
-
         const player =
             this.state.players.get(
                 sessionId
@@ -768,10 +698,6 @@ export class BattleRoom extends Room<{
         }
 
 
-        // ====================================================
-        // GAME OVER
-        // ====================================================
-
         if (
             this.state.gameOver
         ) {
@@ -784,17 +710,9 @@ export class BattleRoom extends Room<{
         }
 
 
-        // ====================================================
-        // RANDOM SPAWN
-        // ====================================================
-
         const spawn =
             this.getRandomSpawnPosition();
 
-
-        // ====================================================
-        // POSITION
-        // ====================================================
 
         player.x =
             spawn.x;
@@ -809,20 +727,12 @@ export class BattleRoom extends Room<{
             0;
 
 
-        // ====================================================
-        // RESET HP
-        // ====================================================
-
         player.hp =
             MAX_HP;
 
         player.alive =
             true;
 
-
-        // ====================================================
-        // BROADCAST
-        // ====================================================
 
         this.broadcast(
             "playerRespawned",
@@ -850,10 +760,6 @@ export class BattleRoom extends Room<{
             }
         );
 
-
-        // ====================================================
-        // LOG
-        // ====================================================
 
         console.log("");
         console.log(
@@ -904,10 +810,6 @@ export class BattleRoom extends Room<{
         );
 
 
-        // ====================================================
-        // GET BOMB
-        // ====================================================
-
         const bomb =
             this.state.bombs.get(
                 bombId
@@ -933,10 +835,6 @@ export class BattleRoom extends Room<{
             return;
         }
 
-
-        // ====================================================
-        // MARK EXPLODED
-        // ====================================================
 
         bomb.exploded =
             true;
@@ -968,10 +866,6 @@ export class BattleRoom extends Room<{
             "================================================"
         );
 
-
-        // ====================================================
-        // CHECK PLAYERS
-        // ====================================================
 
         console.log(
             `[BOMB] Checking ${this.state.players.size} players`
@@ -1006,10 +900,6 @@ export class BattleRoom extends Room<{
                 );
 
 
-                // ==========================================
-                // DEAD
-                // ==========================================
-
                 if (!player.alive) {
 
                     console.log(
@@ -1019,10 +909,6 @@ export class BattleRoom extends Room<{
                     return;
                 }
 
-
-                // ==========================================
-                // DISTANCE
-                // ==========================================
 
                 const distance =
                     distanceXZ(
@@ -1042,10 +928,6 @@ export class BattleRoom extends Room<{
                 );
 
 
-                // ==========================================
-                // OUTSIDE
-                // ==========================================
-
                 if (
                     distance >
                     bomb.radius
@@ -1059,18 +941,10 @@ export class BattleRoom extends Room<{
                 }
 
 
-                // ==========================================
-                // INSIDE
-                // ==========================================
-
                 console.log(
                     `       💥 INSIDE EXPLOSION`
                 );
 
-
-                // ==========================================
-                // OLD HP
-                // ==========================================
 
                 const oldHp =
                     Number(
@@ -1079,20 +953,12 @@ export class BattleRoom extends Room<{
                     );
 
 
-                // ==========================================
-                // DAMAGE
-                // ==========================================
-
                 const damage =
                     Math.min(
                         oldHp,
                         BOMB_DAMAGE
                     );
 
-
-                // ==========================================
-                // NEW HP
-                // ==========================================
 
                 const newHp =
                     Math.max(
@@ -1101,17 +967,9 @@ export class BattleRoom extends Room<{
                     );
 
 
-                // ==========================================
-                // UPDATE SERVER STATE
-                // ==========================================
-
                 player.hp =
                     newHp;
 
-
-                // ==========================================
-                // DEATH
-                // ==========================================
 
                 if (
                     player.hp <= 0
@@ -1129,10 +987,6 @@ export class BattleRoom extends Room<{
                     );
 
 
-                    // ========================================
-                    // RESPAWN AFTER 3 SECONDS
-                    // ========================================
-
                     this.clock.setTimeout(
                         () => {
 
@@ -1147,10 +1001,6 @@ export class BattleRoom extends Room<{
                 }
 
 
-                // ==========================================
-                // RESULT
-                // ==========================================
-
                 console.log(
                     `       ❤️ HP: ${oldHp} → ${player.hp}`
                 );
@@ -1159,10 +1009,6 @@ export class BattleRoom extends Room<{
                     `       alive: ${player.alive}`
                 );
 
-
-                // ==========================================
-                // DAMAGE EVENT
-                // ==========================================
 
                 this.broadcast(
                     "playerDamaged",
@@ -1196,10 +1042,6 @@ export class BattleRoom extends Room<{
         );
 
 
-        // ====================================================
-        // EXPLOSION EVENT
-        // ====================================================
-
         this.broadcast(
             "bombExploded",
             {
@@ -1231,10 +1073,6 @@ export class BattleRoom extends Room<{
             "[BOMB] bombExploded broadcasted"
         );
 
-
-        // ====================================================
-        // REMOVE BOMB
-        // ====================================================
 
         this.clock.setTimeout(
             () => {
@@ -1281,6 +1119,9 @@ export class BattleRoom extends Room<{
         );
         console.log(
             `       sessionId: ${client.sessionId}`
+        );
+        console.log(
+            `       roomCode: ${options?.roomCode ?? "none"}`
         );
         console.log(
             "================================================"
@@ -1341,18 +1182,18 @@ export class BattleRoom extends Room<{
         // SPAWN
         // ====================================================
 
-        const playerIndex =
-            this.state.players.size;
+        const spawn =
+            this.getRandomSpawnPosition();
 
 
         player.x =
-            playerIndex * 3;
+            spawn.x;
 
         player.y =
-            0;
+            spawn.y;
 
         player.z =
-            0;
+            spawn.z;
 
         player.rotation =
             0;
@@ -1462,18 +1303,10 @@ export class BattleRoom extends Room<{
         );
 
 
-        // ====================================================
-        // WAS HOST?
-        // ====================================================
-
         const wasHost =
             this.hostSessionId ===
             client.sessionId;
 
-
-        // ====================================================
-        // REMOVE PLAYER
-        // ====================================================
 
         this.state.players.delete(
             client.sessionId
@@ -1484,10 +1317,6 @@ export class BattleRoom extends Room<{
             `[ROOM] Removed player: ${client.sessionId}`
         );
 
-
-        // ====================================================
-        // HOST LEAVE
-        // ====================================================
 
         if (wasHost) {
 
@@ -1530,10 +1359,6 @@ export class BattleRoom extends Room<{
         }
 
 
-        // ====================================================
-        // BROADCAST HOST
-        // ====================================================
-
         this.broadcast(
             "hostChanged",
             {
@@ -1542,10 +1367,6 @@ export class BattleRoom extends Room<{
             }
         );
 
-
-        // ====================================================
-        // LOG
-        // ====================================================
 
         console.log(
             `[ROOM] Host: ${

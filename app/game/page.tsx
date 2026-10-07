@@ -77,10 +77,6 @@ function GamePageContent() {
 
     useEffect(() => {
 
-        // ----------------------------------------------------
-        // NO ROOM
-        // ----------------------------------------------------
-
         if (!room) {
 
             console.log(
@@ -98,9 +94,9 @@ function GamePageContent() {
         }
 
 
-        // ----------------------------------------------------
-        // ROOM CONNECTED
-        // ----------------------------------------------------
+        const currentRoom =
+            room;
+
 
         console.log(
             "========================================"
@@ -112,12 +108,12 @@ function GamePageContent() {
 
         console.log(
             "[GAME PAGE] roomId:",
-            room.roomId
+            currentRoom.roomId
         );
 
         console.log(
             "[GAME PAGE] sessionId:",
-            room.sessionId
+            currentRoom.sessionId
         );
 
         console.log(
@@ -125,30 +121,9 @@ function GamePageContent() {
         );
 
 
-        const currentRoom =
-            room;
-
-
-        // ----------------------------------------------------
-        // COLYSEUS ON LEAVE
-        // ----------------------------------------------------
-
-        /*
-         * QUAN TRỌNG:
-         *
-         * @colyseus/sdk version hiện tại của bạn
-         * không trả về unsubscribe function từ onLeave().
-         *
-         * Vì vậy KHÔNG lưu kết quả:
-         *
-         * const removeLeaveListener = room.onLeave(...)
-         *
-         * và KHÔNG gọi:
-         *
-         * removeLeaveListener?.()
-         *
-         */
-
+        // ====================================================
+        // ROOM LEAVE
+        // ====================================================
 
         currentRoom.onLeave?.(
             (
@@ -156,7 +131,7 @@ function GamePageContent() {
             ) => {
 
                 console.log(
-                    "[GAME PAGE] ❌ Colyseus room left:",
+                    "[GAME PAGE] ❌ Room left:",
                     {
                         roomId:
                             currentRoom.roomId,
@@ -175,35 +150,38 @@ function GamePageContent() {
                         .room;
 
 
-                // ------------------------------------------------
-                // Chỉ clear đúng room hiện tại
-                // ------------------------------------------------
+                /*
+                 * Chỉ xử lý nếu đây vẫn là
+                 * room hiện tại.
+                 *
+                 * Nếu room cũ leave sau khi
+                 * room mới đã được set thì
+                 * KHÔNG được đụng vào room mới.
+                 */
 
                 if (
-                    activeRoom ===
+                    activeRoom !==
                     currentRoom
                 ) {
 
                     console.log(
-                        "[GAME PAGE] Clearing current room"
+                        "[GAME PAGE] Ignoring old room leave"
                     );
 
 
-                    useMultiplayerStore
-                        .getState()
-                        .clearRoom();
-
-
-                    console.log(
-                        "[GAME PAGE] → /multiplayer"
-                    );
-
-
-                    router.replace(
-                        "/multiplayer"
-                    );
+                    return;
 
                 }
+
+
+                useMultiplayerStore
+                    .getState()
+                    .clearRoom();
+
+
+                router.replace(
+                    "/multiplayer"
+                );
 
             }
         );
@@ -287,9 +265,7 @@ function GamePageContent() {
 
         return (
             <div className="game-loading">
-
                 Đang quay về phòng...
-
             </div>
         );
 
@@ -304,9 +280,7 @@ function GamePageContent() {
 
         return (
             <div className="game-loading">
-
                 Đang tải game...
-
             </div>
         );
 
@@ -326,22 +300,18 @@ function GamePageContent() {
                     📱
                 </div>
 
-
                 <div className="landscape-arrow">
                     ↔️
                 </div>
-
 
                 <div className="landscape-title">
                     XOAY NGANG ĐIỆN THOẠI
                 </div>
 
-
                 <div className="landscape-description">
                     Vui lòng xoay điện thoại sang
                     chế độ ngang để chơi game.
                 </div>
-
 
                 <div className="landscape-hint">
                     Game yêu cầu màn hình ngang
@@ -377,9 +347,7 @@ export default function GamePage() {
         <Suspense
             fallback={
                 <div className="game-loading">
-
                     Đang tải game...
-
                 </div>
             }
         >
