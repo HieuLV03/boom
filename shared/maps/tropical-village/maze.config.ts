@@ -114,11 +114,17 @@ export function worldToCell(
 ) {
 
     const cellX =
-        Math.round(x / CELL_SIZE) +
+        Math.floor(
+            x / CELL_SIZE +
+            0.5
+        ) +
         Math.floor(MAP_WIDTH / 2);
 
     const cellZ =
-        Math.round(z / CELL_SIZE) +
+        Math.floor(
+            z / CELL_SIZE +
+            0.5
+        ) +
         Math.floor(MAP_HEIGHT / 2);
 
     return {
@@ -126,7 +132,6 @@ export function worldToCell(
         cellZ,
     };
 }
-
 
 // ============================================================
 // CELL -> WORLD
@@ -158,60 +163,127 @@ export function cellToWorld(
 // ============================================================
 // COLLISION
 // ============================================================
-
 export function canMoveTo(
     x: number,
     z: number,
-    radius = 0.35,
+    radius = 0.45,
 ): boolean {
 
-    const points: [
-        number,
-        number,
-    ][] = [
+    const center =
+        worldToCell(
+            x,
+            z,
+        );
 
-        [
-            x - radius,
-            z - radius,
-        ],
-
-        [
-            x + radius,
-            z - radius,
-        ],
-
-        [
-            x - radius,
-            z + radius,
-        ],
-
-        [
-            x + radius,
-            z + radius,
-        ],
-    ];
+    // ========================================================
+    // CHECK NEARBY CELLS
+    // ========================================================
 
     for (
-        const [
-            pointX,
-            pointZ,
-        ] of points
+        let offsetZ = -1;
+        offsetZ <= 1;
+        offsetZ++
     ) {
 
-        const cell =
-            worldToCell(
-                pointX,
-                pointZ,
-            );
-
-        if (
-            !isWalkableCell(
-                cell.cellX,
-                cell.cellZ,
-            )
+        for (
+            let offsetX = -1;
+            offsetX <= 1;
+            offsetX++
         ) {
 
-            return false;
+            const cellX =
+                center.cellX +
+                offsetX;
+
+            const cellZ =
+                center.cellZ +
+                offsetZ;
+
+            // ------------------------------------------------
+            // WALKABLE
+            // ------------------------------------------------
+
+            if (
+                isWalkableCell(
+                    cellX,
+                    cellZ,
+                )
+            ) {
+                continue;
+            }
+
+            // ------------------------------------------------
+            // WALL CENTER
+            // ------------------------------------------------
+
+            const wall =
+                cellToWorld(
+                    cellX,
+                    cellZ,
+                );
+
+            const half =
+                CELL_SIZE / 2;
+
+            const minX =
+                wall.x - half;
+
+            const maxX =
+                wall.x + half;
+
+            const minZ =
+                wall.z - half;
+
+            const maxZ =
+                wall.z + half;
+
+            // ------------------------------------------------
+            // CLOSEST POINT
+            // ------------------------------------------------
+
+            const closestX =
+                Math.max(
+                    minX,
+                    Math.min(
+                        x,
+                        maxX,
+                    ),
+                );
+
+            const closestZ =
+                Math.max(
+                    minZ,
+                    Math.min(
+                        z,
+                        maxZ,
+                    ),
+                );
+
+            // ------------------------------------------------
+            // DISTANCE
+            // ------------------------------------------------
+
+            const dx =
+                x - closestX;
+
+            const dz =
+                z - closestZ;
+
+            const distanceSquared =
+                dx * dx +
+                dz * dz;
+
+            // ------------------------------------------------
+            // COLLISION
+            // ------------------------------------------------
+
+            if (
+                distanceSquared <
+                radius * radius
+            ) {
+
+                return false;
+            }
         }
     }
 
