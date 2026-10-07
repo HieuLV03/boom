@@ -11,6 +11,11 @@ import {
     BombState,
 } from "../schema/BattleState.js";
 
+import {
+    getMapConfig,
+    type MapId,
+} from "../../../components/game/maps/maps.config.js";
+
 
 // ============================================================
 // TYPES
@@ -21,6 +26,8 @@ interface BattleRoomOptions extends RoomOptions {
     name?: string;
 
     roomCode?: string;
+
+    mapId?: MapId;
 
 }
 
@@ -103,6 +110,14 @@ export class BattleRoom extends Room<{
 
 
     // ========================================================
+    // MAP
+    // ========================================================
+
+    private mapId: MapId =
+        "tropical-village";
+
+
+    // ========================================================
     // CREATE
     // ========================================================
 
@@ -111,17 +126,61 @@ export class BattleRoom extends Room<{
     ) {
 
         console.log("");
+
         console.log(
             "================================================"
         );
+
         console.log(
             "[ROOM] CREATE"
         );
+
         console.log(
             `       roomId: ${this.roomId}`
         );
+
         console.log(
             "================================================"
+        );
+
+
+        // ====================================================
+        // MAP
+        // ====================================================
+
+        this.mapId =
+            options?.mapId ||
+            "tropical-village";
+
+
+        const map =
+            getMapConfig(
+                this.mapId
+            );
+
+
+        if (!map) {
+
+            console.error(
+                `[ROOM] ❌ Invalid map: ${this.mapId}`
+            );
+
+            this.mapId =
+                "tropical-village";
+
+        }
+
+
+        // ====================================================
+        // SAVE MAP TO STATE
+        // ====================================================
+
+        this.state.mapId =
+            this.mapId;
+
+
+        console.log(
+            `[ROOM] Map: ${this.mapId}`
         );
 
 
@@ -133,12 +192,11 @@ export class BattleRoom extends Room<{
             options?.roomCode ||
             generateRoomCode();
 
-        // IMPORTANT:
-        // filterBy(["roomCode"]) ở server entry
-        // sẽ dựa vào metadata này.
+
         this.setMetadata({
             roomCode,
         });
+
 
         this.state.roomCode =
             roomCode;
@@ -168,10 +226,6 @@ export class BattleRoom extends Room<{
             `[GAME] Match duration: ${MATCH_DURATION}s`
         );
 
-
-        // ====================================================
-        // MATCH TIMER
-        // ====================================================
 
         this.clock.setInterval(
             () => {
@@ -207,12 +261,15 @@ export class BattleRoom extends Room<{
 
 
                     console.log("");
+
                     console.log(
                         "================================================"
                     );
+
                     console.log(
                         "[GAME] ⏰ GAME OVER"
                     );
+
                     console.log(
                         "================================================"
                     );
@@ -324,6 +381,7 @@ export class BattleRoom extends Room<{
             ) => {
 
                 console.log("");
+
                 console.log(
                     "[BOMB TEST] plantBomb RECEIVED"
                 );
@@ -342,6 +400,7 @@ export class BattleRoom extends Room<{
                     );
 
                     return;
+
                 }
 
 
@@ -358,6 +417,7 @@ export class BattleRoom extends Room<{
                     );
 
                     return;
+
                 }
 
 
@@ -385,20 +445,21 @@ export class BattleRoom extends Room<{
                     );
 
                     return;
+
                 }
 
 
-                // ============================================
+                // ==================================================
                 // BOMB ID
-                // ============================================
+                // ==================================================
 
                 const bombId =
                     `${client.sessionId}-${Date.now()}`;
 
 
-                // ============================================
+                // ==================================================
                 // CREATE BOMB
-                // ============================================
+                // ==================================================
 
                 const bomb =
                     new BombState();
@@ -442,9 +503,9 @@ export class BattleRoom extends Room<{
                     "circle";
 
 
-                // ============================================
+                // ==================================================
                 // ADD BOMB
-                // ============================================
+                // ==================================================
 
                 this.state.bombs.set(
                     bombId,
@@ -453,30 +514,39 @@ export class BattleRoom extends Room<{
 
 
                 console.log("");
+
                 console.log(
                     "================================================"
                 );
+
                 console.log(
                     "[BOMB] 💣 PLANTED"
                 );
+
                 console.log(
                     `       id: ${bomb.id}`
                 );
+
                 console.log(
                     `       owner: ${player.name}`
                 );
+
                 console.log(
                     `       position: ${bomb.x}, ${bomb.y}, ${bomb.z}`
                 );
+
                 console.log(
                     `       radius: ${bomb.radius}`
                 );
+
                 console.log(
                     `       damage: ${bomb.damage}`
                 );
+
                 console.log(
                     `       remaining: ${bomb.remaining}`
                 );
+
                 console.log(
                     "================================================"
                 );
@@ -514,9 +584,9 @@ export class BattleRoom extends Room<{
                 );
 
 
-                // ============================================
+                // ==================================================
                 // COUNTDOWN
-                // ============================================
+                // ==================================================
 
                 let remaining =
                     Math.ceil(
@@ -556,6 +626,7 @@ export class BattleRoom extends Room<{
                                 countdown.clear();
 
                                 return;
+
                             }
 
 
@@ -604,72 +675,215 @@ export class BattleRoom extends Room<{
 
 
     // ========================================================
-    // RANDOM SPAWN
+    // GET RANDOM SPAWN POSITION
     // ========================================================
 
     private getRandomSpawnPosition() {
 
-        const spawnPoints = [
+        const map =
+            getMapConfig(
+                this.mapId
+            );
 
-            {
-                x: -9,
-                y: 0,
-                z: -9,
-            },
 
-            {
+        const {
+            CELL_SIZE,
+            MAP_WIDTH,
+            MAP_HEIGHT,
+            MAZE_MAP,
+        } = map;
+
+
+        const MAP_CENTER_X =
+            Math.floor(
+                MAP_WIDTH / 2
+            );
+
+
+        const MAP_CENTER_Z =
+            Math.floor(
+                MAP_HEIGHT / 2
+            );
+
+
+        const spawnPoints: {
+            x: number;
+            y: number;
+            z: number;
+        }[] = [];
+
+
+        // ====================================================
+        // FIND ALL P CELLS
+        // ====================================================
+
+        for (
+            let cellZ = 0;
+            cellZ < MAZE_MAP.length;
+            cellZ++
+        ) {
+
+            const row =
+                MAZE_MAP[cellZ];
+
+
+            for (
+                let cellX = 0;
+                cellX < row.length;
+                cellX++
+            ) {
+
+                if (
+                    row[cellX] !== "P"
+                ) {
+                    continue;
+                }
+
+
+                const x =
+                    (
+                        cellX -
+                        MAP_CENTER_X
+                    ) *
+                    CELL_SIZE;
+
+
+                const z =
+                    (
+                        cellZ -
+                        MAP_CENTER_Z
+                    ) *
+                    CELL_SIZE;
+
+
+                spawnPoints.push({
+                    x,
+                    y: 0,
+                    z,
+                });
+
+            }
+
+        }
+
+
+        // ====================================================
+        // NO SPAWN
+        // ====================================================
+
+        if (
+            spawnPoints.length === 0
+        ) {
+
+            console.error(
+                `[SPAWN] ❌ No P spawn points in map: ${this.mapId}`
+            );
+
+
+            return {
                 x: 0,
                 y: 0,
-                z: -9,
-            },
-
-            {
-                x: 9,
-                y: 0,
-                z: -9,
-            },
-
-            {
-                x: -9,
-                y: 0,
                 z: 0,
-            },
+            };
 
-            {
-                x: 9,
-                y: 0,
-                z: 0,
-            },
+        }
 
-            {
-                x: -9,
-                y: 0,
-                z: 9,
-            },
 
-            {
-                x: 0,
-                y: 0,
-                z: 9,
-            },
+        // ====================================================
+        // AVOID PLAYERS
+        // ====================================================
 
-            {
-                x: 9,
-                y: 0,
-                z: 9,
-            },
+        const MIN_DISTANCE = 4;
 
-        ];
+
+        const safeSpawnPoints =
+            spawnPoints.filter(
+                (spawn) => {
+
+                    for (
+                        const player
+                        of this.state.players.values()
+                    ) {
+
+                        if (
+                            !player.alive
+                        ) {
+                            continue;
+                        }
+
+
+                        const distance =
+                            distanceXZ(
+                                spawn.x,
+                                spawn.z,
+                                player.x,
+                                player.z
+                            );
+
+
+                        if (
+                            distance <
+                            MIN_DISTANCE
+                        ) {
+
+                            return false;
+
+                        }
+
+                    }
+
+
+                    return true;
+
+                }
+            );
+
+
+        const candidates =
+            safeSpawnPoints.length > 0
+                ? safeSpawnPoints
+                : spawnPoints;
 
 
         const index =
             Math.floor(
                 Math.random() *
-                spawnPoints.length
+                candidates.length
             );
 
 
-        return spawnPoints[index];
+        const spawn =
+            candidates[index];
+
+
+        console.log(
+            "[SPAWN] Selected:",
+            {
+                map:
+                    this.mapId,
+
+                x:
+                    spawn.x,
+
+                y:
+                    spawn.y,
+
+                z:
+                    spawn.z,
+
+                safe:
+                    safeSpawnPoints.length > 0,
+
+                total:
+                    spawnPoints.length,
+
+                safeCount:
+                    safeSpawnPoints.length,
+            }
+        );
+
+
+        return spawn;
 
     }
 
@@ -695,6 +909,7 @@ export class BattleRoom extends Room<{
             );
 
             return;
+
         }
 
 
@@ -707,6 +922,7 @@ export class BattleRoom extends Room<{
             );
 
             return;
+
         }
 
 
@@ -762,24 +978,31 @@ export class BattleRoom extends Room<{
 
 
         console.log("");
+
         console.log(
             "================================================"
         );
+
         console.log(
             "[RESPAWN] 🔄 PLAYER RESPAWNED"
         );
+
         console.log(
             `          player: ${player.name}`
         );
+
         console.log(
             `          sessionId: ${sessionId}`
         );
+
         console.log(
             `          position: ${player.x}, ${player.y}, ${player.z}`
         );
+
         console.log(
             `          HP: ${player.hp}`
         );
+
         console.log(
             "================================================"
         );
@@ -796,15 +1019,19 @@ export class BattleRoom extends Room<{
     ) {
 
         console.log("");
+
         console.log(
             "================================================"
         );
+
         console.log(
             `[BOMB] explodeBomb() CALLED`
         );
+
         console.log(
             `       bombId: ${bombId}`
         );
+
         console.log(
             "================================================"
         );
@@ -823,6 +1050,7 @@ export class BattleRoom extends Room<{
             );
 
             return;
+
         }
 
 
@@ -833,6 +1061,7 @@ export class BattleRoom extends Room<{
             );
 
             return;
+
         }
 
 
@@ -844,24 +1073,31 @@ export class BattleRoom extends Room<{
 
 
         console.log("");
+
         console.log(
             "================================================"
         );
+
         console.log(
             "[BOMB] 💥 EXPLODED"
         );
+
         console.log(
             `       id: ${bomb.id}`
         );
+
         console.log(
             `       position: ${bomb.x}, ${bomb.y}, ${bomb.z}`
         );
+
         console.log(
             `       radius: ${bomb.radius}`
         );
+
         console.log(
             `       damage: ${bomb.damage}`
         );
+
         console.log(
             "================================================"
         );
@@ -872,6 +1108,10 @@ export class BattleRoom extends Room<{
         );
 
 
+        // ====================================================
+        // CHECK PLAYERS
+        // ====================================================
+
         this.state.players.forEach(
             (
                 player,
@@ -879,6 +1119,7 @@ export class BattleRoom extends Room<{
             ) => {
 
                 console.log("");
+
                 console.log(
                     `[BOMB] 🔎 Checking player: ${player.name}`
                 );
@@ -907,6 +1148,7 @@ export class BattleRoom extends Room<{
                     );
 
                     return;
+
                 }
 
 
@@ -938,6 +1180,7 @@ export class BattleRoom extends Room<{
                     );
 
                     return;
+
                 }
 
 
@@ -1111,18 +1354,27 @@ export class BattleRoom extends Room<{
     ) {
 
         console.log("");
+
         console.log(
             "================================================"
         );
+
         console.log(
             "[ROOM] Player joined"
         );
+
         console.log(
             `       sessionId: ${client.sessionId}`
         );
+
         console.log(
             `       roomCode: ${options?.roomCode ?? "none"}`
         );
+
+        console.log(
+            `       roomMap: ${this.mapId}`
+        );
+
         console.log(
             "================================================"
         );
@@ -1160,7 +1412,7 @@ export class BattleRoom extends Room<{
 
 
         // ====================================================
-        // CREATE NEW PLAYER
+        // CREATE PLAYER
         // ====================================================
 
         const player =
@@ -1211,7 +1463,7 @@ export class BattleRoom extends Room<{
 
 
         // ====================================================
-        // ADD
+        // ADD PLAYER
         // ====================================================
 
         this.state.players.set(
@@ -1254,6 +1506,10 @@ export class BattleRoom extends Room<{
         );
 
         console.log(
+            `       map: ${this.mapId}`
+        );
+
+        console.log(
             `       position: ${player.x}, ${player.y}, ${player.z}`
         );
 
@@ -1286,18 +1542,23 @@ export class BattleRoom extends Room<{
     ) {
 
         console.log("");
+
         console.log(
             "================================================"
         );
+
         console.log(
             "[ROOM] Player left"
         );
+
         console.log(
             `       sessionId: ${client.sessionId}`
         );
+
         console.log(
             `       code: ${code ?? "unknown"}`
         );
+
         console.log(
             "================================================"
         );

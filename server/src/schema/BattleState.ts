@@ -1,4 +1,3 @@
-
 import {
     Schema,
     MapSchema,
@@ -91,6 +90,27 @@ export class BattleState extends Schema {
 
     @type("string")
     roomCode: string = "";
+
+
+    // ========================================================
+    // MAP
+    // ========================================================
+
+    /*
+     * ID của map hiện tại.
+     *
+     * Server quyết định map khi tạo room.
+     *
+     * Client đọc:
+     *
+     * room.state.mapId
+     *
+     * Ví dụ:
+     * "tropical-village"
+     */
+
+    @type("string")
+    mapId: string = "tropical-village";
 
 
     // ========================================================
