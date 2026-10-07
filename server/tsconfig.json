@@ -1,29 +1,31 @@
+
 {
     "compilerOptions": {
         "target": "ES2022",
+
         "module": "NodeNext",
+
         "moduleResolution": "NodeNext",
 
         "strict": true,
+
         "esModuleInterop": true,
+
         "skipLibCheck": true,
 
         "experimentalDecorators": true,
+
         "useDefineForClassFields": false,
 
         "sourceMap": true,
 
         "rootDir": "..",
+
         "outDir": "./dist"
     },
 
     "include": [
         "src/**/*.ts",
-        "../components/**/*.ts"
-    ],
-
-    "exclude": [
-        "node_modules",
-        "dist"
+        "../shared/**/*.ts"
     ]
 }

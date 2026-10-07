@@ -1,4 +1,3 @@
-
 import {
     Client,
     Room,
@@ -14,7 +13,7 @@ import {
 import {
     getMapConfig,
     type MapId,
-} from "../../../components/game/maps/maps.config.js";
+} from "../../../shared/maps/map.config.js";
 
 
 // ============================================================
@@ -148,25 +147,31 @@ export class BattleRoom extends Room<{
         // MAP
         // ====================================================
 
-        this.mapId =
-            options?.mapId ||
+        const requestedMapId =
+            options?.mapId ??
             "tropical-village";
 
 
         const map =
             getMapConfig(
-                this.mapId
+                requestedMapId
             );
 
 
         if (!map) {
 
             console.error(
-                `[ROOM] ❌ Invalid map: ${this.mapId}`
+                `[ROOM] ❌ Invalid map: ${requestedMapId}`
             );
 
             this.mapId =
                 "tropical-village";
+
+        }
+        else {
+
+            this.mapId =
+                requestedMapId;
 
         }
 
@@ -189,7 +194,7 @@ export class BattleRoom extends Room<{
         // ====================================================
 
         const roomCode =
-            options?.roomCode ||
+            options?.roomCode ??
             generateRoomCode();
 
 
@@ -323,48 +328,61 @@ export class BattleRoom extends Room<{
                 }
 
 
+                const nextX =
+                    typeof message?.x === "number"
+                        ? message.x
+                        : player.x;
+
+
+                const nextY =
+                    typeof message?.y === "number"
+                        ? message.y
+                        : player.y;
+
+
+                const nextZ =
+                    typeof message?.z === "number"
+                        ? message.z
+                        : player.z;
+
+
+                const nextRotation =
+                    typeof message?.rotation === "number"
+                        ? message.rotation
+                        : player.rotation;
+
+
+                // ==================================================
+                // SERVER COLLISION
+                // ==================================================
+
+                const map =
+                    getMapConfig(
+                        this.mapId
+                    );
+
+
                 if (
-                    typeof message?.x ===
-                    "number"
+                    map.canMoveTo(
+                        nextX,
+                        nextZ
+                    )
                 ) {
 
                     player.x =
-                        message.x;
-
-                }
-
-
-                if (
-                    typeof message?.y ===
-                    "number"
-                ) {
+                        nextX;
 
                     player.y =
-                        message.y;
-
-                }
-
-
-                if (
-                    typeof message?.z ===
-                    "number"
-                ) {
+                        nextY;
 
                     player.z =
-                        message.z;
+                        nextZ;
 
                 }
 
 
-                if (
-                    typeof message?.rotation ===
-                    "number"
-                ) {
-
-                    player.rotation =
-                        message.rotation;
-
-                }
+                player.rotation =
+                    nextRotation;
 
             }
         );
@@ -441,7 +459,7 @@ export class BattleRoom extends Room<{
                 if (!player.alive) {
 
                     console.log(
-                        `[BOMB] ❌ Dead player cannot plant bomb`
+                        "[BOMB] ❌ Dead player cannot plant bomb"
                     );
 
                     return;
@@ -694,13 +712,13 @@ export class BattleRoom extends Room<{
         } = map;
 
 
-        const MAP_CENTER_X =
+        const mapCenterX =
             Math.floor(
                 MAP_WIDTH / 2
             );
 
 
-        const MAP_CENTER_Z =
+        const mapCenterZ =
             Math.floor(
                 MAP_HEIGHT / 2
             );
@@ -743,7 +761,7 @@ export class BattleRoom extends Room<{
                 const x =
                     (
                         cellX -
-                        MAP_CENTER_X
+                        mapCenterX
                     ) *
                     CELL_SIZE;
 
@@ -751,7 +769,7 @@ export class BattleRoom extends Room<{
                 const z =
                     (
                         cellZ -
-                        MAP_CENTER_Z
+                        mapCenterZ
                     ) *
                     CELL_SIZE;
 
@@ -793,12 +811,15 @@ export class BattleRoom extends Room<{
         // AVOID PLAYERS
         // ====================================================
 
-        const MIN_DISTANCE = 4;
+        const MIN_DISTANCE =
+            4;
 
 
         const safeSpawnPoints =
             spawnPoints.filter(
-                (spawn) => {
+                (
+                    spawn
+                ) => {
 
                     for (
                         const player
@@ -1025,7 +1046,7 @@ export class BattleRoom extends Room<{
         );
 
         console.log(
-            `[BOMB] explodeBomb() CALLED`
+            "[BOMB] explodeBomb() CALLED"
         );
 
         console.log(
@@ -1144,7 +1165,7 @@ export class BattleRoom extends Room<{
                 if (!player.alive) {
 
                     console.log(
-                        `       ☠️ ALREADY DEAD`
+                        "       ☠️ ALREADY DEAD"
                     );
 
                     return;
@@ -1176,7 +1197,7 @@ export class BattleRoom extends Room<{
                 ) {
 
                     console.log(
-                        `       ❌ OUTSIDE EXPLOSION`
+                        "       ❌ OUTSIDE EXPLOSION"
                     );
 
                     return;
@@ -1185,7 +1206,7 @@ export class BattleRoom extends Room<{
 
 
                 console.log(
-                    `       💥 INSIDE EXPLOSION`
+                    "       💥 INSIDE EXPLOSION"
                 );
 
 
@@ -1199,7 +1220,7 @@ export class BattleRoom extends Room<{
                 const damage =
                     Math.min(
                         oldHp,
-                        BOMB_DAMAGE
+                        bomb.damage
                     );
 
 

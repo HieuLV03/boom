@@ -1,19 +1,17 @@
+
 // ============================================================
-// MAZE CONFIG
+// TROPICAL VILLAGE MAZE
 // ============================================================
 
 export const CELL_SIZE = 2;
 
 export const MAP_WIDTH = 31;
+
 export const MAP_HEIGHT = 31;
 
 
 // ============================================================
-// MAP
-//
-// # = WALL
-// . = FLOOR
-// P = PLAYER SPAWN
+// MAZE
 // ============================================================
 
 export const MAZE_MAP = [
@@ -43,7 +41,7 @@ export const MAZE_MAP = [
     "#.....#.#.....#.#.....#.#...#.#",
     "#####.#.#####.#.#.#####.###.#.#",
     "#.....#.....#...#.....#.....#.#",
-    "#.###.#####.#####.#####.###.#.#",
+    "#.###.#####.#####.#####.###.#",
     "#P....#.....#.....#.....#....P#",
     "#.###.#.###.#.###.#.###.#.###.#",
     "#.....#.....#.....#.....#.....#",
@@ -67,7 +65,7 @@ export type MazeCell =
 
 export function getMazeCell(
     cellX: number,
-    cellZ: number
+    cellZ: number,
 ): MazeCell {
 
     if (
@@ -77,8 +75,7 @@ export function getMazeCell(
         return "#";
     }
 
-    const row =
-        MAZE_MAP[cellZ];
+    const row = MAZE_MAP[cellZ];
 
     if (
         cellX < 0 ||
@@ -97,42 +94,32 @@ export function getMazeCell(
 
 export function isWalkableCell(
     cellX: number,
-    cellZ: number
+    cellZ: number,
 ): boolean {
 
-    return (
-        getMazeCell(
-            cellX,
-            cellZ
-        ) !== "#"
-    );
+    return getMazeCell(
+        cellX,
+        cellZ,
+    ) !== "#";
 }
 
 
 // ============================================================
-// WORLD → CELL
+// WORLD -> CELL
 // ============================================================
 
 export function worldToCell(
     x: number,
-    z: number
+    z: number,
 ) {
 
     const cellX =
-        Math.round(
-            x / CELL_SIZE
-        ) +
-        Math.floor(
-            MAP_WIDTH / 2
-        );
+        Math.round(x / CELL_SIZE) +
+        Math.floor(MAP_WIDTH / 2);
 
     const cellZ =
-        Math.round(
-            z / CELL_SIZE
-        ) +
-        Math.floor(
-            MAP_HEIGHT / 2
-        );
+        Math.round(z / CELL_SIZE) +
+        Math.floor(MAP_HEIGHT / 2);
 
     return {
         cellX,
@@ -142,30 +129,26 @@ export function worldToCell(
 
 
 // ============================================================
-// CELL → WORLD
+// CELL -> WORLD
 // ============================================================
 
 export function cellToWorld(
     cellX: number,
-    cellZ: number
+    cellZ: number,
 ) {
 
     return {
         x:
             (
                 cellX -
-                Math.floor(
-                    MAP_WIDTH / 2
-                )
+                Math.floor(MAP_WIDTH / 2)
             ) *
             CELL_SIZE,
 
         z:
             (
                 cellZ -
-                Math.floor(
-                    MAP_HEIGHT / 2
-                )
+                Math.floor(MAP_HEIGHT / 2)
             ) *
             CELL_SIZE,
     };
@@ -173,45 +156,64 @@ export function cellToWorld(
 
 
 // ============================================================
-// WORLD POSITION COLLISION
+// COLLISION
 // ============================================================
 
 export function canMoveTo(
     x: number,
     z: number,
-    radius = 0.35
+    radius = 0.35,
 ): boolean {
 
-    const points = [
-        [x - radius, z - radius],
-        [x + radius, z - radius],
-        [x - radius, z + radius],
-        [x + radius, z + radius],
+    const points: [
+        number,
+        number,
+    ][] = [
+
+        [
+            x - radius,
+            z - radius,
+        ],
+
+        [
+            x + radius,
+            z - radius,
+        ],
+
+        [
+            x - radius,
+            z + radius,
+        ],
+
+        [
+            x + radius,
+            z + radius,
+        ],
     ];
 
-
     for (
-        const [pointX, pointZ]
-        of points
+        const [
+            pointX,
+            pointZ,
+        ] of points
     ) {
 
         const cell =
             worldToCell(
                 pointX,
-                pointZ
+                pointZ,
             );
-
 
         if (
             !isWalkableCell(
                 cell.cellX,
-                cell.cellZ
+                cell.cellZ,
             )
         ) {
+
             return false;
         }
     }
-
 
     return true;
 }
