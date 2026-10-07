@@ -110,28 +110,7 @@ export default function LocalPlayerController({
 
 
     // ========================================================
-    // BOMB COLLISION
-    // ========================================================
-    //
-    // Cho phép player đi ra khỏi quả bom mà mình đang đứng trên.
-    //
-    // Ví dụ:
-    //
-    //        💣
-    //        👤 →
-    //
-    // Player vừa đặt bom sẽ không bị khóa cứng.
-    //
-    // Sau khi player rời khỏi vùng bom:
-    //
-    //        💣    👤
-    //
-    // Nếu quay lại:
-    //
-    //        👤 → 💣
-    //
-    // sẽ bị chặn.
-    //
+    // BOMB ESCAPE
     // ========================================================
 
     const bombEscape =
@@ -140,6 +119,114 @@ export default function LocalPlayerController({
         >(
             new Set()
         );
+
+
+    // ========================================================
+    // LAST SERVER ALIVE
+    // ========================================================
+    //
+    // Dùng để phát hiện:
+    //
+    // true → false = chết
+    //
+    // false → true = respawn
+    //
+    // Không snap position mỗi lần server state thay đổi.
+    //
+    // ========================================================
+
+    const lastServerAlive =
+        useRef<boolean | null>(
+            null
+        );
+
+
+    // ========================================================
+    // RESET LOCAL POSITION FROM SERVER
+    // ========================================================
+
+    const resetPositionFromServer = (
+        serverPlayer: any
+    ) => {
+
+        const player =
+            playerRef.current;
+
+
+        if (
+            !player ||
+            !serverPlayer
+        ) {
+            return;
+        }
+
+
+        const x =
+            Number(
+                serverPlayer.x ?? 0
+            );
+
+        const y =
+            Number(
+                serverPlayer.y ?? 0
+            );
+
+        const z =
+            Number(
+                serverPlayer.z ?? 0
+            );
+
+        const rotation =
+            Number(
+                serverPlayer.rotation ?? 0
+            );
+
+
+        // ====================================================
+        // RESET POSITION
+        // ====================================================
+
+        player.position.set(
+            x,
+            y,
+            z
+        );
+
+
+        // ====================================================
+        // RESET ROTATION
+        // ====================================================
+
+        player.rotation.y =
+            rotation;
+
+
+        // ====================================================
+        // RESET MOVEMENT
+        // ====================================================
+
+        velocityX.current = 0;
+        velocityZ.current = 0;
+
+
+        // ====================================================
+        // RESET BOMB ESCAPE
+        // ====================================================
+
+        bombEscape.current.clear();
+
+
+        console.log(
+            "[PLAYER] 📍 Local position synced:",
+            {
+                x,
+                y,
+                z,
+                rotation,
+            }
+        );
+
+    };
 
 
     // ========================================================
@@ -154,8 +241,16 @@ export default function LocalPlayerController({
                 "[PLAYER] No Colyseus room"
             );
 
-            setPlayerName("Player");
-            setIsDead(false);
+            setPlayerName(
+                "Player"
+            );
+
+            setIsDead(
+                false
+            );
+
+            lastServerAlive.current =
+                null;
 
             return;
         }
@@ -172,7 +267,7 @@ export default function LocalPlayerController({
 
 
         // ====================================================
-        // STATE
+        // PLAYERS MAP
         // ====================================================
 
         const playersMap =
@@ -257,13 +352,33 @@ export default function LocalPlayerController({
 
 
             // ================================================
-            // RESET VELOCITY
+            // INITIAL STATE
+            // ================================================
+            //
+            // Khi mới join:
+            //
+            // server alive = true
+            //
+            // cần lấy spawn từ server.
+            //
             // ================================================
 
-            if (!alive) {
+            if (
+                lastServerAlive.current ===
+                null
+            ) {
 
-                velocityX.current = 0;
-                velocityZ.current = 0;
+                lastServerAlive.current =
+                    alive;
+
+
+                if (alive) {
+
+                    resetPositionFromServer(
+                        serverPlayer
+                    );
+
+                }
 
             }
 
@@ -301,9 +416,20 @@ export default function LocalPlayerController({
                             serverPlayer.alive !== false;
 
 
-                        setIsDead(
-                            !currentAlive
-                        );
+                        // ====================================
+                        // PREVIOUS ALIVE
+                        // ====================================
+
+                        const previousAlive =
+                            lastServerAlive.current;
+
+
+                        // ====================================
+                        // SAVE ALIVE
+                        // ====================================
+
+                        lastServerAlive.current =
+                            currentAlive;
 
 
                         // ====================================
@@ -312,12 +438,20 @@ export default function LocalPlayerController({
 
                         if (!currentAlive) {
 
-                            velocityX.current = 0;
-                            velocityZ.current = 0;
+                            setIsDead(
+                                true
+                            );
+
+
+                            velocityX.current =
+                                0;
+
+                            velocityZ.current =
+                                0;
 
 
                             console.log(
-                                "[PLAYER] 💀 Player died"
+                                "[PLAYER] 💀 Local player died"
                             );
 
 
@@ -327,11 +461,64 @@ export default function LocalPlayerController({
 
 
                         // ====================================
+                        // RESPAWN
+                        // ====================================
+                        //
+                        // false → true
+                        //
+                        // Đây chính là phần quan trọng.
+                        //
+                        // Server đã chọn spawn mới.
+                        //
+                        // ====================================
+
+                        if (
+                            previousAlive ===
+                            false &&
+                            currentAlive ===
+                            true
+                        ) {
+
+                            console.log(
+                                "[PLAYER] ❤️ Local player respawned"
+                            );
+
+
+                            console.log(
+                                "[PLAYER] New server spawn:",
+                                {
+                                    x:
+                                        serverPlayer.x,
+
+                                    y:
+                                        serverPlayer.y,
+
+                                    z:
+                                        serverPlayer.z,
+
+                                    rotation:
+                                        serverPlayer.rotation,
+                                }
+                            );
+
+
+                            // =================================
+                            // RESET POSITION
+                            // =================================
+
+                            resetPositionFromServer(
+                                serverPlayer
+                            );
+
+                        }
+
+
+                        // ====================================
                         // ALIVE
                         // ====================================
 
-                        console.log(
-                            "[PLAYER] ❤️ Player alive"
+                        setIsDead(
+                            false
                         );
 
                     }
@@ -341,7 +528,7 @@ export default function LocalPlayerController({
 
 
         // ====================================================
-        // EXISTING PLAYER
+        // EXISTING LOCAL PLAYER
         // ====================================================
 
         const existingPlayer =
@@ -418,6 +605,9 @@ export default function LocalPlayerController({
 
             bombEscape.current.clear();
 
+            lastServerAlive.current =
+                null;
+
         };
 
     }, [room]);
@@ -450,10 +640,17 @@ export default function LocalPlayerController({
                 5
             );
 
-            player.rotation.y = 0;
+            player.rotation.y =
+                0;
 
-            velocityX.current = 0;
-            velocityZ.current = 0;
+            velocityX.current =
+                0;
+
+            velocityZ.current =
+                0;
+
+            lastServerAlive.current =
+                null;
 
             return;
         }
@@ -520,9 +717,17 @@ export default function LocalPlayerController({
         // PLAYER ALIVE
         // ====================================================
 
+        const alive =
+            serverPlayer.alive !== false;
+
+
         setIsDead(
-            serverPlayer.alive === false
+            !alive
         );
+
+
+        lastServerAlive.current =
+            alive;
 
 
         // ====================================================
@@ -560,8 +765,16 @@ export default function LocalPlayerController({
         // RESET VELOCITY
         // ====================================================
 
-        velocityX.current = 0;
-        velocityZ.current = 0;
+        velocityX.current =
+            0;
+
+        velocityZ.current =
+            0;
+
+
+        // ====================================================
+        // RESET BOMB ESCAPE
+        // ====================================================
 
         bombEscape.current.clear();
 
@@ -592,10 +805,14 @@ export default function LocalPlayerController({
 
         if (isDead) {
 
-            velocityX.current = 0;
-            velocityZ.current = 0;
+            velocityX.current =
+                0;
+
+            velocityZ.current =
+                0;
 
             return;
+
         }
 
 
@@ -700,8 +917,11 @@ export default function LocalPlayerController({
         }
         else {
 
-            forwardX = 0;
-            forwardZ = -1;
+            forwardX =
+                0;
+
+            forwardZ =
+                -1;
 
         }
 
@@ -756,8 +976,11 @@ export default function LocalPlayerController({
         }
         else {
 
-            moveX = 0;
-            moveZ = 0;
+            moveX =
+                0;
+
+            moveZ =
+                0;
 
         }
 
@@ -778,7 +1001,6 @@ export default function LocalPlayerController({
         const targetVelocityX =
             moveX *
             targetSpeed;
-
 
         const targetVelocityZ =
             moveZ *
@@ -897,7 +1119,7 @@ export default function LocalPlayerController({
 
 
         // ====================================================
-        // GET SERVER BOMBS
+        // SERVER BOMBS
         // ====================================================
 
         const serverBombs =
@@ -909,7 +1131,7 @@ export default function LocalPlayerController({
 
 
         // ====================================================
-        // BOMB COLLISION CONSTANTS
+        // BOMB COLLISION
         // ====================================================
 
         const PLAYER_RADIUS =
@@ -924,7 +1146,7 @@ export default function LocalPlayerController({
 
 
         // ====================================================
-        // CHECK BOMB COLLISION
+        // CAN MOVE AROUND BOMBS
         // ====================================================
 
         const canMoveAroundBombs =
@@ -949,6 +1171,7 @@ export default function LocalPlayerController({
                             (bomb as any).x ?? 0
                         );
 
+
                     const bombZ =
                         Number(
                             (bomb as any).z ?? 0
@@ -958,6 +1181,7 @@ export default function LocalPlayerController({
                     const dx =
                         targetX -
                         bombX;
+
 
                     const dz =
                         targetZ -
@@ -972,16 +1196,13 @@ export default function LocalPlayerController({
 
 
                     // ========================================
-                    // PLAYER ĐANG Ở TRONG BOM
-                    // ========================================
-                    //
-                    // Cho phép thoát khỏi bomb.
-                    //
+                    // CURRENT DISTANCE
                     // ========================================
 
                     const currentDX =
                         player.position.x -
                         bombX;
+
 
                     const currentDZ =
                         player.position.z -
@@ -996,6 +1217,10 @@ export default function LocalPlayerController({
                                 currentDZ
                         );
 
+
+                    // ========================================
+                    // PLAYER INSIDE BOMB
+                    // ========================================
 
                     if (
                         currentDistance <
@@ -1012,7 +1237,7 @@ export default function LocalPlayerController({
 
 
                     // ========================================
-                    // ĐÃ THOÁT BOM
+                    // EXITED BOMB
                     // ========================================
 
                     if (
@@ -1020,12 +1245,6 @@ export default function LocalPlayerController({
                             bombId
                         )
                     ) {
-
-                        /*
-                         * Player đã ra khỏi bomb.
-                         *
-                         * Từ đây bomb trở thành vật cản.
-                         */
 
                         if (
                             currentDistance >
@@ -1098,7 +1317,8 @@ export default function LocalPlayerController({
             }
             else {
 
-                velocityX.current = 0;
+                velocityX.current =
+                    0;
 
             }
 
@@ -1126,7 +1346,8 @@ export default function LocalPlayerController({
             }
             else {
 
-                velocityZ.current = 0;
+                velocityZ.current =
+                    0;
 
             }
 
@@ -1154,6 +1375,7 @@ export default function LocalPlayerController({
             const directionX =
                 velocityX.current /
                 actualSpeed;
+
 
             const directionZ =
                 velocityZ.current /
