@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -62,6 +63,7 @@ function RemotePlayer({
             id
         );
 
+
         return () => {
 
             console.log(
@@ -75,7 +77,7 @@ function RemotePlayer({
 
 
     // ========================================================
-    // UPDATE POSITION EVERY FRAME
+    // UPDATE POSITION
     // ========================================================
 
     useFrame(() => {
@@ -83,11 +85,14 @@ function RemotePlayer({
         const group =
             groupRef.current;
 
+
         if (
             !group ||
             !player
         ) {
+
             return;
+
         }
 
 
@@ -96,15 +101,18 @@ function RemotePlayer({
                 player.x ?? 0
             );
 
+
         const y =
             Number(
                 player.y ?? 0
             );
 
+
         const z =
             Number(
                 player.z ?? 0
             );
+
 
         const rotation =
             Number(
@@ -117,6 +125,7 @@ function RemotePlayer({
             y,
             z
         );
+
 
         group.rotation.y =
             rotation;
@@ -134,19 +143,20 @@ function RemotePlayer({
             ref={groupRef}
         >
 
-      <Player
-    position={[
-        0,
-        0,
-        0,
-    ]}
-    name={
-        player.name ||
-        "Player"
-    }
-/>
+            <Player
+                position={[
+                    0,
+                    0,
+                    0,
+                ]}
+                name={
+                    player?.name ||
+                    "Player"
+                }
+            />
 
         </group>
+
     );
 }
 
@@ -168,13 +178,11 @@ export default function RemotePlayers() {
         players,
         setPlayers,
     ] =
-        useState<RemotePlayerData[]>(
-            []
-        );
+        useState<RemotePlayerData[]>([]);
 
 
     // ========================================================
-    // ROOM / STATE SYNC
+    // ROOM SYNC
     // ========================================================
 
     useEffect(() => {
@@ -183,14 +191,15 @@ export default function RemotePlayers() {
             "========================================"
         );
 
+
         console.log(
             "[REMOTE] Room changed"
         );
 
-        console.log(
-            "[REMOTE] room:",
-            room
-        );
+
+        // ====================================================
+        // NO ROOM
+        // ====================================================
 
         if (!room) {
 
@@ -198,127 +207,52 @@ export default function RemotePlayers() {
                 "[REMOTE] ❌ No room"
             );
 
+
             setPlayers([]);
 
+
             return;
+
         }
 
 
+        // ====================================================
+        // ROOM INFO
+        // ====================================================
+
         console.log(
-            "[REMOTE] sessionId:",
-            room.sessionId
+            "[REMOTE] ✅ Active room:",
+            {
+                roomId:
+                    room.roomId,
+
+                sessionId:
+                    room.sessionId,
+            }
         );
 
 
         // ====================================================
-        // WAIT FOR STATE
+        // PLAYERS MAP
         // ====================================================
 
-        const syncPlayers =
-            () => {
-
-                const playersMap =
-                    room.state?.players;
+        const playersMap =
+            room.state?.players;
 
 
-                if (!playersMap) {
+        if (!playersMap) {
 
-                    console.warn(
-                        "[REMOTE] ❌ players map not ready"
-                    );
-
-                    setPlayers([]);
-
-                    return;
-                }
+            console.warn(
+                "[REMOTE] ❌ players map not ready"
+            );
 
 
-                console.log(
-                    "[REMOTE] players.size:",
-                    playersMap.size
-                );
+            setPlayers([]);
 
 
-                const result:
-                    RemotePlayerData[] =
-                    [];
+            return;
 
-
-                playersMap.forEach(
-                    (
-                        player: any,
-                        id: string
-                    ) => {
-
-                        console.log(
-                            "[REMOTE] Player in state:",
-                            {
-                                id,
-                                name:
-                                    player.name,
-
-                                x:
-                                    player.x,
-
-                                y:
-                                    player.y,
-
-                                z:
-                                    player.z,
-
-                                hp:
-                                    player.hp,
-
-                                alive:
-                                    player.alive,
-
-                                isLocal:
-                                    id ===
-                                    room.sessionId,
-                            }
-                        );
-
-
-                        // ====================================
-                        // KHÔNG RENDER LOCAL
-                        // ====================================
-
-                        if (
-                            id ===
-                            room.sessionId
-                        ) {
-
-                            return;
-                        }
-
-
-                        result.push({
-                            id,
-                            player,
-                        });
-
-                    }
-                );
-
-
-                console.log(
-                    "[REMOTE] Remote players:",
-                    result.length
-                );
-
-
-                setPlayers(
-                    result
-                );
-
-            };
-
-
-        // ====================================================
-        // INITIAL SYNC
-        // ====================================================
-
-        syncPlayers();
+        }
 
 
         // ====================================================
@@ -329,18 +263,76 @@ export default function RemotePlayers() {
             getStateCallbacks(room);
 
 
-        const playersMap =
-            room.state?.players;
+        // ====================================================
+        // SYNC PLAYERS
+        // ====================================================
+
+        const syncPlayers =
+            () => {
+
+                const remotePlayers:
+                    RemotePlayerData[] =
+                    [];
 
 
-        if (!playersMap) {
+                playersMap.forEach(
+                    (
+                        player: any,
+                        id: string
+                    ) => {
 
-            console.warn(
-                "[REMOTE] ❌ playersMap missing"
-            );
+                        const isLocal =
+                            id ===
+                            room.sessionId;
 
-            return;
-        }
+
+                        // ------------------------------------
+                        // Không render chính mình
+                        // ------------------------------------
+
+                        if (isLocal) {
+
+                            return;
+
+                        }
+
+
+                        remotePlayers.push({
+                            id,
+                            player,
+                        });
+
+                    }
+                );
+
+
+                console.log(
+                    "[REMOTE] Sync players:",
+                    {
+                        total:
+                            playersMap.size,
+
+                        remote:
+                            remotePlayers.length,
+
+                        local:
+                            room.sessionId,
+                    }
+                );
+
+
+                setPlayers(
+                    remotePlayers
+                );
+
+            };
+
+
+        // ====================================================
+        // INITIAL SYNC
+        // ====================================================
+
+        syncPlayers();
 
 
         // ====================================================
@@ -358,17 +350,18 @@ export default function RemotePlayers() {
                         "[REMOTE] ➕ PLAYER ADDED:",
                         {
                             id,
+
                             name:
-                                player.name,
+                                player?.name,
 
                             x:
-                                player.x,
+                                player?.x,
 
                             y:
-                                player.y,
+                                player?.y,
 
                             z:
-                                player.z,
+                                player?.z,
 
                             local:
                                 id ===
@@ -378,52 +371,6 @@ export default function RemotePlayers() {
 
 
                     syncPlayers();
-
-
-                    // ========================================
-                    // PLAYER STATE CHANGE
-                    // ========================================
-
-                    $(player).onChange(
-                        () => {
-
-                            /*
-                             * Không cần setPlayers
-                             * ở mỗi frame.
-                             *
-                             * RemotePlayer đọc trực tiếp
-                             * player.x/y/z trong useFrame.
-                             *
-                             * Chỉ log khi state thay đổi
-                             * nếu cần debug.
-                             */
-
-                            console.log(
-                                "[REMOTE] Player changed:",
-                                id,
-                                {
-                                    x:
-                                        player.x,
-
-                                    y:
-                                        player.y,
-
-                                    z:
-                                        player.z,
-
-                                    rotation:
-                                        player.rotation,
-
-                                    hp:
-                                        player.hp,
-
-                                    alive:
-                                        player.alive,
-                                }
-                            );
-
-                        }
-                    );
 
                 }
             );
@@ -444,6 +391,7 @@ export default function RemotePlayers() {
                         "[REMOTE] ❌ PLAYER REMOVED:",
                         {
                             id,
+
                             name:
                                 player?.name,
                         }
@@ -470,17 +418,22 @@ export default function RemotePlayers() {
                     "[REMOTE] Existing player:",
                     {
                         id,
+
                         name:
-                            player.name,
+                            player?.name,
 
                         x:
-                            player.x,
+                            player?.x,
 
                         y:
-                            player.y,
+                            player?.y,
 
                         z:
-                            player.z,
+                            player?.z,
+
+                        local:
+                            id ===
+                            room.sessionId,
                     }
                 );
 
@@ -496,14 +449,22 @@ export default function RemotePlayers() {
 
             console.log(
                 "[REMOTE] Cleaning room listeners:",
-                room.sessionId
+                {
+                    roomId:
+                        room.roomId,
+
+                    sessionId:
+                        room.sessionId,
+                }
             );
 
-            
 
             removeAdd?.();
 
             removeRemove?.();
+
+
+            setPlayers([]);
 
         };
 
@@ -529,21 +490,24 @@ export default function RemotePlayers() {
 
         <group>
 
-            {players.map(
-                ({
-                    id,
-                    player,
-                }) => (
+            {
+                players.map(
+                    ({
+                        id,
+                        player,
+                    }) => (
 
-                    <RemotePlayer
-                        key={id}
-                        id={id}
-                        player={player}
-                    />
+                        <RemotePlayer
+                            key={id}
+                            id={id}
+                            player={player}
+                        />
 
+                    )
                 )
-            )}
+            }
 
         </group>
+
     );
 }

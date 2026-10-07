@@ -52,7 +52,8 @@ export default function BoomGame({
     roomCode = "",
 }: Props) {
 
-    const router = useRouter();
+    const router =
+        useRouter();
 
 
     // ========================================================
@@ -78,8 +79,12 @@ export default function BoomGame({
 
 
     // ========================================================
-    // LEAVING STATE
+    // LEAVING
     // ========================================================
+
+    const leavingRef =
+        useRef(false);
+
 
     const [
         isLeaving,
@@ -89,10 +94,6 @@ export default function BoomGame({
 
     // ========================================================
     // ROOM REF
-    // ========================================================
-    //
-    // Giữ room mới nhất.
-    //
     // ========================================================
 
     const roomRef =
@@ -108,13 +109,15 @@ export default function BoomGame({
 
 
     // ========================================================
-    // BROWSER PAGE HIDE
+    // ROOM ON LEAVE
     // ========================================================
 
     useEffect(() => {
 
         if (!room) {
+
             return;
+
         }
 
 
@@ -123,7 +126,7 @@ export default function BoomGame({
 
 
         console.log(
-            "[ROOM] Lifecycle listener attached:",
+            "[ROOM] Connected:",
             {
                 roomId:
                     currentRoom.roomId,
@@ -134,95 +137,133 @@ export default function BoomGame({
         );
 
 
-        const handlePageHide = () => {
+        // ----------------------------------------------------
+        // COLYSEUS LEAVE
+        // ----------------------------------------------------
 
-            /*
-             * Nếu OUT đã được bấm,
-             * OUT tự xử lý rồi.
-             */
+        currentRoom.onLeave?.(
+            (
+                code
+            ) => {
 
-            if (isLeaving) {
-                return;
-            }
+                console.log(
+                    "[ROOM] onLeave:",
+                    {
+                        roomId:
+                            currentRoom.roomId,
 
+                        sessionId:
+                            currentRoom.sessionId,
 
-            console.log(
-                "[ROOM] pagehide"
-            );
-
-
-            try {
-
-                currentRoom.leave();
-
-            }
-            catch (error) {
-
-                console.warn(
-                    "[ROOM] pagehide leave error:",
-                    error
+                        code,
+                    }
                 );
 
+
+                const latestRoom =
+                    useMultiplayerStore
+                        .getState()
+                        .room;
+
+
+                // --------------------------------------------
+                // Chỉ clear room hiện tại
+                // --------------------------------------------
+
+                if (
+                    latestRoom ===
+                    currentRoom
+                ) {
+
+                    useMultiplayerStore
+                        .getState()
+                        .clearRoom();
+
+                }
+
+
+                // --------------------------------------------
+                // Nếu không phải OUT chủ động
+                // --------------------------------------------
+
+                if (
+                    !leavingRef.current
+                ) {
+
+                    leavingRef.current =
+                        true;
+
+
+                    setIsLeaving(
+                        true
+                    );
+
+
+                    router.replace(
+                        "/multiplayer"
+                    );
+
+                }
+
             }
-
-
-            /*
-             * Browser đang rời page.
-             * Không cần router ở đây.
-             */
-
-            useMultiplayerStore
-                .getState()
-                .clearRoom();
-
-        };
-
-
-        window.addEventListener(
-            "pagehide",
-            handlePageHide
         );
 
 
-        return () => {
+        // ====================================================
+        // IMPORTANT
+        // ====================================================
+        //
+        // Không gọi unsubscribe ở đây.
+        //
+        // @colyseus/sdk version hiện tại của bạn
+        // không trả về unsubscribe function từ onLeave().
+        //
+        // ====================================================
 
-            window.removeEventListener(
-                "pagehide",
-                handlePageHide
-            );
-
-        };
-
-    }, [room, isLeaving]);
+    }, [
+        room,
+        router,
+    ]);
 
 
     // ========================================================
     // OUT
     // ========================================================
 
-    async function handleLeaveGame() {
+    function handleLeaveGame() {
 
-        /*
-         * Chống click nhiều lần.
-         */
+        // ----------------------------------------------------
+        // Chống click nhiều lần
+        // ----------------------------------------------------
 
-        if (isLeaving) {
+        if (
+            leavingRef.current
+        ) {
 
             return;
 
         }
 
 
-        setIsLeaving(true);
+        leavingRef.current =
+            true;
+
+
+        setIsLeaving(
+            true
+        );
 
 
         console.log("");
+
         console.log(
             "========================================"
         );
+
         console.log(
             "[ROOM] OUT CLICKED"
         );
+
         console.log(
             "========================================"
         );
@@ -235,11 +276,17 @@ export default function BoomGame({
         // ====================================================
         // LEAVE COLYSEUS
         // ====================================================
+        //
+        // Gọi leave ngay nhưng KHÔNG await.
+        //
+        // ====================================================
 
-        if (currentRoom) {
+        if (
+            currentRoom
+        ) {
 
             console.log(
-                "[ROOM] Leaving room:",
+                "[ROOM] Leaving:",
                 {
                     roomId:
                         currentRoom.roomId,
@@ -250,23 +297,23 @@ export default function BoomGame({
             );
 
 
-            try {
+            currentRoom
+                .leave()
+                .then(() => {
 
-                await currentRoom.leave();
+                    console.log(
+                        "[ROOM] ✅ Colyseus leave success"
+                    );
 
-                console.log(
-                    "[ROOM] ✅ Colyseus leave success"
-                );
+                })
+                .catch((error) => {
 
-            }
-            catch (error) {
+                    console.warn(
+                        "[ROOM] ⚠️ Colyseus leave error:",
+                        error
+                    );
 
-                console.warn(
-                    "[ROOM] ⚠️ Colyseus leave error:",
-                    error
-                );
-
-            }
+                });
 
         }
         else {
@@ -279,7 +326,11 @@ export default function BoomGame({
 
 
         // ====================================================
-        // CLEAR ROOM
+        // CLEAR ZUSTAND
+        // ====================================================
+        //
+        // Không chờ Colyseus.
+        //
         // ====================================================
 
         useMultiplayerStore
@@ -301,7 +352,7 @@ export default function BoomGame({
         );
 
 
-        router.push(
+        router.replace(
             "/multiplayer"
         );
 
@@ -378,12 +429,20 @@ export default function BoomGame({
             <button
                 type="button"
                 className="boom-game__out"
-                onClick={handleLeaveGame}
-                disabled={isLeaving}
+                onClick={
+                    handleLeaveGame
+                }
+                disabled={
+                    isLeaving
+                }
             >
-                {isLeaving
-                    ? "..."
-                    : "OUT"}
+
+                {
+                    isLeaving
+                        ? "..."
+                        : "OUT"
+                }
+
             </button>
 
 
@@ -391,23 +450,31 @@ export default function BoomGame({
                 ROOM CODE
             ================================================== */}
 
-            {roomCode && (
+            {
+                roomCode && (
 
-                <div
-                    className="boom-game__room-code"
-                >
-
-                    Mã phòng:
-
-                    <span
-                        className="boom-game__room-code-number"
+                    <div
+                        className="
+                            boom-game__room-code
+                        "
                     >
-                        {roomCode}
-                    </span>
 
-                </div>
+                        Mã phòng:
 
-            )}
+                        <span
+                            className="
+                                boom-game__room-code-number
+                            "
+                        >
+                            {
+                                roomCode
+                            }
+                        </span>
+
+                    </div>
+
+                )
+            }
 
 
             {/* ==================================================
@@ -436,7 +503,9 @@ export default function BoomGame({
             ================================================== */}
 
             <div
-                className="boom-game__actions"
+                className="
+                    boom-game__actions
+                "
             >
 
                 {/* ==================================================

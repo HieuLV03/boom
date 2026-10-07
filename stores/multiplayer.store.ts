@@ -1,7 +1,9 @@
 
 "use client";
 
-import { create } from "zustand";
+import {
+    create,
+} from "zustand";
 
 import type {
     Room,
@@ -52,11 +54,47 @@ export const useMultiplayerStore =
         // ====================================================
 
         setRoom: (
-            room
+            newRoom
         ) => {
 
+            console.log(
+                "[STORE] Setting new room:",
+                {
+                    roomId:
+                        newRoom.roomId,
+
+                    sessionId:
+                        newRoom.sessionId,
+                }
+            );
+
+
+            /*
+             * QUAN TRỌNG:
+             *
+             * Store KHÔNG gọi oldRoom.leave().
+             *
+             * Việc leave room phải do:
+             *
+             * - OUT button
+             * - disconnect
+             * - page lifecycle
+             *
+             * xử lý.
+             *
+             * Như vậy tránh việc setRoom()
+             * vô tình đóng room đang được sử dụng.
+             */
+
+
             set({
-                room,
+
+                room:
+                    newRoom,
+
+                hostSessionId:
+                    null,
+
             });
 
         },
@@ -70,9 +108,17 @@ export const useMultiplayerStore =
             sessionId
         ) => {
 
+            console.log(
+                "[STORE] Host session:",
+                sessionId
+            );
+
+
             set({
+
                 hostSessionId:
                     sessionId,
+
             });
 
         },
@@ -84,12 +130,19 @@ export const useMultiplayerStore =
 
         clearRoom: () => {
 
+            console.log(
+                "[STORE] clearRoom()"
+            );
+
+
             set({
+
                 room:
                     null,
 
                 hostSessionId:
                     null,
+
             });
 
         },

@@ -12,7 +12,8 @@ import {
     useSearchParams,
 } from "next/navigation";
 
-import BoomGame from "@/components/game/BoomGame/BoomGame";
+import BoomGame
+    from "@/components/game/BoomGame/BoomGame";
 
 import {
     useMultiplayerStore,
@@ -71,50 +72,140 @@ function GamePageContent() {
 
 
     // ========================================================
-    // ROOM GUARD
-    // ========================================================
-    //
-    // Nếu /game không còn room Colyseus,
-    // tuyệt đối không được render game.
-    //
+    // ROOM LIFECYCLE
     // ========================================================
 
     useEffect(() => {
 
-        if (room) {
+        // ----------------------------------------------------
+        // NO ROOM
+        // ----------------------------------------------------
+
+        if (!room) {
 
             console.log(
-                "[GAME PAGE] Active room:",
-                {
-                    roomId:
-                        room.roomId,
-
-                    sessionId:
-                        room.sessionId,
-                }
+                "[GAME PAGE] ❌ No active room"
             );
 
+
+            router.replace(
+                "/multiplayer"
+            );
+
+
             return;
+
         }
 
 
-        /*
-         * Không có room.
-         *
-         * Có thể xảy ra khi:
-         *
-         * 1. Người chơi bấm OUT.
-         * 2. Connection bị mất.
-         * 3. Người chơi truy cập /game trực tiếp.
-         */
+        // ----------------------------------------------------
+        // ROOM CONNECTED
+        // ----------------------------------------------------
 
         console.log(
-            "[GAME PAGE] ❌ No active room"
+            "========================================"
+        );
+
+        console.log(
+            "[GAME PAGE] ✅ Active room"
+        );
+
+        console.log(
+            "[GAME PAGE] roomId:",
+            room.roomId
+        );
+
+        console.log(
+            "[GAME PAGE] sessionId:",
+            room.sessionId
+        );
+
+        console.log(
+            "========================================"
         );
 
 
-        router.replace(
-            "/multiplayer"
+        const currentRoom =
+            room;
+
+
+        // ----------------------------------------------------
+        // COLYSEUS ON LEAVE
+        // ----------------------------------------------------
+
+        /*
+         * QUAN TRỌNG:
+         *
+         * @colyseus/sdk version hiện tại của bạn
+         * không trả về unsubscribe function từ onLeave().
+         *
+         * Vì vậy KHÔNG lưu kết quả:
+         *
+         * const removeLeaveListener = room.onLeave(...)
+         *
+         * và KHÔNG gọi:
+         *
+         * removeLeaveListener?.()
+         *
+         */
+
+
+        currentRoom.onLeave?.(
+            (
+                code
+            ) => {
+
+                console.log(
+                    "[GAME PAGE] ❌ Colyseus room left:",
+                    {
+                        roomId:
+                            currentRoom.roomId,
+
+                        sessionId:
+                            currentRoom.sessionId,
+
+                        code,
+                    }
+                );
+
+
+                const activeRoom =
+                    useMultiplayerStore
+                        .getState()
+                        .room;
+
+
+                // ------------------------------------------------
+                // Chỉ clear đúng room hiện tại
+                // ------------------------------------------------
+
+                if (
+                    activeRoom ===
+                    currentRoom
+                ) {
+
+                    console.log(
+                        "[GAME PAGE] Clearing current room"
+                    );
+
+
+                    useMultiplayerStore
+                        .getState()
+                        .clearRoom();
+
+
+                    console.log(
+                        "[GAME PAGE] → /multiplayer"
+                    );
+
+
+                    router.replace(
+                        "/multiplayer"
+                    );
+
+                }
+
+            }
         );
 
     }, [
@@ -124,7 +215,7 @@ function GamePageContent() {
 
 
     // ========================================================
-    // CHECK ORIENTATION
+    // ORIENTATION
     // ========================================================
 
     useEffect(() => {
@@ -143,14 +234,6 @@ function GamePageContent() {
                         "(orientation: landscape)"
                     ).matches;
 
-
-                /*
-                 * Desktop:
-                 * Không bắt xoay.
-                 *
-                 * Mobile:
-                 * Bắt buộc phải xoay ngang.
-                 */
 
                 setIsLandscape(
                     !isMobile ||
@@ -199,16 +282,14 @@ function GamePageContent() {
     // ========================================================
     // NO ROOM
     // ========================================================
-    //
-    // Không render BoomGame nếu không còn room.
-    //
-    // ========================================================
 
     if (!room) {
 
         return (
             <div className="game-loading">
-                Đang thoát phòng...
+
+                Đang quay về phòng...
+
             </div>
         );
 
@@ -223,7 +304,9 @@ function GamePageContent() {
 
         return (
             <div className="game-loading">
+
                 Đang tải game...
+
             </div>
         );
 
@@ -239,46 +322,26 @@ function GamePageContent() {
         return (
             <div className="landscape-gate">
 
-                {/* ==================================================
-                    PHONE
-                ================================================== */}
-
                 <div className="landscape-phone">
                     📱
                 </div>
 
-
-                {/* ==================================================
-                    ARROW
-                ================================================== */}
 
                 <div className="landscape-arrow">
                     ↔️
                 </div>
 
 
-                {/* ==================================================
-                    TITLE
-                ================================================== */}
-
                 <div className="landscape-title">
                     XOAY NGANG ĐIỆN THOẠI
                 </div>
 
-
-                {/* ==================================================
-                    DESCRIPTION
-                ================================================== */}
 
                 <div className="landscape-description">
                     Vui lòng xoay điện thoại sang
                     chế độ ngang để chơi game.
                 </div>
 
-
-                {/* ==================================================
-                    HINT
-                ================================================== */}
 
                 <div className="landscape-hint">
                     Game yêu cầu màn hình ngang
@@ -291,7 +354,7 @@ function GamePageContent() {
 
 
     // ========================================================
-    // LANDSCAPE + ROOM
+    // GAME
     // ========================================================
 
     return (
@@ -310,10 +373,13 @@ function GamePageContent() {
 export default function GamePage() {
 
     return (
+
         <Suspense
             fallback={
                 <div className="game-loading">
+
                     Đang tải game...
+
                 </div>
             }
         >
@@ -321,6 +387,7 @@ export default function GamePage() {
             <GamePageContent />
 
         </Suspense>
+
     );
 
 }
