@@ -1,21 +1,22 @@
+
 {
-"name": "boom-server",
-"version": "1.0.0",
-"private": true,
-"type": "module",
-"scripts": {
-"dev": "tsx watch src/index.ts",
-"build": "tsc",
-"start": "node dist/index.js",
-"typecheck": "tsc --noEmit"
-},
-"dependencies": {
-"@colyseus/schema": "^5.0.8",
-"colyseus": "^0.18.0"
-},
-"devDependencies": {
-"@types/node": "^24.0.0",
-"tsx": "^4.0.0",
-"typescript": "^5.0.0"
-}
+  "name": "boom-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/server/src/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@colyseus/schema": "^5.0.8",
+    "colyseus": "^0.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
 }
