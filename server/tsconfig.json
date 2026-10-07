@@ -1,25 +1,23 @@
-
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
 
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
 
-    "experimentalDecorators": true,
-    "useDefineForClassFields": false,
+        "experimentalDecorators": true,
+        "useDefineForClassFields": false,
 
-    "sourceMap": true,
+        "sourceMap": true,
 
-    "rootDir": ".",
-    "outDir": "./dist"
-  },
+        "rootDir": "./src",
+        "outDir": "./dist"
+    },
 
-  "include": [
-    "src/**/*.ts",
-    "../shared/**/*.ts"
-  ]
+    "include": [
+        "src/**/*.ts"
+    ]
 }
