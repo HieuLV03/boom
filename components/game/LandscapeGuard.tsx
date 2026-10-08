@@ -17,11 +17,12 @@ type Props = {
 };
 
 
-type OrientationWithLock = ScreenOrientation & {
-    lock?: (
-        orientation: OrientationLockType
-    ) => Promise<void>;
-};
+type OrientationWithLock =
+    ScreenOrientation & {
+        lock?: (
+            orientation: string
+        ) => Promise<void>;
+    };
 
 
 // ============================================================
@@ -131,45 +132,48 @@ export default function LandscapeGuard({
 
 
             // ------------------------------------------------
-            // Fullscreen must be requested from user gesture.
+            // Fullscreen
             // ------------------------------------------------
 
             await requestFullscreen();
 
 
             // ------------------------------------------------
-            // Try orientation lock.
+            // Orientation lock
             // ------------------------------------------------
 
             try {
 
-                const orientation =
-                    screen.orientation as
-                    OrientationWithLock;
-
-
                 if (
-                    typeof orientation.lock ===
-                    "function"
+                    screen.orientation
                 ) {
 
-                    await orientation.lock(
-                        "landscape"
-                    );
+                    const orientation =
+                        screen.orientation as
+                        OrientationWithLock;
+
+
+                    if (
+                        typeof orientation.lock ===
+                        "function"
+                    ) {
+
+                        await orientation.lock(
+                            "landscape"
+                        );
+
+                    }
 
                 }
 
             }
             catch {
-                // ------------------------------------------------
-                // Messenger / Zalo / Safari may block this.
-                // User can rotate manually.
-                // ------------------------------------------------
+                // Browser / WebView may block this.
             }
 
 
             // ------------------------------------------------
-            // Check orientation again.
+            // Check again after rotation
             // ------------------------------------------------
 
             setTimeout(() => {
