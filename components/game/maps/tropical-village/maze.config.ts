@@ -1,4 +1,3 @@
-
 // ============================================================
 // TROPICAL VILLAGE MAZE
 // ============================================================
@@ -49,14 +48,10 @@ export const MAZE_MAP = [
 ] as const;
 
 
-// ============================================================
-// TYPES
-// ============================================================
-
 export type MazeCell =
-    | "#"
-    | "."
-    | "P";
+    "#" |
+    "." |
+    "P";
 
 
 // ============================================================
@@ -70,21 +65,23 @@ export function getMazeCell(
 
     if (
         cellZ < 0 ||
-        cellZ >= MAZE_MAP.length
+        cellZ >= MAP_HEIGHT
     ) {
         return "#";
     }
 
-    const row = MAZE_MAP[cellZ];
+    const row =
+        MAZE_MAP[cellZ];
 
     if (
         cellX < 0 ||
-        cellX >= row.length
+        cellX >= MAP_WIDTH
     ) {
         return "#";
     }
 
     return row[cellX] as MazeCell;
+
 }
 
 
@@ -97,28 +94,18 @@ export function isWalkableCell(
     cellZ: number,
 ): boolean {
 
-    return getMazeCell(
-        cellX,
-        cellZ,
-    ) !== "#";
+    return (
+        getMazeCell(
+            cellX,
+            cellZ,
+        ) !== "#"
+    );
+
 }
 
 
 // ============================================================
-// WORLD -> CELL
-//
-// IMPORTANT:
-// Cell boundaries are:
-//
-// cell center = world position
-//
-// A cell has size 2:
-//
-// center - 1
-// center + 1
-//
-// We use FLOOR instead of ROUND so collision
-// follows the actual square boundaries.
+// WORLD → CELL
 // ============================================================
 
 export function worldToCell(
@@ -126,38 +113,38 @@ export function worldToCell(
     z: number,
 ) {
 
-    const halfMap =
-        Math.floor(MAP_WIDTH / 2);
-
-    const cellX =
+    const centerX =
         Math.floor(
-            (
-                x +
-                CELL_SIZE / 2
-            ) /
-            CELL_SIZE
-        ) +
-        halfMap;
+            MAP_WIDTH / 2
+        );
 
-    const cellZ =
+    const centerZ =
         Math.floor(
-            (
-                z +
-                CELL_SIZE / 2
-            ) /
-            CELL_SIZE
-        ) +
-        halfMap;
+            MAP_HEIGHT / 2
+        );
+
 
     return {
-        cellX,
-        cellZ,
+
+        cellX:
+            Math.floor(
+                x / CELL_SIZE + 0.5
+            ) +
+            centerX,
+
+        cellZ:
+            Math.floor(
+                z / CELL_SIZE + 0.5
+            ) +
+            centerZ,
+
     };
+
 }
 
 
 // ============================================================
-// CELL -> WORLD
+// CELL → WORLD
 // ============================================================
 
 export function cellToWorld(
@@ -165,86 +152,86 @@ export function cellToWorld(
     cellZ: number,
 ) {
 
+    const centerX =
+        Math.floor(
+            MAP_WIDTH / 2
+        );
+
+    const centerZ =
+        Math.floor(
+            MAP_HEIGHT / 2
+        );
+
+
     return {
+
         x:
             (
                 cellX -
-                Math.floor(MAP_WIDTH / 2)
+                centerX
             ) *
             CELL_SIZE,
 
         z:
             (
                 cellZ -
-                Math.floor(MAP_HEIGHT / 2)
+                centerZ
             ) *
             CELL_SIZE,
+
     };
+
 }
 
 
 // ============================================================
-// COLLISION
-//
-// Player is treated as a circle.
-//
-// Every wall cell is a 2x2 square.
-//
-// We check the closest point on every nearby
-// wall square against the player radius.
-//
-// This prevents:
-// - walking through walls
-// - clipping corners
-// - diagonal wall penetration
-// - getting too close to walls
+// WALL COLLISION
 // ============================================================
 
-export function canMoveTo(
+function getWallCollision(
     x: number,
     z: number,
-    radius = 0.45,
-): boolean {
+    radius: number,
+) {
 
-    // --------------------------------------------------------
-    // Find the cell around the player
-    // --------------------------------------------------------
-
-    const centerCell =
+    const center =
         worldToCell(
             x,
             z,
         );
 
-    // --------------------------------------------------------
-    // Check nearby cells
-    //
-    // A player can only collide with nearby walls.
-    // --------------------------------------------------------
+
+    let pushX = 0;
+
+    let pushZ = 0;
+
+    let collided = false;
+
+
+    // ========================================================
+    // CHECK NEARBY WALLS
+    // ========================================================
 
     for (
-        let dz = -1;
-        dz <= 1;
-        dz++
+        let offsetZ = -2;
+        offsetZ <= 2;
+        offsetZ++
     ) {
 
         for (
-            let dx = -1;
-            dx <= 1;
-            dx++
+            let offsetX = -2;
+            offsetX <= 2;
+            offsetX++
         ) {
 
             const cellX =
-                centerCell.cellX +
-                dx;
+                center.cellX +
+                offsetX;
 
             const cellZ =
-                centerCell.cellZ +
-                dz;
+                center.cellZ +
+                offsetZ;
 
-            // ------------------------------------------------
-            // Ignore walkable cells
-            // ------------------------------------------------
 
             if (
                 isWalkableCell(
@@ -255,9 +242,6 @@ export function canMoveTo(
                 continue;
             }
 
-            // ------------------------------------------------
-            // Wall center in world coordinates
-            // ------------------------------------------------
 
             const wall =
                 cellToWorld(
@@ -265,32 +249,27 @@ export function canMoveTo(
                     cellZ,
                 );
 
+
             const half =
                 CELL_SIZE / 2;
 
-            // ------------------------------------------------
-            // Wall rectangle
-            // ------------------------------------------------
 
             const minX =
-                wall.x -
-                half;
+                wall.x - half;
 
             const maxX =
-                wall.x +
-                half;
+                wall.x + half;
 
             const minZ =
-                wall.z -
-                half;
+                wall.z - half;
 
             const maxZ =
-                wall.z +
-                half;
+                wall.z + half;
 
-            // ------------------------------------------------
-            // Closest point on wall rectangle
-            // ------------------------------------------------
+
+            // =================================================
+            // CLOSEST POINT
+            // =================================================
 
             const closestX =
                 Math.max(
@@ -301,6 +280,7 @@ export function canMoveTo(
                     ),
                 );
 
+
             const closestZ =
                 Math.max(
                     minZ,
@@ -310,41 +290,373 @@ export function canMoveTo(
                     ),
                 );
 
-            // ------------------------------------------------
-            // Distance player -> wall
-            // ------------------------------------------------
 
-            const distanceX =
+            let dx =
                 x -
                 closestX;
 
-            const distanceZ =
+            let dz =
                 z -
                 closestZ;
 
-            const distanceSquared =
-                (
-                    distanceX *
-                    distanceX
-                ) +
-                (
-                    distanceZ *
-                    distanceZ
-                );
 
-            // ------------------------------------------------
-            // Collision
-            // ------------------------------------------------
+            const distanceSquared =
+                dx * dx +
+                dz * dz;
+
+
+            // =================================================
+            // NO COLLISION
+            // =================================================
 
             if (
-                distanceSquared <
+                distanceSquared >=
                 radius * radius
             ) {
-
-                return false;
+                continue;
             }
+
+
+            collided = true;
+
+
+            // =================================================
+            // PLAYER IS INSIDE WALL
+            // =================================================
+
+            const distance =
+                Math.sqrt(
+                    distanceSquared
+                );
+
+
+            // =================================================
+            // SPECIAL CASE:
+            // EXACTLY AT WALL CENTER
+            // =================================================
+
+            if (
+                distance < 0.000001
+            ) {
+
+                const left =
+                    Math.abs(
+                        x - minX
+                    );
+
+                const right =
+                    Math.abs(
+                        maxX - x
+                    );
+
+                const top =
+                    Math.abs(
+                        z - minZ
+                    );
+
+                const bottom =
+                    Math.abs(
+                        maxZ - z
+                    );
+
+
+                const minimum =
+                    Math.min(
+                        left,
+                        right,
+                        top,
+                        bottom,
+                    );
+
+
+                if (
+                    minimum === left
+                ) {
+                    pushX -=
+                        radius;
+                }
+                else if (
+                    minimum === right
+                ) {
+                    pushX +=
+                        radius;
+                }
+                else if (
+                    minimum === top
+                ) {
+                    pushZ -=
+                        radius;
+                }
+                else {
+                    pushZ +=
+                        radius;
+                }
+
+
+                continue;
+
+            }
+
+
+            // =================================================
+            // PUSH PLAYER OUT
+            // =================================================
+
+            const penetration =
+                radius -
+                distance;
+
+
+            dx /=
+                distance;
+
+            dz /=
+                distance;
+
+
+            pushX +=
+                dx *
+                penetration;
+
+            pushZ +=
+                dz *
+                penetration;
+
         }
+
     }
 
-    return true;
+
+    return {
+        collided,
+        pushX,
+        pushZ,
+    };
+
+}
+
+
+// ============================================================
+// CAN MOVE
+// ============================================================
+
+export function canMoveTo(
+    x: number,
+    z: number,
+    radius = 0.4,
+): boolean {
+
+    const collision =
+        getWallCollision(
+            x,
+            z,
+            radius,
+        );
+
+
+    return !collision.collided;
+
+}
+
+
+// ============================================================
+// RESOLVE COLLISION
+// ============================================================
+//
+// Nếu vị trí hiện tại đã nằm sát / xuyên nhẹ vào wall,
+// hàm này đẩy player ra ngoài.
+//
+// ============================================================
+
+export function resolveWallCollision(
+    x: number,
+    z: number,
+    radius = 0.4,
+) {
+
+    const collision =
+        getWallCollision(
+            x,
+            z,
+            radius,
+        );
+
+
+    return {
+
+        x:
+            x +
+            collision.pushX,
+
+        z:
+            z +
+            collision.pushZ,
+
+    };
+
+}
+
+
+// ============================================================
+// MOVE WITH WALL SLIDING
+// ============================================================
+//
+// Đây là hàm nên dùng ở client.
+//
+// Nó thử:
+//
+// 1. Di chuyển X + Z
+// 2. Nếu bị block → chỉ X
+// 3. Nếu X bị block → chỉ Z
+// 4. Nếu vẫn block → giữ nguyên
+//
+// ============================================================
+
+export function moveWithWallCollision(
+    currentX: number,
+    currentZ: number,
+
+    targetX: number,
+    targetZ: number,
+
+    radius = 0.4,
+) {
+
+    // ========================================================
+    // TARGET OK
+    // ========================================================
+
+    if (
+        canMoveTo(
+            targetX,
+            targetZ,
+            radius,
+        )
+    ) {
+
+        return {
+            x: targetX,
+            z: targetZ,
+        };
+
+    }
+
+
+    // ========================================================
+    // TRY X
+    // ========================================================
+
+    if (
+        canMoveTo(
+            targetX,
+            currentZ,
+            radius,
+        )
+    ) {
+
+        return {
+            x: targetX,
+            z: currentZ,
+        };
+
+    }
+
+
+    // ========================================================
+    // TRY Z
+    // ========================================================
+
+    if (
+        canMoveTo(
+            currentX,
+            targetZ,
+            radius,
+        )
+    ) {
+
+        return {
+            x: currentX,
+            z: targetZ,
+        };
+
+    }
+
+
+    // ========================================================
+    // NO MOVEMENT
+    // ========================================================
+
+    return {
+        x: currentX,
+        z: currentZ,
+    };
+
+}
+
+
+// ============================================================
+// SPAWN CELLS
+// ============================================================
+
+export function getSpawnCells() {
+
+    const result: Array<{
+        cellX: number;
+        cellZ: number;
+    }> = [];
+
+
+    for (
+        let cellZ = 0;
+        cellZ < MAP_HEIGHT;
+        cellZ++
+    ) {
+
+        for (
+            let cellX = 0;
+            cellX < MAP_WIDTH;
+            cellX++
+        ) {
+
+            if (
+                getMazeCell(
+                    cellX,
+                    cellZ,
+                ) === "P"
+            ) {
+
+                result.push({
+                    cellX,
+                    cellZ,
+                });
+
+            }
+
+        }
+
+    }
+
+
+    return result;
+
+}
+
+
+// ============================================================
+// SPAWN POSITIONS
+// ============================================================
+
+export function getSpawnPositions() {
+
+    return getSpawnCells().map(
+        ({
+            cellX,
+            cellZ,
+        }) =>
+            cellToWorld(
+                cellX,
+                cellZ,
+            )
+    );
+
 }
