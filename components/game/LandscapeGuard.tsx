@@ -17,6 +17,13 @@ type Props = {
 };
 
 
+type OrientationWithLock = ScreenOrientation & {
+    lock?: (
+        orientation: OrientationLockType
+    ) => Promise<void>;
+};
+
+
 // ============================================================
 // LANDSCAPE GUARD
 // ============================================================
@@ -87,55 +94,99 @@ export default function LandscapeGuard({
 
 
     // ========================================================
-    // LOCK LANDSCAPE
+    // REQUEST FULLSCREEN
     // ========================================================
 
-    const requestLandscape = async () => {
+    const requestFullscreen =
+        async () => {
 
-        setIsTrying(true);
+            try {
 
+                if (
+                    !document.fullscreenElement &&
+                    document.documentElement.requestFullscreen
+                ) {
 
-        try {
+                    await document.documentElement
+                        .requestFullscreen();
 
-            if (
-                screen.orientation &&
-                "lock" in screen.orientation
-            ) {
-
-                await screen.orientation.lock(
-                    "landscape"
-                );
+                }
 
             }
+            catch {
+                // Browser / WebView may block fullscreen.
+            }
 
-        }
-        catch {
+        };
+
+
+    // ========================================================
+    // REQUEST LANDSCAPE
+    // ========================================================
+
+    const requestLandscape =
+        async () => {
+
+            setIsTrying(true);
+
+
             // ------------------------------------------------
-            // Messenger / Zalo / Safari may block this API.
-            // User can still rotate manually.
+            // Fullscreen must be requested from user gesture.
             // ------------------------------------------------
-        }
+
+            await requestFullscreen();
 
 
-        // ----------------------------------------------------
-        // Check again after browser has had time to rotate.
-        // ----------------------------------------------------
+            // ------------------------------------------------
+            // Try orientation lock.
+            // ------------------------------------------------
 
-        setTimeout(() => {
+            try {
 
-            const portrait =
-                window.innerHeight >
-                window.innerWidth;
+                const orientation =
+                    screen.orientation as
+                    OrientationWithLock;
 
-            setIsPortrait(
-                portrait
-            );
 
-            setIsTrying(false);
+                if (
+                    typeof orientation.lock ===
+                    "function"
+                ) {
 
-        }, 300);
+                    await orientation.lock(
+                        "landscape"
+                    );
 
-    };
+                }
+
+            }
+            catch {
+                // ------------------------------------------------
+                // Messenger / Zalo / Safari may block this.
+                // User can rotate manually.
+                // ------------------------------------------------
+            }
+
+
+            // ------------------------------------------------
+            // Check orientation again.
+            // ------------------------------------------------
+
+            setTimeout(() => {
+
+                const portrait =
+                    window.innerHeight >
+                    window.innerWidth;
+
+                setIsPortrait(
+                    portrait
+                );
+
+                setIsTrying(false);
+
+            }, 500);
+
+        };
 
 
     // ========================================================
@@ -162,13 +213,18 @@ export default function LandscapeGuard({
             onClick={requestLandscape}
             style={{
                 position: "fixed",
+
                 inset: 0,
 
                 zIndex: 999999,
 
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+
+                alignItems:
+                    "center",
+
+                justifyContent:
+                    "center",
 
                 padding:
                     "24px",
@@ -196,6 +252,18 @@ export default function LandscapeGuard({
 
                 touchAction:
                     "manipulation",
+
+                paddingTop:
+                    "calc(24px + env(safe-area-inset-top))",
+
+                paddingBottom:
+                    "calc(24px + env(safe-area-inset-bottom))",
+
+                paddingLeft:
+                    "calc(24px + env(safe-area-inset-left))",
+
+                paddingRight:
+                    "calc(24px + env(safe-area-inset-right))",
             }}
         >
 
@@ -339,7 +407,7 @@ export default function LandscapeGuard({
                 >
 
                     {isTrying
-                        ? "Đang xoay..."
+                        ? "Đang chuẩn bị..."
                         : "Chạm để xoay ngang"}
 
                 </button>
@@ -364,11 +432,9 @@ export default function LandscapeGuard({
                             "320px",
                     }}
                 >
-
                     Nếu điện thoại không tự xoay,
                     hãy xoay điện thoại sang ngang
                     rồi tiếp tục.
-
                 </div>
 
             </div>
