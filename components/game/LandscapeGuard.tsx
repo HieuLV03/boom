@@ -17,16 +17,23 @@ type Props = {
 };
 
 
-type OrientationWithLock =
-    ScreenOrientation & {
-        lock?: (
-            orientation: string
-        ) => Promise<void>;
-    };
-
-
 // ============================================================
 // LANDSCAPE GUARD
+//
+// Portrait phone:
+//
+//      ┌──────────────┐
+//      │              │
+//      │   ┌──────┐   │
+//      │   │ GAME │   │
+//      │   │      │   │
+//      │   └──────┘   │
+//      │              │
+//      └──────────────┘
+//
+// Game itself always uses landscape coordinates.
+// We rotate the whole game container when the
+// physical device is portrait.
 // ============================================================
 
 export default function LandscapeGuard({
@@ -36,11 +43,6 @@ export default function LandscapeGuard({
     const [
         isPortrait,
         setIsPortrait,
-    ] = useState(false);
-
-    const [
-        isTrying,
-        setIsTrying,
     ] = useState(false);
 
 
@@ -62,9 +64,7 @@ export default function LandscapeGuard({
 
         };
 
-
         checkOrientation();
-
 
         window.addEventListener(
             "resize",
@@ -75,7 +75,6 @@ export default function LandscapeGuard({
             "orientationchange",
             checkOrientation,
         );
-
 
         return () => {
 
@@ -95,114 +94,35 @@ export default function LandscapeGuard({
 
 
     // ========================================================
-    // REQUEST FULLSCREEN
-    // ========================================================
-
-    const requestFullscreen =
-        async () => {
-
-            try {
-
-                if (
-                    !document.fullscreenElement &&
-                    document.documentElement.requestFullscreen
-                ) {
-
-                    await document.documentElement
-                        .requestFullscreen();
-
-                }
-
-            }
-            catch {
-                // Browser / WebView may block fullscreen.
-            }
-
-        };
-
-
-    // ========================================================
-    // REQUEST LANDSCAPE
-    // ========================================================
-
-    const requestLandscape =
-        async () => {
-
-            setIsTrying(true);
-
-
-            // ------------------------------------------------
-            // Fullscreen
-            // ------------------------------------------------
-
-            await requestFullscreen();
-
-
-            // ------------------------------------------------
-            // Orientation lock
-            // ------------------------------------------------
-
-            try {
-
-                if (
-                    screen.orientation
-                ) {
-
-                    const orientation =
-                        screen.orientation as
-                        OrientationWithLock;
-
-
-                    if (
-                        typeof orientation.lock ===
-                        "function"
-                    ) {
-
-                        await orientation.lock(
-                            "landscape"
-                        );
-
-                    }
-
-                }
-
-            }
-            catch {
-                // Browser / WebView may block this.
-            }
-
-
-            // ------------------------------------------------
-            // Check again after rotation
-            // ------------------------------------------------
-
-            setTimeout(() => {
-
-                const portrait =
-                    window.innerHeight >
-                    window.innerWidth;
-
-                setIsPortrait(
-                    portrait
-                );
-
-                setIsTrying(false);
-
-            }, 500);
-
-        };
-
-
-    // ========================================================
     // LANDSCAPE
+    //
+    // Normal case.
     // ========================================================
 
     if (!isPortrait) {
 
         return (
-            <>
+            <div
+                className="boom-landscape-root"
+            >
                 {children}
-            </>
+
+                <style jsx>{`
+
+                    .boom-landscape-root {
+                        position: fixed;
+                        inset: 0;
+
+                        width: 100vw;
+                        height: 100vh;
+
+                        overflow: hidden;
+
+                        touch-action: none;
+                    }
+
+                `}</style>
+            </div>
         );
 
     }
@@ -210,275 +130,104 @@ export default function LandscapeGuard({
 
     // ========================================================
     // PORTRAIT
+    //
+    // We DO NOT ask the browser to rotate.
+    //
+    // Instead:
+    //
+    // physical screen:
+    //
+    //      width  = small
+    //      height = large
+    //
+    // game:
+    //
+    //      width  = large
+    //      height = small
+    //
+    // Rotate the game 90 degrees.
     // ========================================================
 
     return (
         <div
-            onClick={requestLandscape}
-            style={{
-                position: "fixed",
-
-                inset: 0,
-
-                zIndex: 999999,
-
-                display: "flex",
-
-                alignItems:
-                    "center",
-
-                justifyContent:
-                    "center",
-
-                padding:
-                    "24px",
-
-                background:
-                    "#050505",
-
-                color:
-                    "#ffffff",
-
-                fontFamily:
-                    "Arial, sans-serif",
-
-                textAlign:
-                    "center",
-
-                cursor:
-                    "pointer",
-
-                userSelect:
-                    "none",
-
-                WebkitUserSelect:
-                    "none",
-
-                touchAction:
-                    "manipulation",
-
-                paddingTop:
-                    "calc(24px + env(safe-area-inset-top))",
-
-                paddingBottom:
-                    "calc(24px + env(safe-area-inset-bottom))",
-
-                paddingLeft:
-                    "calc(24px + env(safe-area-inset-left))",
-
-                paddingRight:
-                    "calc(24px + env(safe-area-inset-right))",
-            }}
+            className="boom-portrait-root"
         >
 
             <div
-                style={{
-                    width:
-                        "100%",
-
-                    maxWidth:
-                        "420px",
-
-                    display:
-                        "flex",
-
-                    flexDirection:
-                        "column",
-
-                    alignItems:
-                        "center",
-
-                    gap:
-                        "22px",
-                }}
+                className="boom-portrait-game"
             >
-
-                {/* ==================================================
-                    PHONE ICON
-                ================================================== */}
-
-                <div
-                    style={{
-                        fontSize:
-                            "72px",
-
-                        lineHeight:
-                            1,
-
-                        animation:
-                            isTrying
-                                ? "none"
-                                : "boomRotatePhone 1.8s ease-in-out infinite",
-                    }}
-                >
-                    📱
-                </div>
-
-
-                {/* ==================================================
-                    TITLE
-                ================================================== */}
-
-                <div>
-
-                    <div
-                        style={{
-                            fontSize:
-                                "26px",
-
-                            fontWeight:
-                                700,
-
-                            marginBottom:
-                                "10px",
-                        }}
-                    >
-                        Xoay ngang điện thoại
-                    </div>
-
-
-                    <div
-                        style={{
-                            fontSize:
-                                "16px",
-
-                            lineHeight:
-                                1.5,
-
-                            color:
-                                "#bdbdbd",
-                        }}
-                    >
-                        Boom yêu cầu màn hình ngang
-                        để chơi.
-                    </div>
-
-                </div>
-
-
-                {/* ==================================================
-                    BUTTON
-                ================================================== */}
-
-                <button
-                    type="button"
-                    onClick={(event) => {
-
-                        event.stopPropagation();
-
-                        requestLandscape();
-
-                    }}
-                    disabled={isTrying}
-                    style={{
-                        minWidth:
-                            "220px",
-
-                        minHeight:
-                            "52px",
-
-                        padding:
-                            "0 24px",
-
-                        border:
-                            "none",
-
-                        borderRadius:
-                            "14px",
-
-                        background:
-                            "#ffffff",
-
-                        color:
-                            "#111111",
-
-                        fontSize:
-                            "16px",
-
-                        fontWeight:
-                            700,
-
-                        cursor:
-                            isTrying
-                                ? "default"
-                                : "pointer",
-
-                        opacity:
-                            isTrying
-                                ? 0.7
-                                : 1,
-                    }}
-                >
-
-                    {isTrying
-                        ? "Đang chuẩn bị..."
-                        : "Chạm để xoay ngang"}
-
-                </button>
-
-
-                {/* ==================================================
-                    FALLBACK
-                ================================================== */}
-
-                <div
-                    style={{
-                        fontSize:
-                            "13px",
-
-                        lineHeight:
-                            1.5,
-
-                        color:
-                            "#888888",
-
-                        maxWidth:
-                            "320px",
-                    }}
-                >
-                    Nếu điện thoại không tự xoay,
-                    hãy xoay điện thoại sang ngang
-                    rồi tiếp tục.
-                </div>
-
+                {children}
             </div>
 
 
-            {/* ======================================================
-                ANIMATION
-            ====================================================== */}
+            <style jsx>{`
 
-            <style>
-                {`
-                    @keyframes boomRotatePhone {
+                .boom-portrait-root {
+                    position: fixed;
+                    inset: 0;
 
-                        0% {
-                            transform: rotate(0deg);
-                        }
+                    width: 100vw;
+                    height: 100vh;
 
-                        35% {
-                            transform: rotate(0deg);
-                        }
+                    overflow: hidden;
 
-                        65% {
-                            transform: rotate(90deg);
-                        }
+                    background: #000000;
 
-                        100% {
-                            transform: rotate(90deg);
-                        }
+                    touch-action: none;
 
-                    }
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
 
-                    @media (prefers-reduced-motion: reduce) {
 
-                        * {
-                            animation: none !important;
-                        }
+                /*
+                 * The game uses the available
+                 * landscape dimensions.
+                 *
+                 * Before rotation:
+                 *
+                 * width  = 100vh
+                 * height = 100vw
+                 *
+                 * After rotate(90deg):
+                 *
+                 * width  = 100vw
+                 * height = 100vh
+                 */
 
-                    }
-                `}
-            </style>
+                .boom-portrait-game {
+                    position: absolute;
+
+                    width: 100vh;
+                    height: 100vw;
+
+                    left: 50%;
+                    top: 50%;
+
+                    transform:
+                        translate(-50%, -50%)
+                        rotate(90deg);
+
+                    transform-origin: center center;
+
+                    overflow: hidden;
+
+                    touch-action: none;
+                }
+
+
+                /*
+                 * Make sure the game itself fills
+                 * the rotated container.
+                 */
+
+                .boom-portrait-game :global(#__next),
+                .boom-portrait-game :global(canvas) {
+                    max-width: none;
+                }
+
+            `}</style>
 
         </div>
     );
