@@ -28,6 +28,56 @@ export default function GameHUD() {
 
 
     // ========================================================
+    // ORIENTATION
+    // ========================================================
+
+    const [
+        isPortrait,
+        setIsPortrait,
+    ] = useState(false);
+
+
+    useEffect(() => {
+
+        function checkOrientation() {
+
+            setIsPortrait(
+                window.innerHeight >
+                window.innerWidth
+            );
+
+        }
+
+        checkOrientation();
+
+        window.addEventListener(
+            "resize",
+            checkOrientation
+        );
+
+        window.addEventListener(
+            "orientationchange",
+            checkOrientation
+        );
+
+        return () => {
+
+            window.removeEventListener(
+                "resize",
+                checkOrientation
+            );
+
+            window.removeEventListener(
+                "orientationchange",
+                checkOrientation
+            );
+
+        };
+
+    }, []);
+
+
+    // ========================================================
     // HP
     // ========================================================
 
@@ -322,12 +372,6 @@ export default function GameHUD() {
                 fontFamily:
                     "Arial, sans-serif",
 
-                /*
-                 * KHÔNG rotate ở đây.
-                 *
-                 * LandscapeGuard đã rotate toàn bộ
-                 * game container khi portrait.
-                 */
                 transform: "none",
 
                 transformOrigin:
@@ -355,10 +399,6 @@ export default function GameHUD() {
                 }}
             >
 
-                {/* GAME TITLE */}
-
-
-
             </div>
 
 
@@ -370,24 +410,48 @@ export default function GameHUD() {
                 style={{
                     position: "absolute",
 
-                    left: "50%",
+                    /*
+                     * NGANG
+                     * ----------------
+                     * giữa phía dưới
+                     */
+                    left: isPortrait
+                        ? "0px"
+                        : "50%",
 
-                    bottom: 30,
+                    bottom: isPortrait
+                        ? "auto"
+                        : 30,
 
+                    /*
+                     * DỌC
+                     * ----------------
+                     * giữa bên trái
+                     */
+                    top: isPortrait
+                        ? "50%"
+                        : "auto",
+
+              
                     width: 180,
 
                     transform:
-                        "translateX(-50%)",
+                        isPortrait
+                                    ? "translateY(-50%) rotate(90deg)"
+
+                            : "translateX(-50%)",
                 }}
             >
 
-                {/* HP TEXT */}
+                {/* =================================================
+                    HP TEXT
+                ================================================= */}
 
                 <div
                     style={{
                         fontSize: 13,
 
-                        marginBottom: 5,
+                        marginBottom: 1,
 
                         textAlign: "center",
                     }}
@@ -396,7 +460,9 @@ export default function GameHUD() {
                 </div>
 
 
-                {/* HP BACKGROUND */}
+                {/* =================================================
+                    HP BACKGROUND
+                ================================================= */}
 
                 <div
                     style={{
@@ -457,6 +523,7 @@ export default function GameHUD() {
             >
                 +
             </div>
+
         </div>
 
     );
