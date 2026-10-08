@@ -6,10 +6,8 @@ html,
 body {
     width: 100%;
     height: 100%;
-
     margin: 0;
     padding: 0;
-
     overflow: hidden;
 }
 
@@ -25,7 +23,6 @@ body {
 
 .boom-game {
     position: absolute;
-
     inset: 0;
 
     width: 100%;
@@ -75,20 +72,14 @@ body {
 
     padding: 0;
 
-    border:
-        1px solid
-        rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 
     border-radius: 8px;
 
-    background:
-        rgba(25, 25, 30, 0.82);
+    background: rgba(25, 25, 30, 0.82);
 
-    backdrop-filter:
-        blur(10px);
-
-    -webkit-backdrop-filter:
-        blur(10px);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 
     color: #ffffff;
 
@@ -110,8 +101,7 @@ body {
     user-select: none;
     -webkit-user-select: none;
 
-    -webkit-tap-highlight-color:
-        transparent;
+    -webkit-tap-highlight-color: transparent;
 
     transition:
         transform 0.12s ease,
@@ -126,8 +116,7 @@ body {
    ============================================================ */
 
 .boom-game__out:hover {
-    background:
-        rgba(45, 45, 52, 0.95);
+    background: rgba(45, 45, 52, 0.95);
 
     border-color:
         rgba(255, 255, 255, 0.4);
@@ -143,8 +132,7 @@ body {
    ============================================================ */
 
 .boom-game__out:active {
-    transform:
-        scale(0.92);
+    transform: scale(0.92);
 
     background:
         rgba(10, 10, 14, 0.95);
@@ -165,13 +153,11 @@ body {
     top: 12px;
     left: 50%;
 
-    transform:
-        translateX(-50%);
+    transform: translateX(-50%);
 
     z-index: 9990;
 
-    padding:
-        6px 12px;
+    padding: 6px 12px;
 
     display: flex;
     align-items: center;
@@ -188,11 +174,8 @@ body {
     background:
         rgba(0, 0, 0, 0.58);
 
-    backdrop-filter:
-        blur(10px);
-
-    -webkit-backdrop-filter:
-        blur(10px);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 
     color: #ffffff;
 
@@ -255,6 +238,7 @@ body {
     height: 56px;
 
     display: flex;
+
     align-items: center;
     justify-content: center;
 
@@ -269,11 +253,8 @@ body {
     background:
         rgba(0, 0, 0, 0.52);
 
-    backdrop-filter:
-        blur(8px);
-
-    -webkit-backdrop-filter:
-        blur(8px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 
     color: #ffffff;
 
@@ -286,8 +267,7 @@ body {
     user-select: none;
     -webkit-user-select: none;
 
-    -webkit-tap-highlight-color:
-        transparent;
+    -webkit-tap-highlight-color: transparent;
 
     box-shadow:
         0 5px 14px
@@ -318,8 +298,7 @@ body {
    ============================================================ */
 
 .boom-game__action:active {
-    transform:
-        scale(0.88);
+    transform: scale(0.88);
 
     background:
         rgba(0, 0, 0, 0.75);
@@ -364,8 +343,7 @@ body {
     .boom-game__room-code {
         top: 10px;
 
-        padding:
-            5px 10px;
+        padding: 5px 10px;
 
         font-size: 10px;
     }
@@ -404,7 +382,6 @@ body {
     .boom-game__jump-button {
         font-size: 23px;
     }
-
 }
 
 
@@ -433,6 +410,43 @@ body {
 
     .boom-game__jump-button {
         font-size: 21px;
+    }
+}
+/* ============================================================
+   PORTRAIT
+   ROOM CODE = CENTER RIGHT
+   ============================================================ */
+
+@media (max-width: 768px) and (orientation: portrait) {
+
+    .boom-game__room-code {
+        top: 50%;
+        left: auto;
+        right: 10px;
+
+        transform: translateY(-50%);
+
+        writing-mode: horizontal-tb;
+    }
+
+}
+/* ============================================================
+   PORTRAIT
+   ROOM CODE = CENTER RIGHT + ROTATE
+   ============================================================ */
+
+@media (max-width: 768px) and (orientation: portrait) {
+
+    .boom-game__room-code {
+        top: 50%;
+        left: auto;
+        right: 10px;
+
+        transform:
+            translateY(-50%)
+            rotate(90deg);
+
+        transform-origin: center center;
     }
 
 }

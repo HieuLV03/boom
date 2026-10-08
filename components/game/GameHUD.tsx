@@ -357,32 +357,7 @@ export default function GameHUD() {
 
                 {/* GAME TITLE */}
 
-                <div
-                    style={{
-                        fontSize: 18,
 
-                        fontWeight: 700,
-                    }}
-                >
-                    BOOM
-                </div>
-
-
-                {/* PLAYER COUNT */}
-
-                <div
-                    style={{
-                        background:
-                            "rgba(0,0,0,.45)",
-
-                        padding:
-                            "6px 10px",
-
-                        borderRadius: 8,
-                    }}
-                >
-                    👥 1 / 10
-                </div>
 
             </div>
 
@@ -482,35 +457,6 @@ export default function GameHUD() {
             >
                 +
             </div>
-
-
-            {/* =================================================
-                SAFE ZONE
-            ================================================= */}
-
-            <div
-                style={{
-                    position: "absolute",
-
-                    top: 18,
-                    right: 18,
-
-                    background:
-                        "rgba(0,0,0,.45)",
-
-                    padding:
-                        "8px 12px",
-
-                    borderRadius: 8,
-
-                    fontSize: 13,
-                }}
-            >
-                SAFE ZONE
-                <br />
-                02:59
-            </div>
-
         </div>
 
     );
