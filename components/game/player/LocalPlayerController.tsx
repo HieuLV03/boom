@@ -34,7 +34,7 @@ import {
 
 import {
     canMoveTo,
-} from "../../../shared/maps/tropical-village/maze.config";
+} from "../../../components/game/maps/tropical-village/maze.config";
 
 
 // ============================================================
