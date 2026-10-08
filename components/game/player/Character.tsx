@@ -18,9 +18,7 @@ import {
 // ============================================================
 
 type Props = {
-
     appearance?: PlayerAppearance;
-
 };
 
 
@@ -29,9 +27,7 @@ type Props = {
 // ============================================================
 
 export default function Character({
-
     appearance,
-
 }: Props) {
 
     const config =
@@ -42,17 +38,24 @@ export default function Character({
                     "default"
                 ] ??
                 CHARACTERS.default,
-
             [
                 appearance?.characterId,
             ]
         );
 
 
+    // ========================================================
+    // SCALE
+    // ========================================================
+
     const scale =
         config.scale *
         (appearance?.scale ?? 1);
 
+
+    // ========================================================
+    // SKIN
+    // ========================================================
 
     const skinColor =
         appearance?.skinColor ??
@@ -67,7 +70,7 @@ export default function Character({
 
             {/* ==================================================
                 BODY
-            ================================================== */}
+                ================================================== */}
 
             <mesh
                 position={[
@@ -77,7 +80,6 @@ export default function Character({
                 ]}
                 castShadow
             >
-
                 <capsuleGeometry
                     args={[
                         0.38,
@@ -90,13 +92,12 @@ export default function Character({
                 <meshStandardMaterial
                     color="#2563EB"
                 />
-
             </mesh>
 
 
             {/* ==================================================
                 HEAD
-            ================================================== */}
+                ================================================== */}
 
             <mesh
                 position={[
@@ -106,7 +107,6 @@ export default function Character({
                 ]}
                 castShadow
             >
-
                 <sphereGeometry
                     args={[
                         0.42,
@@ -118,13 +118,12 @@ export default function Character({
                 <meshStandardMaterial
                     color={skinColor}
                 />
-
             </mesh>
 
 
             {/* ==================================================
                 HAIR
-            ================================================== */}
+                ================================================== */}
 
             <mesh
                 position={[
@@ -134,7 +133,6 @@ export default function Character({
                 ]}
                 castShadow
             >
-
                 <sphereGeometry
                     args={[
                         0.44,
@@ -146,13 +144,12 @@ export default function Character({
                 <meshStandardMaterial
                     color="#171717"
                 />
-
             </mesh>
 
 
             {/* ==================================================
                 LEFT EYE
-            ================================================== */}
+                ================================================== */}
 
             <mesh
                 position={[
@@ -161,7 +158,6 @@ export default function Character({
                     0.385,
                 ]}
             >
-
                 <sphereGeometry
                     args={[
                         0.055,
@@ -173,13 +169,12 @@ export default function Character({
                 <meshStandardMaterial
                     color="#111111"
                 />
-
             </mesh>
 
 
             {/* ==================================================
                 RIGHT EYE
-            ================================================== */}
+                ================================================== */}
 
             <mesh
                 position={[
@@ -188,7 +183,6 @@ export default function Character({
                     0.385,
                 ]}
             >
-
                 <sphereGeometry
                     args={[
                         0.055,
@@ -200,13 +194,12 @@ export default function Character({
                 <meshStandardMaterial
                     color="#111111"
                 />
-
             </mesh>
 
 
             {/* ==================================================
                 NOSE
-            ================================================== */}
+                ================================================== */}
 
             <mesh
                 position={[
@@ -215,7 +208,6 @@ export default function Character({
                     0.415,
                 ]}
             >
-
                 <sphereGeometry
                     args={[
                         0.035,
@@ -227,13 +219,12 @@ export default function Character({
                 <meshStandardMaterial
                     color={skinColor}
                 />
-
             </mesh>
 
 
             {/* ==================================================
                 LEFT ARM
-            ================================================== */}
+                ================================================== */}
 
             <mesh
                 position={[
@@ -248,7 +239,6 @@ export default function Character({
                 ]}
                 castShadow
             >
-
                 <capsuleGeometry
                     args={[
                         0.11,
@@ -261,13 +251,12 @@ export default function Character({
                 <meshStandardMaterial
                     color="#2563EB"
                 />
-
             </mesh>
 
 
             {/* ==================================================
                 RIGHT ARM
-            ================================================== */}
+                ================================================== */}
 
             <mesh
                 position={[
@@ -282,7 +271,6 @@ export default function Character({
                 ]}
                 castShadow
             >
-
                 <capsuleGeometry
                     args={[
                         0.11,
@@ -295,13 +283,12 @@ export default function Character({
                 <meshStandardMaterial
                     color="#2563EB"
                 />
-
             </mesh>
 
 
             {/* ==================================================
                 LEFT LEG
-            ================================================== */}
+                ================================================== */}
 
             <mesh
                 position={[
@@ -311,7 +298,6 @@ export default function Character({
                 ]}
                 castShadow
             >
-
                 <capsuleGeometry
                     args={[
                         0.14,
@@ -324,13 +310,12 @@ export default function Character({
                 <meshStandardMaterial
                     color="#111827"
                 />
-
             </mesh>
 
 
             {/* ==================================================
                 RIGHT LEG
-            ================================================== */}
+                ================================================== */}
 
             <mesh
                 position={[
@@ -340,7 +325,6 @@ export default function Character({
                 ]}
                 castShadow
             >
-
                 <capsuleGeometry
                     args={[
                         0.14,
@@ -353,13 +337,12 @@ export default function Character({
                 <meshStandardMaterial
                     color="#111827"
                 />
-
             </mesh>
 
 
             {/* ==================================================
                 LEFT SHOE
-            ================================================== */}
+                ================================================== */}
 
             <mesh
                 position={[
@@ -369,7 +352,6 @@ export default function Character({
                 ]}
                 castShadow
             >
-
                 <boxGeometry
                     args={[
                         0.3,
@@ -381,13 +363,12 @@ export default function Character({
                 <meshStandardMaterial
                     color="#F8FAFC"
                 />
-
             </mesh>
 
 
             {/* ==================================================
                 RIGHT SHOE
-            ================================================== */}
+                ================================================== */}
 
             <mesh
                 position={[
@@ -397,7 +378,6 @@ export default function Character({
                 ]}
                 castShadow
             >
-
                 <boxGeometry
                     args={[
                         0.3,
@@ -409,9 +389,9 @@ export default function Character({
                 <meshStandardMaterial
                     color="#F8FAFC"
                 />
-
             </mesh>
 
         </group>
+
     );
 }

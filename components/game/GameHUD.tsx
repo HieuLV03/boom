@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -15,15 +14,7 @@ import {
 } from "@/stores/multiplayer.store";
 
 
-// ============================================================
-// GAME HUD
-// ============================================================
-
 export default function GameHUD() {
-
-    // ========================================================
-    // MULTIPLAYER ROOM
-    // ========================================================
 
     const room =
         useMultiplayerStore(
@@ -31,83 +22,90 @@ export default function GameHUD() {
                 state.room
         );
 
-
-    // ========================================================
-    // HP
-    // ========================================================
-
     const [
         hp,
         setHp,
     ] = useState(100);
 
+    const [
+        isPortrait,
+        setIsPortrait,
+    ] = useState(false);
 
-    // ========================================================
-    // REALTIME HP
-    // ========================================================
+
+    useEffect(() => {
+
+        const checkOrientation =
+            () => {
+
+                setIsPortrait(
+                    window.innerHeight >
+                    window.innerWidth
+                );
+
+            };
+
+
+        checkOrientation();
+
+        window.addEventListener(
+            "resize",
+            checkOrientation
+        );
+
+        window.addEventListener(
+            "orientationchange",
+            checkOrientation
+        );
+
+
+        return () => {
+
+            window.removeEventListener(
+                "resize",
+                checkOrientation
+            );
+
+            window.removeEventListener(
+                "orientationchange",
+                checkOrientation
+            );
+
+        };
+
+    }, []);
+
+
+    // ============================================
+    // GIỮ NGUYÊN TOÀN BỘ PHẦN HP LISTENER CỦA BẠN
+    // ============================================
 
     useEffect(() => {
 
         if (!room) {
-
             setHp(100);
-
             return;
-
         }
-
-
-        console.log(
-            "[HUD] 🔄 Binding HP listeners:",
-            {
-                roomId:
-                    room.roomId,
-
-                sessionId:
-                    room.sessionId,
-            }
-        );
-
 
         const playersMap =
             room.state?.players;
 
-
         if (!playersMap) {
-
-            console.warn(
-                "[HUD] ❌ Players map not ready"
-            );
-
             return;
-
         }
 
-
         const $ =
-            getStateCallbacks(
-                room
-            );
-
+            getStateCallbacks(room);
 
         let hpUnsubscribe:
             (() => void) | undefined;
 
 
-        // ====================================================
-        // SET HP
-        // ====================================================
-
         const updateHp =
-            (
-                value: unknown
-            ) => {
+            (value: unknown) => {
 
                 const currentHp =
-                    Number(
-                        value ?? 100
-                    );
-
+                    Number(value ?? 100);
 
                 const safeHp =
                     Math.max(
@@ -118,109 +116,48 @@ export default function GameHUD() {
                         )
                     );
 
-
-                console.log(
-                    "[HUD] ❤️ HP:",
-                    safeHp
-                );
-
-
-                setHp(
-                    safeHp
-                );
-
+                setHp(safeHp);
             };
 
 
-        // ====================================================
-        // UPDATE FROM PLAYER
-        // ====================================================
-
         const updateFromPlayer =
-            (
-                serverPlayer: any
-            ) => {
+            (serverPlayer: any) => {
 
                 if (!serverPlayer) {
                     return;
                 }
-
 
                 updateHp(
                     serverPlayer.hp
                 );
-
             };
 
 
-        // ====================================================
-        // BIND LOCAL PLAYER
-        // ====================================================
-
         const bindLocalPlayer =
-            (
-                serverPlayer: any
-            ) => {
+            (serverPlayer: any) => {
 
                 if (!serverPlayer) {
                     return;
                 }
-
-
-                console.log(
-                    "[HUD] 🎯 Local player:",
-                    {
-                        id:
-                            serverPlayer.id,
-
-                        hp:
-                            serverPlayer.hp,
-
-                        alive:
-                            serverPlayer.alive,
-                    }
-                );
-
-
-                // --------------------------------------------
-                // INITIAL HP
-                // --------------------------------------------
 
                 updateFromPlayer(
                     serverPlayer
                 );
 
-
-                // --------------------------------------------
-                // REMOVE OLD LISTENER
-                // --------------------------------------------
-
                 hpUnsubscribe?.();
-
-
-                // --------------------------------------------
-                // SCHEMA CHANGES
-                // --------------------------------------------
 
                 hpUnsubscribe =
                     $(
                         serverPlayer
-                    ).onChange(
-                        () => {
+                    ).onChange(() => {
 
-                            updateFromPlayer(
-                                serverPlayer
-                            );
+                        updateFromPlayer(
+                            serverPlayer
+                        );
 
-                        }
-                    );
-
+                    });
             };
 
-
-        // ====================================================
-        // EXISTING LOCAL PLAYER
-        // ====================================================
 
         const localPlayer =
             playersMap.get(
@@ -235,47 +172,21 @@ export default function GameHUD() {
             );
 
         }
-        else {
 
-            console.log(
-                "[HUD] ⏳ Waiting for local player..."
-            );
-
-        }
-
-
-        // ====================================================
-        // PLAYER ADDED
-        // ====================================================
 
         const removeAddListener =
-            $(
-                playersMap
-            ).onAdd(
+            $(playersMap).onAdd(
                 (
                     serverPlayer: any,
                     playerId: string
                 ) => {
 
-                    console.log(
-                        "[HUD] ➕ Player added:",
-                        {
-                            playerId,
-                            localSession:
-                                room.sessionId,
-                        }
-                    );
-
-
                     if (
                         playerId !==
                         room.sessionId
                     ) {
-
                         return;
-
                     }
-
 
                     bindLocalPlayer(
                         serverPlayer
@@ -284,10 +195,6 @@ export default function GameHUD() {
                 }
             );
 
-
-        // ====================================================
-        // PLAYER DAMAGED
-        // ====================================================
 
         const removeDamageListener =
             room.onMessage(
@@ -301,29 +208,12 @@ export default function GameHUD() {
                     }
                 ) => {
 
-                    console.log(
-                        "[HUD] 💥 playerDamaged:",
-                        message
-                    );
-
-
-                    // ----------------------------------------
-                    // ONLY LOCAL PLAYER
-                    // ----------------------------------------
-
                     if (
                         message?.playerId !==
                         room.sessionId
                     ) {
-
                         return;
-
                     }
-
-
-                    // ----------------------------------------
-                    // UPDATE HP
-                    // ----------------------------------------
 
                     updateHp(
                         message.hp
@@ -332,10 +222,6 @@ export default function GameHUD() {
                 }
             );
 
-
-        // ====================================================
-        // PLAYER RESPAWNED
-        // ====================================================
 
         const removeRespawnListener =
             room.onMessage(
@@ -348,29 +234,12 @@ export default function GameHUD() {
                     }
                 ) => {
 
-                    console.log(
-                        "[HUD] ❤️ playerRespawned:",
-                        message
-                    );
-
-
-                    // ----------------------------------------
-                    // ONLY LOCAL PLAYER
-                    // ----------------------------------------
-
                     if (
                         message?.playerId !==
                         room.sessionId
                     ) {
-
                         return;
-
                     }
-
-
-                    // ----------------------------------------
-                    // RESET HP
-                    // ----------------------------------------
 
                     updateHp(
                         message.hp ?? 100
@@ -380,23 +249,7 @@ export default function GameHUD() {
             );
 
 
-        // ====================================================
-        // CLEANUP
-        // ====================================================
-
         return () => {
-
-            console.log(
-                "[HUD] 🧹 Cleanup HP listeners:",
-                {
-                    roomId:
-                        room.roomId,
-
-                    sessionId:
-                        room.sessionId,
-                }
-            );
-
 
             hpUnsubscribe?.();
 
@@ -408,45 +261,42 @@ export default function GameHUD() {
 
         };
 
-    }, [
-        room,
-    ]);
+    }, [room]);
 
-
-    // ========================================================
-    // HP PERCENT
-    // ========================================================
 
     const hpPercent =
         hp / 100;
 
 
-    // ========================================================
-    // RENDER
-    // ========================================================
-
     return (
-
         <div
             style={{
                 position: "absolute",
                 inset: 0,
+
                 pointerEvents: "none",
+
                 color: "white",
+
                 fontFamily:
                     "Arial, sans-serif",
+
+                transform:
+                    isPortrait
+                        ? "rotate(90deg)"
+                        : "none",
+
+                transformOrigin:
+                    "center center",
             }}
         >
-
-            {/* ==================================================
-                TOP LEFT
-            ================================================== */}
 
             <div
                 style={{
                     position: "absolute",
                     top: 18,
                     left: 18,
+
                     display: "flex",
                     flexDirection: "column",
                     gap: 8,
@@ -462,7 +312,6 @@ export default function GameHUD() {
                     BOOM
                 </div>
 
-
                 <div
                     style={{
                         background:
@@ -477,10 +326,6 @@ export default function GameHUD() {
 
             </div>
 
-
-            {/* ==================================================
-                HP
-            ================================================== */}
 
             <div
                 style={{
@@ -500,7 +345,6 @@ export default function GameHUD() {
                     HP {hp}
                 </div>
 
-
                 <div
                     style={{
                         height: 12,
@@ -515,13 +359,10 @@ export default function GameHUD() {
                         style={{
                             width:
                                 `${hpPercent * 100}%`,
-
                             height:
                                 "100%",
-
                             background:
                                 "#22c55e",
-
                             transition:
                                 "width 0.15s ease",
                         }}
@@ -531,10 +372,6 @@ export default function GameHUD() {
 
             </div>
 
-
-            {/* ==================================================
-                CROSSHAIR
-            ================================================== */}
 
             <div
                 style={{
@@ -550,16 +387,6 @@ export default function GameHUD() {
                 +
             </div>
 
-
-            {/* ==================================================
-                WEAPON
-            ================================================== */}
-
-
-
-            {/* ==================================================
-                SAFE ZONE
-            ================================================== */}
 
             <div
                 style={{
@@ -580,7 +407,5 @@ export default function GameHUD() {
             </div>
 
         </div>
-
     );
-
 }

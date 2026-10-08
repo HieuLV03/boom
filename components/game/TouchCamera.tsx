@@ -1,7 +1,8 @@
-
 "use client";
 
-import { useRef } from "react";
+import {
+    useRef,
+} from "react";
 
 import {
     useCameraStore,
@@ -87,6 +88,10 @@ export default function TouchCamera() {
             event.clientY;
 
 
+        // ====================================================
+        // CAMERA STATE
+        // ====================================================
+
         const {
             yaw,
             pitch,
@@ -96,23 +101,23 @@ export default function TouchCamera() {
 
 
         // ====================================================
-        // CAMERA ROTATION
+        // YAW
         //
-        // Kéo phải  → nhìn phải
-        // Kéo trái  → nhìn trái
+        // Kéo sang phải → camera quay phải
+        // Kéo sang trái → camera quay trái
         // ====================================================
 
-        let nextYaw =
+        const nextYaw =
             yaw +
             deltaX *
             SENSITIVITY;
 
 
         // ====================================================
-        // CAMERA PITCH
+        // PITCH
         //
-        // Kéo lên   → nhìn lên
-        // Kéo xuống → nhìn xuống
+        // Kéo lên   → camera nhìn lên
+        // Kéo xuống → camera nhìn xuống
         // ====================================================
 
         let nextPitch =
@@ -130,6 +135,10 @@ export default function TouchCamera() {
                 )
             );
 
+
+        // ====================================================
+        // APPLY
+        // ====================================================
 
         setRotation(
             nextYaw,

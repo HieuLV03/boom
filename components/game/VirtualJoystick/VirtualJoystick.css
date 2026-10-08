@@ -1,24 +1,51 @@
 
 /* ============================================================
    VIRTUAL JOYSTICK
+   ============================================================
+
+   LANDSCAPE:
+
+   ┌──────────────────────────────────────────────┐
+   │                                              │
+   │                                              │
+   │                                              │
+   │  🕹️                                          │
+   │                                              │
+   └──────────────────────────────────────────────┘
+
+   Joystick = BOTTOM LEFT
    ============================================================ */
 
 .virtual-joystick {
+
     position: fixed;
 
     left: 24px;
+
     bottom: 24px;
 
     width: 130px;
+
     height: 130px;
 
     border-radius: 50%;
 
     background:
-        rgba(255, 255, 255, 0.12);
+        rgba(
+            255,
+            255,
+            255,
+            0.12
+        );
 
     border:
-        2px solid rgba(255, 255, 255, 0.25);
+        2px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.25
+        );
 
     touch-action: none;
 
@@ -28,9 +55,18 @@
 
     -webkit-user-select: none;
 
+    -webkit-tap-highlight-color:
+        transparent;
+
     z-index: 1000;
 
     box-sizing: border-box;
+
+    /*
+     * Important:
+     *
+     * Do NOT add transform here in landscape.
+     */
 }
 
 
@@ -39,57 +75,211 @@
    ============================================================ */
 
 .virtual-joystick-knob {
+
     position: absolute;
 
     left: 50%;
+
     top: 50%;
 
     width: 58px;
+
     height: 58px;
 
     border-radius: 50%;
 
     background:
-        rgba(255, 255, 255, 0.45);
+        rgba(
+            255,
+            255,
+            255,
+            0.45
+        );
 
     box-shadow:
-        0 4px 15px rgba(0, 0, 0, 0.3);
+        0 4px 15px
+        rgba(
+            0,
+            0,
+            0,
+            0.3
+        );
 
     pointer-events: none;
 
     will-change: transform;
+
+    /*
+     * React inline transform controls
+     * the knob movement.
+     */
 }
 
 
 /* ============================================================
-   MOBILE
+   PORTRAIT
+   ============================================================
+
+   LandscapeGuard rotates the entire game:
+
+       rotate(90deg)
+
+   Therefore the joystick would also rotate.
+
+   We compensate it:
+
+       rotate(-90deg)
+
+   Physical screen position:
+
+       TOP LEFT
+
+   ┌──────────────────┐
+   │ 🕹️               │
+   │                  │
+   │                  │
+   │                  │
+   │ 💣               │
+   └──────────────────┘
+
    ============================================================ */
 
-@media (max-width: 768px) {
+@media (orientation: portrait) {
 
     .virtual-joystick {
-        left: 20px;
-        bottom: 20px;
 
-        width: 130px;
-        height: 130px;
+        /*
+         * Physical TOP LEFT
+         */
+
+        left: 20px;
+
+        top: 20px;
+
+        right: auto;
+
+        bottom: auto;
+
+
+        /*
+         * Cancel LandscapeGuard rotation.
+         */
+
+        transform:
+            rotate(-90deg);
+
+        transform-origin:
+            center center;
     }
 
 }
 
 
 /* ============================================================
-   SMALL MOBILE
+   MOBILE LANDSCAPE
    ============================================================ */
 
-@media (max-width: 480px) {
+@media
+(max-width: 768px)
+and
+(orientation: landscape) {
 
     .virtual-joystick {
+
+        left: 20px;
+
+        bottom: 20px;
+
+        top: auto;
+
+        right: auto;
+
+        transform: none;
+    }
+
+}
+
+
+/* ============================================================
+   MOBILE PORTRAIT
+   ============================================================ */
+
+@media
+(max-width: 768px)
+and
+(orientation: portrait) {
+
+    .virtual-joystick {
+
+        left: 20px;
+
+        top: 20px;
+
+        right: auto;
+
+        bottom: auto;
+
+        transform:
+            rotate(-90deg);
+    }
+
+}
+
+
+/* ============================================================
+   SMALL MOBILE LANDSCAPE
+   ============================================================ */
+
+@media
+(max-width: 480px)
+and
+(orientation: landscape) {
+
+    .virtual-joystick {
+
         left: 16px;
+
         bottom: 16px;
 
+        top: auto;
+
+        right: auto;
+
         width: 120px;
+
         height: 120px;
+
+        transform: none;
+    }
+
+}
+
+
+/* ============================================================
+   SMALL MOBILE PORTRAIT
+   ============================================================ */
+
+@media
+(max-width: 480px)
+and
+(orientation: portrait) {
+
+    .virtual-joystick {
+
+        left: 16px;
+
+        top: 16px;
+
+        right: auto;
+
+        bottom: auto;
+
+        width: 120px;
+
+        height: 120px;
+
+        transform:
+            rotate(-90deg);
     }
 
 }

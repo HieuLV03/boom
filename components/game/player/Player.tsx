@@ -68,52 +68,54 @@ export default function Player({
             .slice(0, 20);
 
 
-    // ========================================================
-    // RENDER
-    // ========================================================
-
     return (
 
         <group
-
             position={position}
-
-            rotation={[
-                0,
-                rotation,
-                0,
-            ]}
-
         >
 
             {/* ==================================================
                 CHARACTER
-            ================================================== */}
+                ================================================== */}
 
-            <Character
-                appearance={appearance}
-            />
+            <group
+                rotation={[
+                    0,
+                    rotation,
+                    0,
+                ]}
+            >
+
+                <Character
+                    appearance={
+                        appearance
+                    }
+                />
+
+            </group>
 
 
             {/* ==================================================
                 PLAYER NAME
-            ================================================== */}
-<Text
-    position={[
-        0,
-        2.65,
-        0,
-    ]}
-    fontSize={0.28}
-    color="#ffffff"
-    anchorX="center"
-    anchorY="middle"
-    outlineWidth={0.025}
-    outlineColor="#000000"
-    renderOrder={100}
->
-    {safeName}
-</Text>
+                ================================================== */}
+
+            <Text
+                position={[
+                    0,
+                    2.65,
+                    0,
+                ]}
+                fontSize={0.28}
+                color="#ffffff"
+                anchorX="center"
+                anchorY="middle"
+                outlineWidth={0.025}
+                outlineColor="#000000"
+                renderOrder={100}
+            >
+                {safeName}
+            </Text>
+
         </group>
 
     );

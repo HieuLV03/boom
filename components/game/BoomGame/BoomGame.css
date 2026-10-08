@@ -1,11 +1,9 @@
-
 /* ============================================================
    FULL SCREEN RESET
    ============================================================ */
 
 html,
 body {
-
     width: 100%;
     height: 100%;
 
@@ -13,15 +11,11 @@ body {
     padding: 0;
 
     overflow: hidden;
-
 }
 
-
 body {
-
     position: fixed;
     inset: 0;
-
 }
 
 
@@ -30,32 +24,19 @@ body {
    ============================================================ */
 
 .boom-game {
-
-    position: fixed;
+    position: absolute;
 
     inset: 0;
 
-    width: 100vw;
-    height: 100dvh;
+    width: 100%;
+    height: 100%;
 
-    min-width: 100vw;
-    min-height: 100dvh;
+    min-width: 0;
+    min-height: 0;
 
     overflow: hidden;
 
     background: #87ceeb;
-
-    /*
-     * KHÔNG dùng:
-     *
-     * touch-action: none;
-     *
-     * ở đây.
-     *
-     * Nếu đặt ở root, Canvas/game touch có thể
-     * ảnh hưởng tới các button DOM.
-     */
-
 }
 
 
@@ -64,18 +45,12 @@ body {
    ============================================================ */
 
 .boom-game canvas {
-
     display: block;
 
     width: 100% !important;
     height: 100% !important;
 
-    /*
-     * Chỉ Canvas mới nhận gesture của game.
-     */
-
     touch-action: none;
-
 }
 
 
@@ -84,7 +59,6 @@ body {
    ============================================================ */
 
 .boom-game__out {
-
     position: absolute;
 
     top: 12px;
@@ -96,7 +70,6 @@ body {
     height: 34px;
 
     display: flex;
-
     align-items: center;
     justify-content: center;
 
@@ -120,7 +93,6 @@ body {
     color: #ffffff;
 
     font-size: 11px;
-
     font-weight: 800;
 
     letter-spacing: 0.8px;
@@ -131,16 +103,11 @@ body {
         0 4px 12px
         rgba(0, 0, 0, 0.3);
 
-    /*
-     * Rất quan trọng cho mobile.
-     */
-
     touch-action: manipulation;
 
     pointer-events: auto;
 
     user-select: none;
-
     -webkit-user-select: none;
 
     -webkit-tap-highlight-color:
@@ -151,7 +118,6 @@ body {
         background 0.12s ease,
         border-color 0.12s ease,
         box-shadow 0.12s ease;
-
 }
 
 
@@ -160,7 +126,6 @@ body {
    ============================================================ */
 
 .boom-game__out:hover {
-
     background:
         rgba(45, 45, 52, 0.95);
 
@@ -170,7 +135,6 @@ body {
     box-shadow:
         0 5px 16px
         rgba(0, 0, 0, 0.4);
-
 }
 
 
@@ -179,7 +143,6 @@ body {
    ============================================================ */
 
 .boom-game__out:active {
-
     transform:
         scale(0.92);
 
@@ -189,7 +152,6 @@ body {
     box-shadow:
         0 2px 7px
         rgba(0, 0, 0, 0.4);
-
 }
 
 
@@ -198,7 +160,6 @@ body {
    ============================================================ */
 
 .boom-game__room-code {
-
     position: absolute;
 
     top: 12px;
@@ -213,7 +174,6 @@ body {
         6px 12px;
 
     display: flex;
-
     align-items: center;
     justify-content: center;
 
@@ -237,7 +197,6 @@ body {
     color: #ffffff;
 
     font-size: 11px;
-
     font-weight: 600;
 
     pointer-events: none;
@@ -247,7 +206,6 @@ body {
     box-shadow:
         0 4px 14px
         rgba(0, 0, 0, 0.2);
-
 }
 
 
@@ -256,7 +214,6 @@ body {
    ============================================================ */
 
 .boom-game__room-code-number {
-
     margin-left: 6px;
 
     font-size: 15px;
@@ -264,7 +221,6 @@ body {
     letter-spacing: 2.5px;
 
     font-weight: 800;
-
 }
 
 
@@ -273,7 +229,6 @@ body {
    ============================================================ */
 
 .boom-game__actions {
-
     position: absolute;
 
     right: 20px;
@@ -288,7 +243,6 @@ body {
     gap: 10px;
 
     pointer-events: auto;
-
 }
 
 
@@ -297,12 +251,10 @@ body {
    ============================================================ */
 
 .boom-game__action {
-
     width: 56px;
     height: 56px;
 
     display: flex;
-
     align-items: center;
     justify-content: center;
 
@@ -332,7 +284,6 @@ body {
     pointer-events: auto;
 
     user-select: none;
-
     -webkit-user-select: none;
 
     -webkit-tap-highlight-color:
@@ -346,7 +297,6 @@ body {
         transform 0.12s ease,
         background 0.12s ease,
         border-color 0.12s ease;
-
 }
 
 
@@ -355,13 +305,11 @@ body {
    ============================================================ */
 
 .boom-game__action:hover {
-
     background:
         rgba(20, 20, 20, 0.7);
 
     border-color:
         rgba(255, 255, 255, 0.4);
-
 }
 
 
@@ -370,13 +318,11 @@ body {
    ============================================================ */
 
 .boom-game__action:active {
-
     transform:
         scale(0.88);
 
     background:
         rgba(0, 0, 0, 0.75);
-
 }
 
 
@@ -385,9 +331,7 @@ body {
    ============================================================ */
 
 .boom-game__bomb-button {
-
     font-size: 26px;
-
 }
 
 
@@ -396,9 +340,7 @@ body {
    ============================================================ */
 
 .boom-game__jump-button {
-
     font-size: 24px;
-
 }
 
 
@@ -409,7 +351,6 @@ body {
 @media (max-width: 600px) {
 
     .boom-game__out {
-
         top: 10px;
         left: 10px;
 
@@ -417,60 +358,51 @@ body {
         height: 34px;
 
         font-size: 10px;
-
     }
 
 
     .boom-game__room-code {
-
         top: 10px;
 
         padding:
             5px 10px;
 
         font-size: 10px;
-
     }
 
 
     .boom-game__room-code-number {
-
         font-size: 14px;
 
         letter-spacing: 2px;
-
     }
 
 
-    .boom-game__actions {
+    /* ========================================================
+       ACTION
+       ======================================================== */
 
+    .boom-game__actions {
         right: 16px;
         bottom: 70px;
 
         gap: 9px;
-
     }
 
 
     .boom-game__action {
-
         width: 54px;
         height: 54px;
-
     }
 
 
     .boom-game__bomb-button {
-
         font-size: 25px;
-
     }
 
 
     .boom-game__jump-button {
-
         font-size: 23px;
-
     }
 
 }
@@ -483,32 +415,24 @@ body {
 @media (max-width: 380px) {
 
     .boom-game__actions {
-
         right: 12px;
         bottom: 64px;
-
     }
 
 
     .boom-game__action {
-
         width: 50px;
         height: 50px;
-
     }
 
 
     .boom-game__bomb-button {
-
         font-size: 23px;
-
     }
 
 
     .boom-game__jump-button {
-
         font-size: 21px;
-
     }
 
 }
