@@ -37,6 +37,20 @@ export default function TouchCamera() {
 
 
     // ========================================================
+    // CHECK ORIENTATION
+    // ========================================================
+
+    function isPortrait() {
+
+        return (
+            window.innerHeight >
+            window.innerWidth
+        );
+
+    }
+
+
+    // ========================================================
     // POINTER DOWN
     // ========================================================
 
@@ -56,6 +70,7 @@ export default function TouchCamera() {
         event.currentTarget.setPointerCapture(
             event.pointerId
         );
+
     }
 
 
@@ -72,11 +87,11 @@ export default function TouchCamera() {
         }
 
 
-        const deltaX =
+        const screenDeltaX =
             event.clientX -
             lastX.current;
 
-        const deltaY =
+        const screenDeltaY =
             event.clientY -
             lastY.current;
 
@@ -86,6 +101,45 @@ export default function TouchCamera() {
 
         lastY.current =
             event.clientY;
+
+
+        // ====================================================
+        // CONVERT SCREEN → GAME
+        // ====================================================
+        //
+        // Landscape:
+        //
+        // screen X → camera yaw
+        // screen Y → camera pitch
+        //
+        //
+        // Portrait:
+        //
+        // Game đã rotate 90°.
+        //
+        // Vì vậy:
+        //
+        // game X = screen Y
+        // game Y = -screen X
+        //
+        // ====================================================
+
+        let deltaX =
+            screenDeltaX;
+
+        let deltaY =
+            screenDeltaY;
+
+
+        if (isPortrait()) {
+
+            deltaX =
+                screenDeltaY;
+
+            deltaY =
+                -screenDeltaX;
+
+        }
 
 
         // ====================================================
@@ -102,9 +156,6 @@ export default function TouchCamera() {
 
         // ====================================================
         // YAW
-        //
-        // Kéo sang phải → camera quay phải
-        // Kéo sang trái → camera quay trái
         // ====================================================
 
         const nextYaw =
@@ -115,9 +166,6 @@ export default function TouchCamera() {
 
         // ====================================================
         // PITCH
-        //
-        // Kéo lên   → camera nhìn lên
-        // Kéo xuống → camera nhìn xuống
         // ====================================================
 
         let nextPitch =
@@ -144,6 +192,7 @@ export default function TouchCamera() {
             nextYaw,
             nextPitch
         );
+
     }
 
 
@@ -151,9 +200,26 @@ export default function TouchCamera() {
     // POINTER UP
     // ========================================================
 
-    function handlePointerUp() {
+    function handlePointerUp(
+        event?: React.PointerEvent<HTMLDivElement>
+    ) {
 
         active.current = false;
+
+
+        if (
+            event &&
+            event.currentTarget.hasPointerCapture(
+                event.pointerId
+            )
+        ) {
+
+            event.currentTarget.releasePointerCapture(
+                event.pointerId
+            );
+
+        }
+
     }
 
 
@@ -162,12 +228,16 @@ export default function TouchCamera() {
     // ========================================================
 
     return (
+
         <div
             style={{
+
                 position: "absolute",
 
                 top: 0,
+
                 right: 0,
+
                 bottom: 0,
 
                 width: "55%",
@@ -179,6 +249,7 @@ export default function TouchCamera() {
                 zIndex: 5,
 
                 background: "transparent",
+
             }}
 
             onPointerDown={
@@ -196,6 +267,9 @@ export default function TouchCamera() {
             onPointerCancel={
                 handlePointerUp
             }
+
         />
+
     );
+
 }

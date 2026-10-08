@@ -1,72 +1,51 @@
-
 /* ============================================================
    VIRTUAL JOYSTICK
-   ============================================================
-
-   LANDSCAPE:
-
-   ┌──────────────────────────────────────────────┐
-   │                                              │
-   │                                              │
-   │                                              │
-   │  🕹️                                          │
-   │                                              │
-   └──────────────────────────────────────────────┘
-
-   Joystick = BOTTOM LEFT
    ============================================================ */
 
 .virtual-joystick {
-
     position: fixed;
 
     left: 24px;
-
     bottom: 24px;
 
     width: 130px;
-
     height: 130px;
 
     border-radius: 50%;
 
-    background:
-        rgba(
-            255,
-            255,
-            255,
-            0.12
-        );
+    background: rgba(
+        255,
+        255,
+        255,
+        0.12
+    );
 
-    border:
-        2px solid
-        rgba(
-            255,
-            255,
-            255,
-            0.25
-        );
-
-    touch-action: none;
-
-    pointer-events: auto;
-
-    user-select: none;
-
-    -webkit-user-select: none;
-
-    -webkit-tap-highlight-color:
-        transparent;
-
-    z-index: 1000;
+    border: 2px solid rgba(
+        255,
+        255,
+        255,
+        0.25
+    );
 
     box-sizing: border-box;
 
+    touch-action: none;
+    pointer-events: auto;
+
+    user-select: none;
+    -webkit-user-select: none;
+
+    -webkit-tap-highlight-color: transparent;
+
+    z-index: 1000;
+
     /*
-     * Important:
+     * Không rotate.
      *
-     * Do NOT add transform here in landscape.
+     * LandscapeGuard đã xử lý việc
+     * rotate toàn bộ game ở portrait.
      */
+    transform: none;
 }
 
 
@@ -75,30 +54,25 @@
    ============================================================ */
 
 .virtual-joystick-knob {
-
     position: absolute;
 
     left: 50%;
-
     top: 50%;
 
     width: 58px;
-
     height: 58px;
 
     border-radius: 50%;
 
-    background:
-        rgba(
-            255,
-            255,
-            255,
-            0.45
-        );
+    background: rgba(
+        255,
+        255,
+        255,
+        0.45
+    );
 
     box-shadow:
-        0 4px 15px
-        rgba(
+        0 4px 15px rgba(
             0,
             0,
             0,
@@ -107,101 +81,37 @@
 
     pointer-events: none;
 
-    will-change: transform;
+    user-select: none;
+    -webkit-user-select: none;
 
-    /*
-     * React inline transform controls
-     * the knob movement.
-     */
+    will-change: transform;
+}
+
+
+/* ============================================================
+   TABLET / SMALL DESKTOP
+   ============================================================ */
+
+@media (max-width: 1024px) {
+
+    .virtual-joystick {
+        left: 24px;
+        bottom: 24px;
+
+        width: 130px;
+        height: 130px;
+    }
+
+    .virtual-joystick-knob {
+        width: 58px;
+        height: 58px;
+    }
+
 }
 
 
 /* ============================================================
    PORTRAIT
-   ============================================================
-
-   LandscapeGuard rotates the entire game:
-
-       rotate(90deg)
-
-   Therefore the joystick would also rotate.
-
-   We compensate it:
-
-       rotate(-90deg)
-
-   Physical screen position:
-
-       TOP LEFT
-
-   ┌──────────────────┐
-   │ 🕹️               │
-   │                  │
-   │                  │
-   │                  │
-   │ 💣               │
-   └──────────────────┘
-
-   ============================================================ */
-
-@media (orientation: portrait) {
-
-    .virtual-joystick {
-
-        /*
-         * Physical TOP LEFT
-         */
-
-        left: 20px;
-
-        top: 20px;
-
-        right: auto;
-
-        bottom: auto;
-
-
-        /*
-         * Cancel LandscapeGuard rotation.
-         */
-
-        transform:
-            rotate(-90deg);
-
-        transform-origin:
-            center center;
-    }
-
-}
-
-
-/* ============================================================
-   MOBILE LANDSCAPE
-   ============================================================ */
-
-@media
-(max-width: 768px)
-and
-(orientation: landscape) {
-
-    .virtual-joystick {
-
-        left: 20px;
-
-        bottom: 20px;
-
-        top: auto;
-
-        right: auto;
-
-        transform: none;
-    }
-
-}
-
-
-/* ============================================================
-   MOBILE PORTRAIT
    ============================================================ */
 
 @media
@@ -211,43 +121,21 @@ and
 
     .virtual-joystick {
 
-        left: 20px;
+        /*
+         * Vì game container đã rotate(90deg),
+         * joystick cũng nằm trong hệ tọa độ đó.
+         *
+         * Không rotate joystick thêm.
+         */
 
+        left: 20px;
         top: 20px;
 
         right: auto;
-
         bottom: auto;
 
-        transform:
-            rotate(-90deg);
-    }
-
-}
-
-
-/* ============================================================
-   SMALL MOBILE LANDSCAPE
-   ============================================================ */
-
-@media
-(max-width: 480px)
-and
-(orientation: landscape) {
-
-    .virtual-joystick {
-
-        left: 16px;
-
-        bottom: 16px;
-
-        top: auto;
-
-        right: auto;
-
-        width: 120px;
-
-        height: 120px;
+        width: 130px;
+        height: 130px;
 
         transform: none;
     }
@@ -256,7 +144,7 @@ and
 
 
 /* ============================================================
-   SMALL MOBILE PORTRAIT
+   SMALL PHONE PORTRAIT
    ============================================================ */
 
 @media
@@ -267,19 +155,113 @@ and
     .virtual-joystick {
 
         left: 16px;
-
         top: 16px;
 
         right: auto;
-
         bottom: auto;
 
         width: 120px;
-
         height: 120px;
 
-        transform:
-            rotate(-90deg);
+        transform: none;
+    }
+
+
+    .virtual-joystick-knob {
+
+        width: 54px;
+        height: 54px;
+    }
+
+}
+
+
+/* ============================================================
+   VERY SMALL PHONE
+   ============================================================ */
+
+@media
+(max-width: 380px)
+and
+(orientation: portrait) {
+
+    .virtual-joystick {
+
+        left: 12px;
+        top: 12px;
+
+        width: 110px;
+        height: 110px;
+    }
+
+
+    .virtual-joystick-knob {
+
+        width: 50px;
+        height: 50px;
+    }
+
+}
+
+
+/* ============================================================
+   LANDSCAPE PHONE
+   ============================================================ */
+
+@media
+(max-width: 768px)
+and
+(orientation: landscape) {
+
+    .virtual-joystick {
+
+        left: 20px;
+        bottom: 20px;
+
+        right: auto;
+        top: auto;
+
+        width: 120px;
+        height: 120px;
+
+        transform: none;
+    }
+
+
+    .virtual-joystick-knob {
+
+        width: 54px;
+        height: 54px;
+    }
+
+}
+
+
+/* ============================================================
+   SMALL LANDSCAPE PHONE
+   ============================================================ */
+
+@media
+(max-width: 480px)
+and
+(orientation: landscape) {
+
+    .virtual-joystick {
+
+        left: 16px;
+        bottom: 16px;
+
+        width: 110px;
+        height: 110px;
+
+        transform: none;
+    }
+
+
+    .virtual-joystick-knob {
+
+        width: 50px;
+        height: 50px;
     }
 
 }

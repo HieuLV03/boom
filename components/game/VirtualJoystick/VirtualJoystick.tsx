@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -24,39 +23,52 @@ type JoystickPosition = {
 
 
 // ============================================================
+// CONSTANTS
+// ============================================================
+
+const MAX_DISTANCE = 45;
+
+
+// ============================================================
 // COMPONENT
 // ============================================================
 
 export default function VirtualJoystick() {
 
-    const [position, setPosition] =
-        useState<JoystickPosition>({
-            x: 0,
-            y: 0,
-        });
+    const [
+        position,
+        setPosition,
+    ] = useState<JoystickPosition>({
+        x: 0,
+        y: 0,
+    });
+
 
     const active =
         useRef(false);
 
 
-    // ============================================================
+    // ========================================================
     // STORE
-    // ============================================================
+    // ========================================================
 
     const setMovement =
         useMovementStore(
-            (state) => state.setMovement
+            (state) =>
+                state.setMovement
         );
+
 
     const resetMovement =
         useMovementStore(
-            (state) => state.resetMovement
+            (state) =>
+                state.resetMovement
         );
 
 
-    // ============================================================
+    // ========================================================
     // UPDATE JOYSTICK
-    // ============================================================
+    // ========================================================
 
     function updateJoystick(
         clientX: number,
@@ -72,16 +84,20 @@ export default function VirtualJoystick() {
             rect.left +
             rect.width / 2;
 
+
         const centerY =
             rect.top +
             rect.height / 2;
 
 
         const dx =
-            clientX - centerX;
+            clientX -
+            centerX;
+
 
         const dy =
-            clientY - centerY;
+            clientY -
+            centerY;
 
 
         const distance =
@@ -91,21 +107,27 @@ export default function VirtualJoystick() {
             );
 
 
-        const maxDistance = 45;
-
+        // ====================================================
+        // LIMIT JOYSTICK
+        // ====================================================
 
         const scale =
-            distance > maxDistance
-                ? maxDistance / distance
+            distance > MAX_DISTANCE
+                ? MAX_DISTANCE / distance
                 : 1;
 
 
         const x =
             dx * scale;
 
+
         const y =
             dy * scale;
 
+
+        // ====================================================
+        // VISUAL POSITION
+        // ====================================================
 
         setPosition({
             x,
@@ -113,27 +135,58 @@ export default function VirtualJoystick() {
         });
 
 
-        // ========================================================
+        // ====================================================
         // NORMALIZE
-        // ========================================================
+        // ====================================================
 
         const normalizedX =
-            x / maxDistance;
+            x / MAX_DISTANCE;
+
 
         const normalizedY =
-            y / maxDistance;
+            y / MAX_DISTANCE;
 
+
+        // ====================================================
+        // MOVEMENT
+        // ====================================================
+        //
+        // Joystick CHỈ trả về input thô.
+        //
+        // Không kiểm tra portrait.
+        // Không rotate.
+        // Không đổi trục.
+        //
+        // LocalPlayerController sẽ xử lý:
+        //
+        // joystick
+        //      ↓
+        // camera-relative
+        //      ↓
+        // world X/Z
+        //
+        // X:
+        //
+        //   -1 ←──── 0 ────→ +1
+        //
+        // Y:
+        //
+        //   -1 = lên
+        //   +1 = xuống
+        //
+        // ====================================================
 
         setMovement(
             normalizedX,
             normalizedY
         );
+
     }
 
 
-    // ============================================================
+    // ========================================================
     // POINTER DOWN
-    // ============================================================
+    // ========================================================
 
     function start(
         event: React.PointerEvent<HTMLDivElement>
@@ -152,12 +205,13 @@ export default function VirtualJoystick() {
             event.clientY,
             event.currentTarget
         );
+
     }
 
 
-    // ============================================================
+    // ========================================================
     // POINTER MOVE
-    // ============================================================
+    // ========================================================
 
     function move(
         event: React.PointerEvent<HTMLDivElement>
@@ -173,12 +227,13 @@ export default function VirtualJoystick() {
             event.clientY,
             event.currentTarget
         );
+
     }
 
 
-    // ============================================================
+    // ========================================================
     // POINTER END
-    // ============================================================
+    // ========================================================
 
     function end(
         event?: React.PointerEvent<HTMLDivElement>
@@ -193,9 +248,11 @@ export default function VirtualJoystick() {
                 event.pointerId
             )
         ) {
+
             event.currentTarget.releasePointerCapture(
                 event.pointerId
             );
+
         }
 
 
@@ -206,14 +263,16 @@ export default function VirtualJoystick() {
 
 
         resetMovement();
+
     }
 
 
-    // ============================================================
+    // ========================================================
     // UI
-    // ============================================================
+    // ========================================================
 
     return (
+
         <div
             className="virtual-joystick"
 
@@ -240,5 +299,7 @@ export default function VirtualJoystick() {
             />
 
         </div>
+
     );
+
 }
