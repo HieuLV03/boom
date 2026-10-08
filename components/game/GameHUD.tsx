@@ -14,6 +14,10 @@ import {
 } from "@/stores/multiplayer.store";
 
 
+// ============================================================
+// GAME HUD
+// ============================================================
+
 export default function GameHUD() {
 
     const room =
@@ -22,90 +26,61 @@ export default function GameHUD() {
                 state.room
         );
 
+
+    // ========================================================
+    // HP
+    // ========================================================
+
     const [
         hp,
         setHp,
     ] = useState(100);
 
-    const [
-        isPortrait,
-        setIsPortrait,
-    ] = useState(false);
 
-
-    useEffect(() => {
-
-        const checkOrientation =
-            () => {
-
-                setIsPortrait(
-                    window.innerHeight >
-                    window.innerWidth
-                );
-
-            };
-
-
-        checkOrientation();
-
-        window.addEventListener(
-            "resize",
-            checkOrientation
-        );
-
-        window.addEventListener(
-            "orientationchange",
-            checkOrientation
-        );
-
-
-        return () => {
-
-            window.removeEventListener(
-                "resize",
-                checkOrientation
-            );
-
-            window.removeEventListener(
-                "orientationchange",
-                checkOrientation
-            );
-
-        };
-
-    }, []);
-
-
-    // ============================================
-    // GIỮ NGUYÊN TOÀN BỘ PHẦN HP LISTENER CỦA BẠN
-    // ============================================
+    // ========================================================
+    // HP LISTENER
+    // ========================================================
 
     useEffect(() => {
 
         if (!room) {
+
             setHp(100);
+
             return;
         }
 
+
         const playersMap =
             room.state?.players;
+
 
         if (!playersMap) {
             return;
         }
 
+
         const $ =
             getStateCallbacks(room);
 
-        let hpUnsubscribe:
-            (() => void) | undefined;
 
+        let hpUnsubscribe:
+            (() => void) |
+            undefined;
+
+
+        // ====================================================
+        // UPDATE HP
+        // ====================================================
 
         const updateHp =
             (value: unknown) => {
 
                 const currentHp =
-                    Number(value ?? 100);
+                    Number(
+                        value ?? 100
+                    );
+
 
                 const safeHp =
                     Math.max(
@@ -116,48 +91,76 @@ export default function GameHUD() {
                         )
                     );
 
-                setHp(safeHp);
+
+                setHp(
+                    safeHp
+                );
+
             };
 
 
+        // ====================================================
+        // UPDATE FROM PLAYER
+        // ====================================================
+
         const updateFromPlayer =
-            (serverPlayer: any) => {
+            (
+                serverPlayer: any
+            ) => {
 
                 if (!serverPlayer) {
                     return;
                 }
+
 
                 updateHp(
                     serverPlayer.hp
                 );
+
             };
 
 
+        // ====================================================
+        // BIND LOCAL PLAYER
+        // ====================================================
+
         const bindLocalPlayer =
-            (serverPlayer: any) => {
+            (
+                serverPlayer: any
+            ) => {
 
                 if (!serverPlayer) {
                     return;
                 }
+
 
                 updateFromPlayer(
                     serverPlayer
                 );
 
+
                 hpUnsubscribe?.();
+
 
                 hpUnsubscribe =
                     $(
                         serverPlayer
-                    ).onChange(() => {
+                    ).onChange(
+                        () => {
 
-                        updateFromPlayer(
-                            serverPlayer
-                        );
+                            updateFromPlayer(
+                                serverPlayer
+                            );
 
-                    });
+                        }
+                    );
+
             };
 
+
+        // ====================================================
+        // FIND LOCAL PLAYER
+        // ====================================================
 
         const localPlayer =
             playersMap.get(
@@ -174,6 +177,10 @@ export default function GameHUD() {
         }
 
 
+        // ====================================================
+        // PLAYER ADDED
+        // ====================================================
+
         const removeAddListener =
             $(playersMap).onAdd(
                 (
@@ -185,8 +192,11 @@ export default function GameHUD() {
                         playerId !==
                         room.sessionId
                     ) {
+
                         return;
+
                     }
+
 
                     bindLocalPlayer(
                         serverPlayer
@@ -195,6 +205,10 @@ export default function GameHUD() {
                 }
             );
 
+
+        // ====================================================
+        // DAMAGE
+        // ====================================================
 
         const removeDamageListener =
             room.onMessage(
@@ -212,8 +226,11 @@ export default function GameHUD() {
                         message?.playerId !==
                         room.sessionId
                     ) {
+
                         return;
+
                     }
+
 
                     updateHp(
                         message.hp
@@ -222,6 +239,10 @@ export default function GameHUD() {
                 }
             );
 
+
+        // ====================================================
+        // RESPAWN
+        // ====================================================
 
         const removeRespawnListener =
             room.onMessage(
@@ -238,16 +259,24 @@ export default function GameHUD() {
                         message?.playerId !==
                         room.sessionId
                     ) {
+
                         return;
+
                     }
 
+
                     updateHp(
-                        message.hp ?? 100
+                        message.hp ??
+                        100
                     );
 
                 }
             );
 
+
+        // ====================================================
+        // CLEANUP
+        // ====================================================
 
         return () => {
 
@@ -261,17 +290,29 @@ export default function GameHUD() {
 
         };
 
-    }, [room]);
+    }, [
+        room,
+    ]);
 
+
+    // ========================================================
+    // HP PERCENT
+    // ========================================================
 
     const hpPercent =
         hp / 100;
 
 
+    // ========================================================
+    // RENDER
+    // ========================================================
+
     return (
+
         <div
             style={{
                 position: "absolute",
+
                 inset: 0,
 
                 pointerEvents: "none",
@@ -281,43 +322,62 @@ export default function GameHUD() {
                 fontFamily:
                     "Arial, sans-serif",
 
-                transform:
-                    isPortrait
-                        ? "rotate(90deg)"
-                        : "none",
+                /*
+                 * KHÔNG rotate ở đây.
+                 *
+                 * LandscapeGuard đã rotate toàn bộ
+                 * game container khi portrait.
+                 */
+                transform: "none",
 
                 transformOrigin:
                     "center center",
             }}
         >
 
+            {/* =================================================
+                TOP LEFT
+            ================================================= */}
+
             <div
                 style={{
                     position: "absolute",
+
                     top: 18,
                     left: 18,
 
                     display: "flex",
-                    flexDirection: "column",
+
+                    flexDirection:
+                        "column",
+
                     gap: 8,
                 }}
             >
 
+                {/* GAME TITLE */}
+
                 <div
                     style={{
                         fontSize: 18,
+
                         fontWeight: 700,
                     }}
                 >
                     BOOM
                 </div>
 
+
+                {/* PLAYER COUNT */}
+
                 <div
                     style={{
                         background:
                             "rgba(0,0,0,.45)",
+
                         padding:
                             "6px 10px",
+
                         borderRadius: 8,
                     }}
                 >
@@ -327,42 +387,70 @@ export default function GameHUD() {
             </div>
 
 
+            {/* =================================================
+                HP BAR
+            ================================================= */}
+
             <div
                 style={{
                     position: "absolute",
-                    left: 567,
+
+                    left: "50%",
+
                     bottom: 30,
+
                     width: 180,
+
+                    transform:
+                        "translateX(-50%)",
                 }}
             >
+
+                {/* HP TEXT */}
 
                 <div
                     style={{
                         fontSize: 13,
+
                         marginBottom: 5,
+
+                        textAlign: "center",
                     }}
                 >
                     HP {hp}
                 </div>
 
+
+                {/* HP BACKGROUND */}
+
                 <div
                     style={{
+                        width: "100%",
+
                         height: 12,
+
                         background:
                             "rgba(0,0,0,.6)",
+
                         borderRadius: 8,
+
                         overflow: "hidden",
                     }}
                 >
+
+                    {/* HP */}
 
                     <div
                         style={{
                             width:
                                 `${hpPercent * 100}%`,
+
                             height:
                                 "100%",
+
                             background:
                                 "#22c55e",
+
                             transition:
                                 "width 0.15s ease",
                         }}
@@ -373,14 +461,22 @@ export default function GameHUD() {
             </div>
 
 
+            {/* =================================================
+                CROSSHAIR
+            ================================================= */}
+
             <div
                 style={{
                     position: "absolute",
+
                     left: "50%",
                     top: "50%",
+
                     transform:
                         "translate(-50%, -50%)",
+
                     fontSize: 28,
+
                     opacity: 0.8,
                 }}
             >
@@ -388,16 +484,25 @@ export default function GameHUD() {
             </div>
 
 
+            {/* =================================================
+                SAFE ZONE
+            ================================================= */}
+
             <div
                 style={{
                     position: "absolute",
+
                     top: 18,
                     right: 18,
+
                     background:
                         "rgba(0,0,0,.45)",
+
                     padding:
                         "8px 12px",
+
                     borderRadius: 8,
+
                     fontSize: 13,
                 }}
             >
@@ -407,5 +512,7 @@ export default function GameHUD() {
             </div>
 
         </div>
+
     );
+
 }
