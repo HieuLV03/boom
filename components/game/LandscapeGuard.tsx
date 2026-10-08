@@ -18,19 +18,43 @@ type Props = {
 
 
 // ============================================================
+// ORIENTATION
+// ============================================================
+
+type OrientationWithLock =
+    ScreenOrientation & {
+        lock?: (
+            orientation: string
+        ) => Promise<void>;
+    };
+
+
+// ============================================================
 // LANDSCAPE GUARD
 //
-// - Điện thoại ngang:
-//     Game chạy bình thường.
+// PORTRAIT:
 //
-// - Điện thoại dọc:
-//     Không bắt người dùng xoay điện thoại.
-//     Game tự xoay 90 độ.
+// Phone stays physically vertical.
 //
-// - Chrome:
-//     Có nút fullscreen.
-//     Fullscreen chỉ được gọi sau thao tác của người dùng.
+// The GAME is rotated 90 degrees:
 //
+//       PHONE
+//     ┌─────────┐
+//     │         │
+//     │  GAME → │
+//     │         │
+//     └─────────┘
+//
+// FULLSCREEN:
+//
+// User taps fullscreen button:
+//
+// requestFullscreen()
+//        ↓
+// orientation.lock("landscape")
+//
+// If Chrome allows it, browser UI can disappear
+// and the physical screen can become landscape.
 // ============================================================
 
 export default function LandscapeGuard({
@@ -59,45 +83,51 @@ export default function LandscapeGuard({
 
 
     // ========================================================
-    // CHECK ORIENTATION
+    // CHECK SCREEN ORIENTATION
     // ========================================================
 
     useEffect(() => {
 
-        const checkOrientation = () => {
+        const updateOrientation =
+            () => {
 
-            const portrait =
-                window.innerHeight >
-                window.innerWidth;
+                const width =
+                    window.innerWidth;
 
-            setIsPortrait(
-                portrait
-            );
+                const height =
+                    window.innerHeight;
 
-        };
+                setIsPortrait(
+                    height > width
+                );
 
-        checkOrientation();
+            };
+
+
+        updateOrientation();
+
 
         window.addEventListener(
             "resize",
-            checkOrientation,
+            updateOrientation,
         );
 
         window.addEventListener(
             "orientationchange",
-            checkOrientation,
+            updateOrientation,
         );
+
 
         return () => {
 
             window.removeEventListener(
                 "resize",
-                checkOrientation,
+                updateOrientation,
             );
 
             window.removeEventListener(
                 "orientationchange",
-                checkOrientation,
+                updateOrientation,
             );
 
         };
@@ -106,16 +136,31 @@ export default function LandscapeGuard({
 
 
     // ========================================================
-    // CHECK FULLSCREEN SUPPORT
+    // FULLSCREEN
     // ========================================================
 
     useEffect(() => {
 
+        if (
+            typeof document ===
+            "undefined"
+        ) {
+            return;
+        }
+
+
+        /*
+         * fullscreenEnabled is more reliable than
+         * checking only requestFullscreen.
+         */
+
         const supported =
-            typeof document !== "undefined" &&
-            typeof document.documentElement
+            document.fullscreenEnabled === true &&
+            typeof document
+                .documentElement
                 .requestFullscreen ===
                 "function";
+
 
         setFullscreenSupported(
             supported
@@ -156,18 +201,10 @@ export default function LandscapeGuard({
 
 
     // ========================================================
-    // REQUEST FULLSCREEN
-    //
-    // IMPORTANT:
-    //
-    // This function must be called from a user
-    // gesture such as click/tap.
-    //
-    // Chrome will reject automatic fullscreen
-    // without user interaction.
+    // ENTER FULLSCREEN
     // ========================================================
 
-    const requestFullscreen =
+    const enterFullscreen =
         async () => {
 
             if (
@@ -188,9 +225,22 @@ export default function LandscapeGuard({
 
 
             if (
-                typeof document
+                !document.fullscreenEnabled
+            ) {
+
+                return;
+
+            }
+
+
+            const request =
+                document
                     .documentElement
-                    .requestFullscreen !==
+                    .requestFullscreen;
+
+
+            if (
+                typeof request !==
                 "function"
             ) {
 
@@ -206,27 +256,24 @@ export default function LandscapeGuard({
 
             try {
 
-                await document
-                    .documentElement
-                    .requestFullscreen();
+                // ============================================
+                // ENTER FULLSCREEN
+                // ============================================
+
+                await request.call(
+                    document.documentElement
+                );
 
 
                 // ============================================
-                // TRY LANDSCAPE LOCK
-                //
-                // This works on supported mobile browsers,
-                // especially after entering fullscreen.
+                // TRY REAL LANDSCAPE LOCK
                 // ============================================
 
                 try {
 
                     const orientation =
                         screen.orientation as
-                        ScreenOrientation & {
-                            lock?: (
-                                orientation: string
-                            ) => Promise<void>;
-                        };
+                        OrientationWithLock;
 
 
                     if (
@@ -242,12 +289,26 @@ export default function LandscapeGuard({
 
                 }
                 catch {
-                    // Orientation lock is optional.
+                    /*
+                     * Orientation lock is optional.
+                     *
+                     * Fullscreen can still work even
+                     * when orientation lock fails.
+                     */
                 }
 
             }
             catch {
-                // Browser / WebView blocked fullscreen.
+                /*
+                 * Chrome / WebView rejected fullscreen.
+                 *
+                 * This is normal for:
+                 *
+                 * - Messenger WebView
+                 * - Zalo WebView
+                 * - unsupported browser
+                 * - fullscreen blocked
+                 */
             }
             finally {
 
@@ -286,24 +347,27 @@ export default function LandscapeGuard({
 
             try {
 
-                await document.exitFullscreen();
+                await document
+                    .exitFullscreen();
 
             }
             catch {
-                // Ignore browser errors.
+                // Ignore browser error.
             }
 
         };
 
 
     // ========================================================
-    // FULLSCREEN BUTTON
+    // FULLSCREEN CLICK
     // ========================================================
 
     const handleFullscreen =
         async () => {
 
-            if (isFullscreen) {
+            if (
+                isFullscreen
+            ) {
 
                 await exitFullscreen();
 
@@ -312,63 +376,142 @@ export default function LandscapeGuard({
             }
 
 
-            await requestFullscreen();
+            await enterFullscreen();
+
+        };
+
+
+    // ========================================================
+    // FULLSCREEN BUTTON
+    // ========================================================
+
+    const FullscreenButton =
+        () => {
+
+            if (
+                !fullscreenSupported
+            ) {
+
+                return null;
+
+            }
+
+
+            return (
+                <button
+                    type="button"
+                    className="
+                        boom-fullscreen-button
+                    "
+                    onClick={
+                        handleFullscreen
+                    }
+                    disabled={
+                        isFullscreenTrying
+                    }
+                    aria-label={
+                        isFullscreen
+                            ? "Thoát toàn màn hình"
+                            : "Toàn màn hình"
+                    }
+                >
+
+                    <span
+                        className="
+                            boom-fullscreen-icon
+                        "
+                    >
+                        ⛶
+                    </span>
+
+                    <span>
+                        {isFullscreen
+                            ? "Thoát"
+                            : isFullscreenTrying
+                                ? "Đang mở..."
+                                : "Toàn màn hình"}
+                    </span>
+
+                </button>
+            );
 
         };
 
 
     // ========================================================
     // LANDSCAPE
-    //
-    // Normal landscape device.
     // ========================================================
 
     if (!isPortrait) {
 
         return (
             <div
-                className="boom-landscape-root"
+                className="
+                    boom-screen
+                    boom-screen-landscape
+                "
             >
 
-                {children}
+                <div
+                    className="
+                        boom-game
+                    "
+                >
+                    {children}
+                </div>
 
 
-                {fullscreenSupported && (
-                    <button
-                        type="button"
-                        className="boom-fullscreen-button"
-                        onClick={
-                            handleFullscreen
-                        }
-                        disabled={
-                            isFullscreenTrying
-                        }
-                        aria-label={
-                            isFullscreen
-                                ? "Thoát toàn màn hình"
-                                : "Chơi toàn màn hình"
-                        }
-                    >
-                        {isFullscreen
-                            ? "⛶"
-                            : "⛶"}
-                    </button>
-                )}
+                <div
+                    className="
+                        boom-ui-layer
+                    "
+                >
+                    <FullscreenButton />
+                </div>
 
 
                 <style jsx>{`
 
-                    .boom-landscape-root {
+                    .boom-screen {
                         position: fixed;
 
                         inset: 0;
 
                         width: 100vw;
+
                         height: 100dvh;
 
                         overflow: hidden;
 
                         background: #000000;
+
+                        touch-action: none;
+                    }
+
+
+                    .boom-game {
+                        position: absolute;
+
+                        inset: 0;
+
+                        width: 100%;
+
+                        height: 100%;
+
+                        overflow: hidden;
+
+                        touch-action: none;
+                    }
+
+
+                    .boom-ui-layer {
+                        position: absolute;
+
+                        inset: 0;
+
+                        z-index: 2147483647;
+
+                        pointer-events: none;
 
                         touch-action: none;
                     }
@@ -381,7 +524,8 @@ export default function LandscapeGuard({
                             calc(
                                 12px +
                                 env(
-                                    safe-area-inset-top
+                                    safe-area-inset-top,
+                                    0px
                                 )
                             );
 
@@ -389,16 +533,27 @@ export default function LandscapeGuard({
                             calc(
                                 12px +
                                 env(
-                                    safe-area-inset-right
+                                    safe-area-inset-right,
+                                    0px
                                 )
                             );
 
-                        z-index: 999999;
+                        min-width: 44px;
 
-                        width: 44px;
-                        height: 44px;
+                        min-height: 44px;
 
-                        border: none;
+                        padding:
+                            0 14px;
+
+                        border:
+                            1px solid
+                            rgba(
+                                255,
+                                255,
+                                255,
+                                0.25
+                            );
+
                         border-radius: 12px;
 
                         background:
@@ -406,18 +561,30 @@ export default function LandscapeGuard({
                                 0,
                                 0,
                                 0,
-                                0.55
+                                0.65
                             );
 
                         color: #ffffff;
 
-                        font-size: 24px;
+                        font-size: 13px;
+
+                        font-weight: 700;
 
                         display: flex;
+
                         align-items: center;
+
                         justify-content: center;
 
+                        gap: 7px;
+
                         cursor: pointer;
+
+                        pointer-events: auto;
+
+                        user-select: none;
+
+                        -webkit-user-select: none;
 
                         -webkit-tap-highlight-color:
                             transparent;
@@ -426,21 +593,22 @@ export default function LandscapeGuard({
                     }
 
 
+                    .boom-fullscreen-button:active {
+                        transform: scale(0.96);
+                    }
+
+
                     .boom-fullscreen-button:disabled {
-                        opacity: 0.5;
+                        opacity: 0.55;
 
                         cursor: default;
                     }
 
 
-                    @media (
-                        prefers-reduced-motion: reduce
-                    ) {
+                    .boom-fullscreen-icon {
+                        font-size: 21px;
 
-                        .boom-fullscreen-button {
-                            transition: none;
-                        }
-
+                        line-height: 1;
                     }
 
                 `}</style>
@@ -454,18 +622,24 @@ export default function LandscapeGuard({
     // ========================================================
     // PORTRAIT
     //
-    // The physical phone stays portrait.
+    // Physical phone remains portrait.
     //
-    // The game itself is rotated 90 degrees.
+    // GAME becomes landscape by rotating
+    // the entire game container.
     // ========================================================
 
     return (
         <div
-            className="boom-portrait-root"
+            className="
+                boom-screen
+                boom-screen-portrait
+            "
         >
 
             <div
-                className="boom-portrait-game"
+                className="
+                    boom-rotated-game
+                "
             >
 
                 {children}
@@ -473,35 +647,24 @@ export default function LandscapeGuard({
             </div>
 
 
-            {fullscreenSupported && (
-                <button
-                    type="button"
-                    className="boom-fullscreen-button"
-                    onClick={
-                        handleFullscreen
-                    }
-                    disabled={
-                        isFullscreenTrying
-                    }
-                    aria-label={
-                        isFullscreen
-                            ? "Thoát toàn màn hình"
-                            : "Chơi toàn màn hình"
-                    }
-                >
-                    ⛶
-                </button>
-            )}
+            <div
+                className="
+                    boom-ui-layer
+                "
+            >
+                <FullscreenButton />
+            </div>
 
 
             <style jsx>{`
 
-                .boom-portrait-root {
+                .boom-screen {
                     position: fixed;
 
                     inset: 0;
 
                     width: 100vw;
+
                     height: 100dvh;
 
                     overflow: hidden;
@@ -509,40 +672,40 @@ export default function LandscapeGuard({
                     background: #000000;
 
                     touch-action: none;
-
-                    display: flex;
-
-                    align-items: center;
-
-                    justify-content: center;
                 }
 
 
                 /*
-                 * GAME CONTAINER
+                 * PORTRAIT PHONE
                  *
-                 * Before rotation:
+                 * Example:
                  *
-                 * width  = screen height
-                 * height = screen width
+                 * screen:
+                 *  390 x 844
                  *
-                 * After rotate(90deg):
+                 * game before rotation:
+                 *  844 x 390
                  *
-                 * width  = screen width
-                 * height = screen height
+                 * after rotate(90deg):
+                 *  390 x 844
                  */
 
-                .boom-portrait-game {
+                .boom-rotated-game {
                     position: absolute;
 
                     width: 100dvh;
+
                     height: 100dvw;
 
                     left: 50%;
+
                     top: 50%;
 
                     transform:
-                        translate(-50%, -50%)
+                        translate(
+                            -50%,
+                            -50%
+                        )
                         rotate(90deg);
 
                     transform-origin:
@@ -555,7 +718,53 @@ export default function LandscapeGuard({
 
 
                 /*
+                 * R3F CANVAS
+                 */
+
+                .boom-rotated-game
+                    :global(canvas) {
+
+                    display: block;
+
+                    width:
+                        100% !important;
+
+                    height:
+                        100% !important;
+
+                    max-width:
+                        none !important;
+
+                    max-height:
+                        none !important;
+                }
+
+
+                /*
+                 * UI ABOVE THE GAME
+                 */
+
+                .boom-ui-layer {
+                    position: absolute;
+
+                    inset: 0;
+
+                    z-index: 2147483647;
+
+                    pointer-events: none;
+
+                    touch-action: none;
+                }
+
+
+                /*
                  * FULLSCREEN BUTTON
+                 *
+                 * It is intentionally NOT inside
+                 * the rotated game.
+                 *
+                 * This keeps the button easy to tap
+                 * on the physical screen.
                  */
 
                 .boom-fullscreen-button {
@@ -565,7 +774,8 @@ export default function LandscapeGuard({
                         calc(
                             12px +
                             env(
-                                safe-area-inset-top
+                                safe-area-inset-top,
+                                0px
                             )
                         );
 
@@ -573,16 +783,27 @@ export default function LandscapeGuard({
                         calc(
                             12px +
                             env(
-                                safe-area-inset-right
+                                safe-area-inset-right,
+                                0px
                             )
                         );
 
-                    z-index: 999999;
+                    min-width: 44px;
 
-                    width: 44px;
-                    height: 44px;
+                    min-height: 44px;
 
-                    border: none;
+                    padding:
+                        0 14px;
+
+                    border:
+                        1px solid
+                        rgba(
+                            255,
+                            255,
+                            255,
+                            0.25
+                        );
+
                     border-radius: 12px;
 
                     background:
@@ -590,19 +811,30 @@ export default function LandscapeGuard({
                             0,
                             0,
                             0,
-                            0.55
+                            0.65
                         );
 
                     color: #ffffff;
 
-                    font-size: 24px;
+                    font-size: 13px;
+
+                    font-weight: 700;
 
                     display: flex;
 
                     align-items: center;
+
                     justify-content: center;
 
+                    gap: 7px;
+
                     cursor: pointer;
+
+                    pointer-events: auto;
+
+                    user-select: none;
+
+                    -webkit-user-select: none;
 
                     -webkit-tap-highlight-color:
                         transparent;
@@ -611,55 +843,22 @@ export default function LandscapeGuard({
                 }
 
 
+                .boom-fullscreen-button:active {
+                    transform: scale(0.96);
+                }
+
+
                 .boom-fullscreen-button:disabled {
-                    opacity: 0.5;
+                    opacity: 0.55;
 
                     cursor: default;
                 }
 
 
-                /*
-                 * R3F CANVAS
-                 */
+                .boom-fullscreen-icon {
+                    font-size: 21px;
 
-                .boom-portrait-game
-                    :global(canvas) {
-
-                    display: block;
-
-                    width: 100% !important;
-                    height: 100% !important;
-
-                    max-width: none;
-
-                    max-height: none;
-                }
-
-
-                /*
-                 * Prevent Next wrapper from
-                 * constraining the game.
-                 */
-
-                .boom-portrait-game
-                    :global(#__next) {
-
-                    width: 100%;
-
-                    height: 100%;
-
-                    max-width: none;
-                }
-
-
-                @media (
-                    prefers-reduced-motion: reduce
-                ) {
-
-                    .boom-fullscreen-button {
-                        transition: none;
-                    }
-
+                    line-height: 1;
                 }
 
             `}</style>

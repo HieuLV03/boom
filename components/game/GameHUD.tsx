@@ -555,35 +555,6 @@ export default function GameHUD() {
                 WEAPON
             ================================================== */}
 
-            <div
-                style={{
-                    position: "absolute",
-                    right: 20,
-                    bottom: 30,
-                    textAlign: "right",
-                }}
-            >
-
-                <div
-                    style={{
-                        fontSize: 16,
-                        opacity: 0.8,
-                    }}
-                >
-                    ASSAULT RIFLE
-                </div>
-
-
-                <div
-                    style={{
-                        fontSize: 30,
-                        fontWeight: 700,
-                    }}
-                >
-                    30 / 120
-                </div>
-
-            </div>
 
 
             {/* ==================================================
