@@ -11,6 +11,8 @@ import {
 
 import BoomGame from "@/components/game/BoomGame/BoomGame";
 
+import LandscapeGuard from "@/components/game/LandscapeGuard";
+
 import "./game.css";
 
 
@@ -29,9 +31,13 @@ function GamePageContent() {
 
 
     return (
-        <BoomGame
-            roomCode={roomCode}
-        />
+        <LandscapeGuard>
+
+            <BoomGame
+                roomCode={roomCode}
+            />
+
+        </LandscapeGuard>
     );
 }
 
