@@ -1,6 +1,11 @@
 "use client";
 
 import {
+    useEffect,
+    useState,
+} from "react";
+
+import {
     useFrame,
     useThree,
 } from "@react-three/fiber";
@@ -54,6 +59,56 @@ export default function CameraController({
 
 
     // ========================================================
+    // ORIENTATION
+    // ========================================================
+
+    const [
+        isPortrait,
+        setIsPortrait,
+    ] = useState(false);
+
+
+    useEffect(() => {
+
+        function checkOrientation() {
+
+            setIsPortrait(
+                window.innerHeight >
+                window.innerWidth
+            );
+
+        }
+
+        checkOrientation();
+
+        window.addEventListener(
+            "resize",
+            checkOrientation
+        );
+
+        window.addEventListener(
+            "orientationchange",
+            checkOrientation
+        );
+
+        return () => {
+
+            window.removeEventListener(
+                "resize",
+                checkOrientation
+            );
+
+            window.removeEventListener(
+                "orientationchange",
+                checkOrientation
+            );
+
+        };
+
+    }, []);
+
+
+    // ========================================================
     // FRAME
     // ========================================================
 
@@ -100,12 +155,6 @@ export default function CameraController({
 
         // ====================================================
         // CAMERA POSITION
-        //
-        // World:
-        //
-        // X = left / right
-        // Y = height
-        // Z = forward / backward
         // ====================================================
 
         const cameraX =
@@ -160,7 +209,7 @@ export default function CameraController({
 
 
         // ====================================================
-        // LOOK AT PLAYER
+        // LOOK AT
         // ====================================================
 
         camera.lookAt(
@@ -168,6 +217,42 @@ export default function CameraController({
             targetY,
             targetZ
         );
+
+
+        // ====================================================
+        // PORTRAIT CAMERA ROLL
+        //
+        // Landscape:
+        //
+        // WORLD Y
+        //   ↑
+        //   |
+        //   |
+        //
+        //   => screen bottom → top
+        //
+        //
+        // Portrait:
+        //
+        // WORLD Y
+        //   ─────────→
+        //
+        //   => screen left → right
+        //
+        // IMPORTANT:
+        // We rotate the CAMERA around its viewing axis.
+        // We do NOT rotate the map.
+        // We do NOT rotate the character.
+        // We do NOT change X/Z world coordinates.
+        // ====================================================
+
+        if (isPortrait) {
+
+            camera.rotateZ(
+                Math.PI / 2
+            );
+
+        }
 
     });
 

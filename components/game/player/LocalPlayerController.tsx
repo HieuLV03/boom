@@ -904,17 +904,63 @@ useEffect(() => {
         }
 
 
-        // ====================================================
-        // JOYSTICK
-        // ====================================================
+// ====================================================
+// JOYSTICK
+// ====================================================
 
-        const {
-            x,
-            y,
-        } =
-            useMovementStore.getState();
+let {
+    x,
+    y,
+} =
+    useMovementStore.getState();
 
 
+// ====================================================
+// PORTRAIT INPUT
+// ====================================================
+//
+// LandscapeGuard xoay toàn bộ game 90° khi portrait.
+//
+// Vì vậy input vật lý trên màn hình portrait cần
+// chuyển về hệ tọa độ game trước khi đưa vào
+// camera-relative movement.
+//
+// Joystick:
+//
+//        ↑
+//        |
+//        |
+//      PLAYER
+//
+// Khi portrait:
+//
+// screen X/Y
+//      ↓
+// game X/Y
+//
+// ====================================================
+
+const isPortrait =
+    window.innerHeight >
+    window.innerWidth;
+
+
+if (isPortrait) {
+
+    const screenX =
+        x;
+
+    const screenY =
+        y;
+
+
+    x =
+        screenY;
+
+    y =
+        -screenX;
+
+}
         // ====================================================
         // JOYSTICK MAGNITUDE
         // ====================================================
