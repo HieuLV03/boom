@@ -3,10 +3,6 @@ import type {
     MapConfig,
 } from "./types";
 
-import {
-    MAPS,
-} from "../../../shared/maps/map.config";
-
 
 // ============================================================
 // MAP CONFIGS
@@ -58,7 +54,7 @@ export const MAP_CONFIGS: Record<
         ],
     },
 
-    city: {
+    "city": {
 
         id: "city",
 
@@ -87,7 +83,7 @@ export const MAP_CONFIGS: Record<
         ],
     },
 
-    desert: {
+    "desert": {
 
         id: "desert",
 
@@ -115,13 +111,4 @@ export const MAP_CONFIGS: Record<
             },
         ],
     },
-};
-
-
-// ============================================================
-// KEEP SHARED MAP AVAILABLE
-// ============================================================
-
-export {
-    MAPS,
 };
