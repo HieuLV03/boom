@@ -4,7 +4,7 @@ import type {
     PlayerAppearance,
 } from "./types";
 
-import Character from "./Character";
+import Character3D from "./Character3D";
 
 import {
     DEFAULT_APPEARANCE,
@@ -33,6 +33,7 @@ type Props = {
 
     name?: string;
 
+    moving?: boolean;
 };
 
 
@@ -54,18 +55,19 @@ export default function Player({
 
     name = "Player",
 
-}: Props) {
+    moving = false,
 
-    // ========================================================
-    // SAFE NAME
-    // ========================================================
+}: Props) {
 
     const safeName =
         String(
             name || "Player"
         )
             .trim()
-            .slice(0, 20);
+            .slice(
+                0,
+                20
+            );
 
 
     return (
@@ -74,9 +76,9 @@ export default function Player({
             position={position}
         >
 
-            {/* ==================================================
+            {/* =================================================
                 CHARACTER
-                ================================================== */}
+            ================================================= */}
 
             <group
                 rotation={[
@@ -86,18 +88,16 @@ export default function Player({
                 ]}
             >
 
-                <Character
-                    appearance={
-                        appearance
-                    }
+                <Character3D
+                    moving={moving}
                 />
 
             </group>
 
 
-            {/* ==================================================
+            {/* =================================================
                 PLAYER NAME
-                ================================================== */}
+            ================================================= */}
 
             <Text
                 position={[
@@ -113,11 +113,12 @@ export default function Player({
                 outlineColor="#000000"
                 renderOrder={100}
             >
+
                 {safeName}
+
             </Text>
 
         </group>
 
     );
-
 }

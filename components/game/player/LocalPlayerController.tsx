@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -110,6 +109,29 @@ export default function LocalPlayerController({
 
 
     // ========================================================
+    // MOVING STATE
+    // ========================================================
+    //
+    // true:
+    //     Character đang di chuyển
+    //
+    // false:
+    //     Character đứng yên
+    //
+    // isMovingRef dùng để tránh setState mỗi frame.
+    //
+    // ========================================================
+
+    const isMovingRef =
+        useRef(false);
+
+    const [
+        isMoving,
+        setIsMoving,
+    ] = useState(false);
+
+
+    // ========================================================
     // BOMB ESCAPE
     // ========================================================
 
@@ -205,8 +227,23 @@ export default function LocalPlayerController({
         // RESET MOVEMENT
         // ====================================================
 
-        velocityX.current = 0;
-        velocityZ.current = 0;
+        velocityX.current =
+            0;
+
+        velocityZ.current =
+            0;
+
+
+        // ====================================================
+        // RESET CHARACTER ANIMATION
+        // ====================================================
+
+        isMovingRef.current =
+            false;
+
+        setIsMoving(
+            false
+        );
 
 
         // ====================================================
@@ -229,18 +266,78 @@ export default function LocalPlayerController({
     };
 
 
+    // ========================================================
+    // REALTIME PLAYER STATE
+    // ========================================================
 
-// ========================================================
-// REALTIME PLAYER STATE
-// ========================================================
+    useEffect(() => {
 
-useEffect(() => {
+        if (!room) {
 
-    if (!room) {
+            console.log(
+                "[PLAYER] ❌ No Colyseus room"
+            );
+
+
+            setPlayerName(
+                "Player"
+            );
+
+
+            setIsDead(
+                false
+            );
+
+
+            lastServerAlive.current =
+                null;
+
+
+            velocityX.current =
+                0;
+
+            velocityZ.current =
+                0;
+
+
+            isMovingRef.current =
+                false;
+
+            setIsMoving(
+                false
+            );
+
+
+            return;
+
+        }
+
 
         console.log(
-            "[PLAYER] ❌ No Colyseus room"
+            "========================================"
         );
+
+        console.log(
+            "[PLAYER] 🔄 NEW ROOM"
+        );
+
+        console.log(
+            "[PLAYER] roomId:",
+            room.roomId
+        );
+
+        console.log(
+            "[PLAYER] sessionId:",
+            room.sessionId
+        );
+
+
+        /*
+         * QUAN TRỌNG:
+         *
+         * Mỗi room mới phải reset toàn bộ
+         * local player state.
+         */
 
         setPlayerName(
             "Player"
@@ -259,318 +356,67 @@ useEffect(() => {
         velocityZ.current =
             0;
 
-        return;
+        isMovingRef.current =
+            false;
 
-    }
-
-
-    console.log(
-        "========================================"
-    );
-
-    console.log(
-        "[PLAYER] 🔄 NEW ROOM"
-    );
-
-    console.log(
-        "[PLAYER] roomId:",
-        room.roomId
-    );
-
-    console.log(
-        "[PLAYER] sessionId:",
-        room.sessionId
-    );
-
-
-    /*
-     * QUAN TRỌNG:
-     *
-     * Mỗi room mới phải reset toàn bộ
-     * local player state.
-     */
-
-    setPlayerName(
-        "Player"
-    );
-
-    setIsDead(
-        false
-    );
-
-    lastServerAlive.current =
-        null;
-
-    velocityX.current =
-        0;
-
-    velocityZ.current =
-        0;
-
-    bombEscape.current.clear();
-
-
-    // ====================================================
-    // PLAYERS MAP
-    // ====================================================
-
-    const playersMap =
-        room.state?.players;
-
-
-    if (!playersMap) {
-
-        console.warn(
-            "[PLAYER] ❌ players map not ready"
+        setIsMoving(
+            false
         );
 
-        return;
-
-    }
+        bombEscape.current.clear();
 
 
-    const $ =
-        getStateCallbacks(
-            room
-        );
+        // ====================================================
+        // PLAYERS MAP
+        // ====================================================
+
+        const playersMap =
+            room.state?.players;
 
 
-    let playerUnsubscribe:
-        (() => void) | undefined;
+        if (!playersMap) {
+
+            console.warn(
+                "[PLAYER] ❌ players map not ready"
+            );
+
+            return;
+
+        }
 
 
-    // ====================================================
-    // BIND LOCAL PLAYER
-    // ====================================================
-
-    const bindLocalPlayer =
-        (
-            serverPlayer: any
-        ) => {
-
-            if (!serverPlayer) {
-
-                console.warn(
-                    "[PLAYER] ❌ Local player is null"
-                );
-
-                return;
-
-            }
-
-
-            console.log(
-                "[PLAYER] ✅ Local player bound:",
-                {
-                    roomId:
-                        room.roomId,
-
-                    sessionId:
-                        room.sessionId,
-
-                    id:
-                        serverPlayer.id,
-
-                    name:
-                        serverPlayer.name,
-
-                    hp:
-                        serverPlayer.hp,
-
-                    alive:
-                        serverPlayer.alive,
-
-                    x:
-                        serverPlayer.x,
-
-                    y:
-                        serverPlayer.y,
-
-                    z:
-                        serverPlayer.z,
-
-                    rotation:
-                        serverPlayer.rotation,
-                }
+        const $ =
+            getStateCallbacks(
+                room
             );
 
 
-            // ================================================
-            // NAME
-            // ================================================
-
-            setPlayerName(
-                serverPlayer.name ||
-                "Player"
-            );
+        let playerUnsubscribe:
+            (() => void) | undefined;
 
 
-            // ================================================
-            // ALIVE
-            // ================================================
+        // ====================================================
+        // BIND LOCAL PLAYER
+        // ====================================================
 
-            const alive =
-                serverPlayer.alive !== false;
+        const bindLocalPlayer =
+            (
+                serverPlayer: any
+            ) => {
 
+                if (!serverPlayer) {
 
-            setIsDead(
-                !alive
-            );
-
-
-            // ================================================
-            // INITIAL POSITION
-            // ================================================
-
-            if (
-                lastServerAlive.current ===
-                null
-            ) {
-
-                lastServerAlive.current =
-                    alive;
-
-
-                if (alive) {
-
-                    resetPositionFromServer(
-                        serverPlayer
+                    console.warn(
+                        "[PLAYER] ❌ Local player is null"
                     );
 
+                    return;
+
                 }
 
-            }
-
-
-            // ================================================
-            // REMOVE OLD LISTENER
-            // ================================================
-
-            playerUnsubscribe?.();
-
-
-            // ================================================
-            // LISTEN PLAYER CHANGES
-            // ================================================
-
-            playerUnsubscribe =
-                $(
-                    serverPlayer
-                ).onChange(
-                    () => {
-
-                        // ====================================
-                        // NAME
-                        // ====================================
-
-                        setPlayerName(
-                            serverPlayer.name ||
-                            "Player"
-                        );
-
-
-                        // ====================================
-                        // ALIVE
-                        // ====================================
-
-                        const currentAlive =
-                            serverPlayer.alive !== false;
-
-
-                        const previousAlive =
-                            lastServerAlive.current;
-
-
-                        lastServerAlive.current =
-                            currentAlive;
-
-
-                        // ====================================
-                        // DEAD
-                        // ====================================
-
-                        if (
-                            !currentAlive
-                        ) {
-
-                            setIsDead(
-                                true
-                            );
-
-
-                            velocityX.current =
-                                0;
-
-                            velocityZ.current =
-                                0;
-
-
-                            console.log(
-                                "[PLAYER] 💀 Local player died"
-                            );
-
-
-                            return;
-
-                        }
-
-
-                        // ====================================
-                        // RESPAWN
-                        // ====================================
-
-                        if (
-                            previousAlive ===
-                                false &&
-                            currentAlive ===
-                                true
-                        ) {
-
-                            console.log(
-                                "[PLAYER] ❤️ Local player respawned"
-                            );
-
-
-                            resetPositionFromServer(
-                                serverPlayer
-                            );
-
-                        }
-
-
-                        // ====================================
-                        // ALIVE
-                        // ====================================
-
-                        setIsDead(
-                            false
-                        );
-
-                    }
-                );
-
-        };
-
-
-    // ====================================================
-    // FIND LOCAL PLAYER
-    // ====================================================
-
-    const findLocalPlayer =
-        () => {
-
-            const localPlayer =
-                playersMap.get(
-                    room.sessionId
-                );
-
-
-            if (
-                localPlayer
-            ) {
 
                 console.log(
-                    "[PLAYER] 🎯 Found local player:",
+                    "[PLAYER] ✅ Local player bound:",
                     {
                         roomId:
                             room.roomId,
@@ -579,126 +425,359 @@ useEffect(() => {
                             room.sessionId,
 
                         id:
-                            localPlayer.id,
+                            serverPlayer.id,
 
                         name:
-                            localPlayer.name,
+                            serverPlayer.name,
 
                         hp:
-                            localPlayer.hp,
+                            serverPlayer.hp,
 
                         alive:
-                            localPlayer.alive,
+                            serverPlayer.alive,
+
+                        x:
+                            serverPlayer.x,
+
+                        y:
+                            serverPlayer.y,
+
+                        z:
+                            serverPlayer.z,
+
+                        rotation:
+                            serverPlayer.rotation,
                     }
                 );
 
 
-                bindLocalPlayer(
-                    localPlayer
+                // ================================================
+                // NAME
+                // ================================================
+
+                setPlayerName(
+                    serverPlayer.name ||
+                    "Player"
                 );
 
 
-                return true;
+                // ================================================
+                // ALIVE
+                // ================================================
 
-            }
-
-
-            return false;
-
-        };
+                const alive =
+                    serverPlayer.alive !== false;
 
 
-    // ====================================================
-    // EXISTING PLAYER
-    // ====================================================
-
-    if (
-        !findLocalPlayer()
-    ) {
-
-        console.log(
-            "[PLAYER] ⏳ Waiting for local player..."
-        );
-
-    }
-
-
-    // ====================================================
-    // PLAYER ADDED
-    // ====================================================
-
-    const removeAddListener =
-        $(playersMap).onAdd(
-            (
-                serverPlayer: any,
-                playerId: string
-            ) => {
-
-                console.log(
-                    "[PLAYER] ➕ Player added:",
-                    {
-                        roomId:
-                            room.roomId,
-
-                        playerId,
-
-                        localSession:
-                            room.sessionId,
-                    }
+                setIsDead(
+                    !alive
                 );
 
+
+                // ================================================
+                // INITIAL POSITION
+                // ================================================
 
                 if (
-                    playerId !==
-                    room.sessionId
+                    lastServerAlive.current ===
+                    null
                 ) {
 
-                    return;
+                    lastServerAlive.current =
+                        alive;
+
+
+                    if (alive) {
+
+                        resetPositionFromServer(
+                            serverPlayer
+                        );
+
+                    }
 
                 }
 
 
-                bindLocalPlayer(
-                    serverPlayer
-                );
+                // ================================================
+                // REMOVE OLD LISTENER
+                // ================================================
 
-            }
-        );
-
-
-    // ====================================================
-    // CLEANUP
-    // ====================================================
-
-    return () => {
-
-        console.log(
-            "[PLAYER] 🧹 Cleaning room listeners:",
-            {
-                roomId:
-                    room.roomId,
-
-                sessionId:
-                    room.sessionId,
-            }
-        );
+                playerUnsubscribe?.();
 
 
-        playerUnsubscribe?.();
+                // ================================================
+                // LISTEN PLAYER CHANGES
+                // ================================================
 
-        removeAddListener?.();
+                playerUnsubscribe =
+                    $(
+                        serverPlayer
+                    ).onChange(
+                        () => {
+
+                            // ====================================
+                            // NAME
+                            // ====================================
+
+                            setPlayerName(
+                                serverPlayer.name ||
+                                "Player"
+                            );
 
 
-        bombEscape.current.clear();
+                            // ====================================
+                            // ALIVE
+                            // ====================================
 
-        lastServerAlive.current =
-            null;
+                            const currentAlive =
+                                serverPlayer.alive !== false;
 
-    };
 
-}, [
-    room,
-]);
+                            const previousAlive =
+                                lastServerAlive.current;
+
+
+                            lastServerAlive.current =
+                                currentAlive;
+
+
+                            // ====================================
+                            // DEAD
+                            // ====================================
+
+                            if (
+                                !currentAlive
+                            ) {
+
+                                setIsDead(
+                                    true
+                                );
+
+
+                                velocityX.current =
+                                    0;
+
+                                velocityZ.current =
+                                    0;
+
+
+                                // =================================
+                                // STOP CHARACTER ANIMATION
+                                // =================================
+
+                                if (
+                                    isMovingRef.current
+                                ) {
+
+                                    isMovingRef.current =
+                                        false;
+
+                                    setIsMoving(
+                                        false
+                                    );
+
+                                }
+
+
+                                console.log(
+                                    "[PLAYER] 💀 Local player died"
+                                );
+
+
+                                return;
+
+                            }
+
+
+                            // ====================================
+                            // RESPAWN
+                            // ====================================
+
+                            if (
+                                previousAlive ===
+                                    false &&
+                                currentAlive ===
+                                    true
+                            ) {
+
+                                console.log(
+                                    "[PLAYER] ❤️ Local player respawned"
+                                );
+
+
+                                resetPositionFromServer(
+                                    serverPlayer
+                                );
+
+                            }
+
+
+                            // ====================================
+                            // ALIVE
+                            // ====================================
+
+                            setIsDead(
+                                false
+                            );
+
+                        }
+                    );
+
+            };
+
+
+        // ====================================================
+        // FIND LOCAL PLAYER
+        // ====================================================
+
+        const findLocalPlayer =
+            () => {
+
+                const localPlayer =
+                    playersMap.get(
+                        room.sessionId
+                    );
+
+
+                if (
+                    localPlayer
+                ) {
+
+                    console.log(
+                        "[PLAYER] 🎯 Found local player:",
+                        {
+                            roomId:
+                                room.roomId,
+
+                            sessionId:
+                                room.sessionId,
+
+                            id:
+                                localPlayer.id,
+
+                            name:
+                                localPlayer.name,
+
+                            hp:
+                                localPlayer.hp,
+
+                            alive:
+                                localPlayer.alive,
+                        }
+                    );
+
+
+                    bindLocalPlayer(
+                        localPlayer
+                    );
+
+
+                    return true;
+
+                }
+
+
+                return false;
+
+            };
+
+
+        // ====================================================
+        // EXISTING PLAYER
+        // ====================================================
+
+        if (
+            !findLocalPlayer()
+        ) {
+
+            console.log(
+                "[PLAYER] ⏳ Waiting for local player..."
+            );
+
+        }
+
+
+        // ====================================================
+        // PLAYER ADDED
+        // ====================================================
+
+        const removeAddListener =
+            $(playersMap).onAdd(
+                (
+                    serverPlayer: any,
+                    playerId: string
+                ) => {
+
+                    console.log(
+                        "[PLAYER] ➕ Player added:",
+                        {
+                            roomId:
+                                room.roomId,
+
+                            playerId,
+
+                            localSession:
+                                room.sessionId,
+                        }
+                    );
+
+
+                    if (
+                        playerId !==
+                        room.sessionId
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    bindLocalPlayer(
+                        serverPlayer
+                    );
+
+                }
+            );
+
+
+        // ====================================================
+        // CLEANUP
+        // ====================================================
+
+        return () => {
+
+            console.log(
+                "[PLAYER] 🧹 Cleaning room listeners:",
+                {
+                    roomId:
+                        room.roomId,
+
+                    sessionId:
+                        room.sessionId,
+                }
+            );
+
+
+            playerUnsubscribe?.();
+
+            removeAddListener?.();
+
+
+            bombEscape.current.clear();
+
+
+            lastServerAlive.current =
+                null;
+
+
+            isMovingRef.current =
+                false;
+
+        };
+
+    }, [
+        room,
+    ]);
 
 
     // ========================================================
@@ -740,7 +819,17 @@ useEffect(() => {
             lastServerAlive.current =
                 null;
 
+
+            isMovingRef.current =
+                false;
+
+            setIsMoving(
+                false
+            );
+
+
             return;
+
         }
 
 
@@ -761,6 +850,7 @@ useEffect(() => {
             );
 
             return;
+
         }
 
 
@@ -861,6 +951,18 @@ useEffect(() => {
 
 
         // ====================================================
+        // RESET CHARACTER ANIMATION
+        // ====================================================
+
+        isMovingRef.current =
+            false;
+
+        setIsMoving(
+            false
+        );
+
+
+        // ====================================================
         // RESET BOMB ESCAPE
         // ====================================================
 
@@ -899,68 +1001,74 @@ useEffect(() => {
             velocityZ.current =
                 0;
 
+
+            if (
+                isMovingRef.current
+            ) {
+
+                isMovingRef.current =
+                    false;
+
+                setIsMoving(
+                    false
+                );
+
+            }
+
+
             return;
 
         }
 
 
-// ====================================================
-// JOYSTICK
-// ====================================================
+        // ====================================================
+        // JOYSTICK
+        // ====================================================
 
-let {
-    x,
-    y,
-} =
-    useMovementStore.getState();
-
-
-// ====================================================
-// PORTRAIT INPUT
-// ====================================================
-//
-// LandscapeGuard xoay toàn bộ game 90° khi portrait.
-//
-// Vì vậy input vật lý trên màn hình portrait cần
-// chuyển về hệ tọa độ game trước khi đưa vào
-// camera-relative movement.
-//
-// Joystick:
-//
-//        ↑
-//        |
-//        |
-//      PLAYER
-//
-// Khi portrait:
-//
-// screen X/Y
-//      ↓
-// game X/Y
-//
-// ====================================================
-
-const isPortrait =
-    window.innerHeight >
-    window.innerWidth;
+        let {
+            x,
+            y,
+        } =
+            useMovementStore.getState();
 
 
-if (isPortrait) {
+        // ====================================================
+        // PORTRAIT INPUT
+        // ====================================================
+        //
+        // LandscapeGuard xoay toàn bộ game 90° khi portrait.
+        //
+        // Vì vậy input vật lý trên màn hình portrait cần
+        // chuyển về hệ tọa độ game trước khi đưa vào
+        // camera-relative movement.
+        //
+        // ====================================================
 
-    const screenX =
-        x;
-
-    const screenY =
-        y;
+        const isPortrait =
+            window.innerHeight >
+            window.innerWidth;
 
 
-    x =
-        screenY;
+        if (
+            isPortrait
+        ) {
 
-    y =
-        -screenX;
+            const screenX =
+                x;
 
-}
+            const screenY =
+                y;
+
+
+            x =
+                screenY;
+
+            y =
+                -screenX;
+
+        }
+
+
         // ====================================================
         // JOYSTICK MAGNITUDE
         // ====================================================
@@ -1245,7 +1353,6 @@ if (isPortrait) {
             velocityX.current *
             delta;
 
-
         const nextZ =
             player.position.z +
             velocityZ.current *
@@ -1305,7 +1412,6 @@ if (isPortrait) {
                             (bomb as any).x ?? 0
                         );
 
-
                     const bombZ =
                         Number(
                             (bomb as any).z ?? 0
@@ -1315,7 +1421,6 @@ if (isPortrait) {
                     const dx =
                         targetX -
                         bombX;
-
 
                     const dz =
                         targetZ -
@@ -1336,7 +1441,6 @@ if (isPortrait) {
                     const currentDX =
                         player.position.x -
                         bombX;
-
 
                     const currentDZ =
                         player.position.z -
@@ -1443,7 +1547,9 @@ if (isPortrait) {
                 );
 
 
-            if (canMoveX) {
+            if (
+                canMoveX
+            ) {
 
                 player.position.x =
                     nextX;
@@ -1472,7 +1578,9 @@ if (isPortrait) {
                 );
 
 
-            if (canMoveZ) {
+            if (
+                canMoveZ
+            ) {
 
                 player.position.z =
                     nextZ;
@@ -1501,6 +1609,33 @@ if (isPortrait) {
             );
 
 
+        // ====================================================
+        // CHARACTER ANIMATION
+        // ====================================================
+
+        const nextMoving =
+            actualSpeed > 0.1;
+
+
+        if (
+            nextMoving !==
+            isMovingRef.current
+        ) {
+
+            isMovingRef.current =
+                nextMoving;
+
+            setIsMoving(
+                nextMoving
+            );
+
+        }
+
+
+        // ====================================================
+        // PLAYER ROTATION
+        // ====================================================
+
         if (
             actualSpeed >
             0.05
@@ -1509,7 +1644,6 @@ if (isPortrait) {
             const directionX =
                 velocityX.current /
                 actualSpeed;
-
 
             const directionZ =
                 velocityZ.current /
@@ -1574,6 +1708,7 @@ if (isPortrait) {
                     0,
                 ]}
                 name={playerName}
+                moving={isMoving}
             />
 
         </group>
