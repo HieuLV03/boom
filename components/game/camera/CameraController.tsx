@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -13,6 +14,11 @@ import {
 import {
     useCameraStore,
 } from "@/stores/camera.store";
+
+import {
+    Quaternion,
+    Vector3,
+} from "three";
 
 import type {
     RefObject,
@@ -36,13 +42,28 @@ type Props = {
 // CAMERA SETTINGS
 // ============================================================
 
+// Khoảng cách camera đến nhân vật
 const DISTANCE = 7;
 
+// Độ cao camera
 const HEIGHT = 3;
 
+// Camera nhìn vào vị trí này trên nhân vật
 const TARGET_HEIGHT = 1.1;
 
+// Tốc độ camera bám theo nhân vật
 const SMOOTH_SPEED = 10;
+
+
+// ============================================================
+// FOV SETTINGS
+// ============================================================
+
+// Điện thoại nằm ngang
+const LANDSCAPE_FOV = 65;
+
+// Điện thoại dựng dọc
+const PORTRAIT_FOV = 85;
 
 
 // ============================================================
@@ -53,14 +74,7 @@ export default function CameraController({
     target,
 }: Props) {
 
-    const {
-        camera,
-    } = useThree();
-
-
-    // ========================================================
-    // ORIENTATION
-    // ========================================================
+    const { camera } = useThree();
 
     const [
         isPortrait,
@@ -68,44 +82,67 @@ export default function CameraController({
     ] = useState(false);
 
 
+    // Lưu hướng nhìn cơ sở trước khi xoay camera
+    const baseQuaternion = new Quaternion();
+
+    // Quaternion xoay camera 90 độ quanh trục nhìn
+    const rollQuaternion = new Quaternion();
+
+    const rollAxis = new Vector3(0, 0, 1);
+
+
+    // ========================================================
+    // ORIENTATION + FOV
+    // ========================================================
+
     useEffect(() => {
 
-        function checkOrientation() {
+        function updateCamera() {
 
-            setIsPortrait(
+            const portrait =
                 window.innerHeight >
-                window.innerWidth
-            );
+                window.innerWidth;
 
+            setIsPortrait(portrait);
+
+            if ("fov" in camera) {
+
+                camera.fov = portrait
+                    ? PORTRAIT_FOV
+                    : LANDSCAPE_FOV;
+
+                camera.updateProjectionMatrix();
+
+            }
         }
 
-        checkOrientation();
+        updateCamera();
 
         window.addEventListener(
             "resize",
-            checkOrientation
+            updateCamera
         );
 
         window.addEventListener(
             "orientationchange",
-            checkOrientation
+            updateCamera
         );
 
         return () => {
 
             window.removeEventListener(
                 "resize",
-                checkOrientation
+                updateCamera
             );
 
             window.removeEventListener(
                 "orientationchange",
-                checkOrientation
+                updateCamera
             );
 
         };
 
-    }, []);
+    }, [camera]);
 
 
     // ========================================================
@@ -114,18 +151,13 @@ export default function CameraController({
 
     useFrame((_, delta) => {
 
-        const player =
-            target.current;
+        const player = target.current;
 
         if (!player) {
             return;
         }
 
-
-        const {
-            yaw,
-            pitch,
-        } =
+        const { yaw, pitch } =
             useCameraStore.getState();
 
 
@@ -134,8 +166,7 @@ export default function CameraController({
         // ====================================================
 
         const horizontalDistance =
-            DISTANCE *
-            Math.cos(pitch);
+            DISTANCE * Math.cos(pitch);
 
 
         // ====================================================
@@ -179,38 +210,28 @@ export default function CameraController({
         // ====================================================
 
         const smooth =
-            1 -
-            Math.exp(
-                -SMOOTH_SPEED *
-                delta
+            1 - Math.exp(
+                -SMOOTH_SPEED * delta
             );
 
-
         camera.position.x +=
-            (
-                cameraX -
-                camera.position.x
-            ) *
+            (cameraX - camera.position.x) *
             smooth;
 
         camera.position.y +=
-            (
-                cameraY -
-                camera.position.y
-            ) *
+            (cameraY - camera.position.y) *
             smooth;
 
         camera.position.z +=
-            (
-                cameraZ -
-                camera.position.z
-            ) *
+            (cameraZ - camera.position.z) *
             smooth;
 
 
         // ====================================================
         // LOOK AT
         // ====================================================
+
+        camera.up.set(0, 1, 0);
 
         camera.lookAt(
             targetX,
@@ -221,36 +242,27 @@ export default function CameraController({
 
         // ====================================================
         // PORTRAIT CAMERA ROLL
-        //
-        // Landscape:
-        //
-        // WORLD Y
-        //   ↑
-        //   |
-        //   |
-        //
-        //   => screen bottom → top
-        //
-        //
-        // Portrait:
-        //
-        // WORLD Y
-        //   ─────────→
-        //
-        //   => screen left → right
-        //
-        // IMPORTANT:
-        // We rotate the CAMERA around its viewing axis.
-        // We do NOT rotate the map.
-        // We do NOT rotate the character.
-        // We do NOT change X/Z world coordinates.
         // ====================================================
 
         if (isPortrait) {
 
-            camera.rotateZ(
+            // Lưu hướng nhìn vừa được lookAt tính toán
+            baseQuaternion.copy(camera.quaternion);
+
+            // Xoay 90 độ quanh trục nhìn của camera
+            rollAxis
+                .set(0, 0, 1)
+                .applyQuaternion(baseQuaternion)
+                .normalize();
+
+            rollQuaternion.setFromAxisAngle(
+                rollAxis,
                 Math.PI / 2
             );
+
+            camera.quaternion
+                .copy(rollQuaternion)
+                .multiply(baseQuaternion);
 
         }
 
