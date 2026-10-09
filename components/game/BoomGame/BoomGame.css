@@ -445,3 +445,185 @@ body {
         height: 44px;
     }
 }
+
+
+/* =========================================
+   BOMB BUTTON - ĐỊNH VỊ THEO GÓC MÀN HÌNH
+========================================= */
+
+.boom-game .boom-game__bomb-button {
+    position: fixed !important;
+    z-index: 100000;
+
+    width: 50px;
+    height: 50px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+
+    background: rgba(0, 0, 0, 0.65);
+    color: white;
+    font-size: 24px;
+
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+
+    touch-action: none;
+    pointer-events: auto;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Màn hình ngang: góc dưới bên phải */
+@media (orientation: landscape) {
+    .boom-game .boom-game__bomb-button {
+        left: auto !important;
+        right: max(18px, env(safe-area-inset-right)) !important;
+        top: auto !important;
+        bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+    }
+}
+
+/* Màn hình dọc: góc dưới bên trái */
+@media (orientation: portrait) {
+    .boom-game .boom-game__bomb-button {
+        left: max(14px, env(safe-area-inset-left)) !important;
+        right: auto !important;
+        top: auto !important;
+        bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+    }
+}
+
+/* Điện thoại nhỏ */
+@media (max-width: 380px) {
+    .boom-game .boom-game__bomb-button {
+        width: 44px;
+        height: 44px;
+        font-size: 21px;
+    }
+}
+
+/* ============================================================
+BOMB BUTTON
+Định vị theo hệ tọa độ của game
+============================================================ */
+
+.boom-game .boom-game__bomb-button {
+position: absolute;
+z-index: 10000;
+
+width: 54px;
+height: 54px;
+padding: 0;
+
+display: flex;
+align-items: center;
+justify-content: center;
+
+font-size: 26px;
+line-height: 1;
+
+border: 2px solid rgba(255, 255, 255, 0.8);
+border-radius: 50%;
+
+background: rgba(25, 25, 25, 0.7);
+color: #fff;
+
+cursor: pointer;
+user-select: none;
+-webkit-user-select: none;
+-webkit-tap-highlight-color: transparent;
+touch-action: none;
+
+
+}
+
+/* LANDSCAPE:
+Nút bom ở góc dưới bên phải màn hình */
+.boom-screen[data-orientation="landscape"]
+.boom-game .boom-game__bomb-button {
+right: max(18px, env(safe-area-inset-right));
+bottom: calc(80px + env(safe-area-inset-bottom));
+
+left: auto;
+top: auto;
+
+
+}
+
+/* PORTRAIT:
+Game đã xoay 90 độ.
+Góc dưới bên trái màn hình tương ứng với
+góc dưới bên phải trong hệ tọa độ của game. */
+.boom-screen[data-orientation="portrait"]
+.boom-rotated-game
+.boom-game .boom-game__bomb-button {
+right: max(18px, env(safe-area-inset-right));
+bottom: calc(18px + env(safe-area-inset-bottom));
+
+left: auto;
+top: auto;
+
+
+}
+
+/* Điện thoại có màn hình nhỏ */
+@media (max-width: 380px) {
+.boom-game .boom-game__bomb-button {
+width: 46px;
+height: 46px;
+font-size: 22px;
+}
+}
+
+/* NÚT BOM */
+.boom-game .boom-game__bomb-button {
+    position: absolute !important;
+    z-index: 20 !important;
+
+    width: 54px;
+    height: 54px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+
+    background: rgba(25, 25, 25, 0.75);
+    color: white;
+    font-size: 26px;
+
+    touch-action: none;
+    pointer-events: auto;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* MÀN HÌNH NGANG: GÓC DƯỚI BÊN PHẢI */
+.boom-screen[data-orientation="landscape"]
+.boom-game .boom-game__bomb-button {
+    right: 20px !important;
+    bottom: 24px !important;
+    left: auto !important;
+    top: auto !important;
+}
+
+/* MÀN HÌNH DỌC: GAME ĐÃ XOAY 90 ĐỘ
+   Góc dưới bên trái màn hình = góc dưới bên phải game */
+.boom-screen[data-orientation="portrait"]
+.boom-rotated-game
+.boom-game .boom-game__bomb-button {
+    right: 20px !important;
+    bottom: 24px !important;
+    left: auto !important;
+    top: auto !important;
+}
