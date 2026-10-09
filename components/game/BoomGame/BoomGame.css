@@ -447,3 +447,55 @@ right: 0px;
         transform-origin: center center;
     }
 }
+
+
+/* ============================================================
+   PORTRAIT - ACTION BUTTONS
+   Đưa nút bom và nhảy xuống góc dưới bên phải
+   ============================================================ */
+
+@media (max-width: 768px) and (orientation: portrait) {
+    .boom-game__actions {
+        position: absolute;
+
+        left: auto;
+        right: 14px;
+
+        top: auto;
+        bottom: 18px;
+
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+
+        z-index: 10000;
+    }
+
+    .boom-game__action {
+        width: 42px;
+        height: 42px;
+    }
+
+    .boom-game__bomb-button {
+        font-size: 21px;
+    }
+
+    .boom-game__jump-button {
+        font-size: 20px;
+    }
+}
+
+/* Điện thoại dọc nhỏ */
+@media (max-width: 380px) and (orientation: portrait) {
+    .boom-game__actions {
+        right: 10px;
+        bottom: 12px;
+        gap: 6px;
+    }
+
+    .boom-game__action {
+        width: 38px;
+        height: 38px;
+    }
+}
