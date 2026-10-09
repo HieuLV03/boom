@@ -246,7 +246,7 @@ export default function TouchCamera() {
 
                 pointerEvents: "auto",
 
-                zIndex: 5,
+                zIndex: 999999,
 
                 background: "transparent",
 

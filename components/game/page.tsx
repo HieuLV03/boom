@@ -11,7 +11,7 @@ import {
 
 import BoomGame from "@/components/game/BoomGame/BoomGame";
 
-import LandscapeGuard from "@/components/game/LandscapeGuard";
+import LandscapeGuard from "@/components/game/LandscapeGuard/LandscapeGuard";
 
 import "./game.css";
 

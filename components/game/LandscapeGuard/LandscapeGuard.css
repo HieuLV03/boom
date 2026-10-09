@@ -1,0 +1,42 @@
+
+/* FULL SCREEN */
+.boom-screen {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+}
+
+/* PORTRAIT: XOAY GAME 90 ĐỘ THEO CHIỀU KIM ĐỒNG HỒ */
+.boom-screen[data-orientation="portrait"] .boom-rotated-game {
+    position: absolute;
+
+    width: 100dvh;
+    height: 100vw;
+
+    top: 0;
+    left: 100vw;
+
+    transform: rotate(90deg);
+    transform-origin: top left;
+
+    overflow: hidden;
+}
+
+/* GAME CHIẾM ĐẦY KHUNG SAU KHI XOAY */
+.boom-screen[data-orientation="portrait"] .boom-rotated-game > .boom-game {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* LANDSCAPE: KHÔNG XOAY */
+.boom-screen[data-orientation="landscape"] > * {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}

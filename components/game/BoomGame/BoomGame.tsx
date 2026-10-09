@@ -443,63 +443,30 @@ export default function BoomGame({
 
             <TouchCamera />
 
+{/* ==================================================
+    BOMB BUTTON - ĐỘC LẬP
+================================================== */}
 
-            {/* ==================================================
-                ACTION BUTTONS
-            ================================================== */}
+<button
+    type="button"
+    className="boom-game__bomb-button"
+    aria-label="Đặt bom"
+    onPointerDown={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
 
-            <div
-                className="
-                    boom-game__actions
-                "
-            >
+        if (event.button !== 0) return;
 
-                {/* ==================================================
-                    BOMB
-                ================================================== */}
+        requestBomb();
+    }}
+>
+    💣
+</button>
 
-                <button
-                    type="button"
-                    className="
-                        boom-game__action
-                        boom-game__bomb-button
-                    "
-                    onPointerDown={(
-                        event
-                    ) => {
+{/* ==================================================
+    JUMP BUTTON - ĐỘC LẬP
+================================================== */}
 
-                        event.stopPropagation();
-
-                        requestBomb();
-
-                    }}
-                >
-                    💣
-                </button>
-
-
-                {/* ==================================================
-                    JUMP
-                ================================================== */}
-
-                <button
-                    type="button"
-                    className="
-                        boom-game__action
-                        boom-game__jump-button
-                    "
-                    onPointerDown={(
-                        event
-                    ) => {
-
-                        event.stopPropagation();
-
-                    }}
-                >
-                    🦘
-                </button>
-
-            </div>
 
         </div>
 
