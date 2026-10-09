@@ -336,7 +336,7 @@ function getWallCollision(
             // =================================================
 
             if (
-                distance < 0.000001
+                distance < 0.0000000001
             ) {
 
                 const left =
