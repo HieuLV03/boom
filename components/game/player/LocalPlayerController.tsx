@@ -32,10 +32,8 @@ import {
 } from "@/stores/multiplayer.store";
 
 import {
-    canMoveTo,
+    moveWithWallCollision,
 } from "../../../components/game/maps/tropical-village/maze.config";
-
-
 // ============================================================
 // CAMERA DIRECTION CACHE
 // ============================================================
@@ -1523,77 +1521,57 @@ export default function LocalPlayerController({
             };
 
 
-        // ====================================================
-        // COLLISION
-        // ====================================================
+// ====================================================
+// COLLISION + WALL SLIDING
+// ====================================================
 
-        if (
-            currentSpeed >
-            0.001
-        ) {
+if (currentSpeed > 0.001) {
 
-            // ==================================================
-            // MOVE X
-            // ==================================================
+    const currentX = player.position.x;
+    const currentZ = player.position.z;
 
-            const canMoveX =
-                canMoveTo(
-                    nextX,
-                    player.position.z
-                ) &&
-                canMoveAroundBombs(
-                    nextX,
-                    player.position.z
-                );
+    // Vị trí mong muốn sau frame này.
+    const targetX =
+        currentX + velocityX.current * delta;
 
+    const targetZ =
+        currentZ + velocityZ.current * delta;
 
-            if (
-                canMoveX
-            ) {
+    // Thử đi cả hai trục; nếu bị chặn thì thử trượt
+    // theo từng trục riêng biệt.
+    const result = moveWithWallCollision(
+        currentX,
+        currentZ,
+        targetX,
+        targetZ,
+        0.4,
+    );
 
-                player.position.x =
-                    nextX;
+    const movedX =
+        Math.abs(result.x - currentX) > 0.00001;
 
-            }
-            else {
+    const movedZ =
+        Math.abs(result.z - currentZ) > 0.00001;
 
-                velocityX.current =
-                    0;
+    player.position.x = result.x;
+    player.position.z = result.z;
 
-            }
+    // Chỉ triệt tiêu vận tốc nếu trục đó thực sự bị
+    // chặn và đang cố di chuyển theo trục ấy.
+    if (
+        !movedX &&
+        Math.abs(targetX - currentX) > 0.00001
+    ) {
+        velocityX.current = 0;
+    }
 
-
-            // ==================================================
-            // MOVE Z
-            // ==================================================
-
-            const canMoveZ =
-                canMoveTo(
-                    player.position.x,
-                    nextZ
-                ) &&
-                canMoveAroundBombs(
-                    player.position.x,
-                    nextZ
-                );
-
-
-            if (
-                canMoveZ
-            ) {
-
-                player.position.z =
-                    nextZ;
-
-            }
-            else {
-
-                velocityZ.current =
-                    0;
-
-            }
-
-        }
+    if (
+        !movedZ &&
+        Math.abs(targetZ - currentZ) > 0.00001
+    ) {
+        velocityZ.current = 0;
+    }
+}
 
 
         // ====================================================
