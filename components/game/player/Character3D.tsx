@@ -1,8 +1,9 @@
+
 "use client";
 
 import {
     useEffect,
-    useRef,
+    useMemo,
 } from "react";
 
 import {
@@ -10,227 +11,129 @@ import {
     useAnimations,
 } from "@react-three/drei";
 
-import type {
-    Group,
-} from "three";
+import {
+    SkeletonUtils,
+} from "three-stdlib";
 
 import {
     LoopRepeat,
 } from "three";
 
+import type {
+    Object3D,
+    Mesh,
+} from "three";
 
 // ============================================================
 // MODEL
 // ============================================================
 
-const MODEL_PATH =
-    "/models/character/character.glb";
-
-const MODEL_SCALE =
-    0.015;
-
+const MODEL_PATH = "/models/character/character.glb";
+const MODEL_SCALE = 0.015;
 
 // ============================================================
 // PROPS
 // ============================================================
 
 type Props = {
-
     moving?: boolean;
-
 };
-
 
 // ============================================================
 // CHARACTER 3D
 // ============================================================
 
 export default function Character3D({
-
     moving = false,
-
 }: Props) {
-
-    const group =
-        useRef<Group>(null);
-
-
-    // ========================================================
-    // GLTF
-    // ========================================================
 
     const {
         scene,
         animations,
-    } = useGLTF(
-        MODEL_PATH
+    } = useGLTF(MODEL_PATH);
+
+    // Mỗi nhân vật có một bản sao model riêng.
+    // Cần clone bằng SkeletonUtils để hỗ trợ model có skeleton.
+    const clonedScene = useMemo(
+        () => SkeletonUtils.clone(scene),
+        [scene],
     );
-
-
-    // ========================================================
-    // ANIMATION
-    // ========================================================
 
     const {
         actions,
         names,
-    } =
-        useAnimations(
-            animations,
-            group
-        );
-
+    } = useAnimations(
+        animations,
+        clonedScene,
+    );
 
     // ========================================================
-    // DEBUG
+    // DEBUG MODEL
     // ========================================================
 
     useEffect(() => {
+        let meshCount = 0;
 
-        console.log(
-            "========================================"
-        );
-
-        console.log(
-            "[Character3D] Animation names:",
-            names
-        );
-
-        animations.forEach(
-            (clip) => {
-
-                console.log(
-                    "[Character3D] Animation:",
-                    {
-                        name:
-                            clip.name,
-
-                        duration:
-                            clip.duration,
-
-                        tracks:
-                            clip.tracks.length,
-                    }
-                );
-
+        clonedScene.traverse((object) => {
+            if ((object as Mesh).isMesh) {
+                meshCount++;
             }
-        );
+        });
 
-        console.log(
-            "[Character3D] Actions:",
-            Object.keys(actions)
-        );
-
-        console.log(
-            "========================================"
-        );
-
-    }, [
-        names,
-        actions,
-        animations,
-    ]);
-
+        console.log("[MODEL CHECK]", {
+            model: MODEL_PATH,
+            meshCount,
+            visible: clonedScene.visible,
+            scale: MODEL_SCALE,
+            position: clonedScene.position.toArray(),
+            animations: names,
+        });
+    }, [clonedScene, names]);
 
     // ========================================================
     // MOVEMENT ANIMATION
     // ========================================================
 
     useEffect(() => {
-
-        const animation =
-            actions["mixamo.com"];
-
-
-        // ----------------------------------------------------
-        // Animation không tồn tại
-        // ----------------------------------------------------
+        const animation = actions["mixamo.com"];
 
         if (!animation) {
-
             console.warn(
-                "[Character3D] ❌ mixamo.com not found"
+                "[Character3D] Animation mixamo.com not found",
+                Object.keys(actions),
             );
-
             return;
-
         }
-
-
-        // ----------------------------------------------------
-        // ĐANG DI CHUYỂN
-        // ----------------------------------------------------
 
         if (moving) {
-
-            console.log(
-                "[Character3D] ▶ WALK / RUN"
-            );
-
-
             animation
                 .reset()
-                .setLoop(
-                    LoopRepeat,
-                    Infinity
-                )
+                .setLoop(LoopRepeat, Infinity)
                 .fadeIn(0.15)
                 .play();
-
-
-            return;
-
+        } else {
+            animation.stop();
         }
 
-
-        // ----------------------------------------------------
-        // ĐỨNG YÊN
-        // ----------------------------------------------------
-
-        console.log(
-            "[Character3D] ⏸ IDLE"
-        );
-
-
-        animation
-            .fadeOut(0.15);
-
-
-        animation.stop();
-
-
-    }, [
-        actions,
-        moving,
-    ]);
-
+        return () => {
+            animation.stop();
+        };
+    }, [actions, moving]);
 
     // ========================================================
     // RENDER
     // ========================================================
 
     return (
-
-        <group
-            ref={group}
-        >
-
-            <primitive
-                object={scene}
-                scale={MODEL_SCALE}
-            />
-
-        </group>
-
+        <primitive
+            object={clonedScene}
+            scale={MODEL_SCALE}
+        />
     );
-
 }
-
 
 // ============================================================
 // PRELOAD
 // ============================================================
 
-useGLTF.preload(
-    MODEL_PATH
-);
+useGLTF.preload(MODEL_PATH);
