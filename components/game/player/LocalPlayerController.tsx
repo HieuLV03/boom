@@ -104,7 +104,7 @@ export default function LocalPlayerController({
 
     const velocityZ =
         useRef(0);
-
+const targetRotation = useRef(0);
 
     // ========================================================
     // MOVING STATE
@@ -220,7 +220,7 @@ export default function LocalPlayerController({
         player.rotation.y =
             rotation;
 
-
+targetRotation.current = rotation;
         // ====================================================
         // RESET MOVEMENT
         // ====================================================
@@ -807,7 +807,7 @@ export default function LocalPlayerController({
 
             player.rotation.y =
                 0;
-
+targetRotation.current = 0;
             velocityX.current =
                 0;
 
@@ -936,7 +936,7 @@ export default function LocalPlayerController({
                 serverPlayer.rotation ?? 0
             );
 
-
+targetRotation.current = player.rotation.y;
         // ====================================================
         // RESET VELOCITY
         // ====================================================
@@ -1520,80 +1520,73 @@ export default function LocalPlayerController({
 
             };
 
-
-// ====================================================
-// COLLISION + WALL SLIDING
-// ====================================================
-
-if (currentSpeed > 0.001) {
-
-    const currentX = player.position.x;
-    const currentZ = player.position.z;
-
-    // Vị trí mong muốn sau frame này.
-    const targetX =
-        currentX + velocityX.current * delta;
-
-    const targetZ =
-        currentZ + velocityZ.current * delta;
-
-    // Thử đi cả hai trục; nếu bị chặn thì thử trượt
-    // theo từng trục riêng biệt.
-    const result = moveWithWallCollision(
-        currentX,
-        currentZ,
-        targetX,
-        targetZ,
-        0.4,
-    );
-
-    const movedX =
-        Math.abs(result.x - currentX) > 0.00001;
-
-    const movedZ =
-        Math.abs(result.z - currentZ) > 0.00001;
-
-    player.position.x = result.x;
-    player.position.z = result.z;
-
-    // Chỉ triệt tiêu vận tốc nếu trục đó thực sự bị
-    // chặn và đang cố di chuyển theo trục ấy.
-    if (
-        !movedX &&
-        Math.abs(targetX - currentX) > 0.00001
-    ) {
-        velocityX.current = 0;
-    }
-
-    if (
-        !movedZ &&
-        Math.abs(targetZ - currentZ) > 0.00001
-    ) {
-        velocityZ.current = 0;
-    }
-}
-
-
+   
         // ====================================================
-        // PLAYER ROTATION
+        // COLLISION + WALL SLIDING
         // ====================================================
 
-        const actualSpeed =
-            Math.sqrt(
-                velocityX.current *
-                    velocityX.current +
-                velocityZ.current *
-                    velocityZ.current
+        if (currentSpeed > 0.00000000000001) {
+            const currentX = player.position.x;
+            const currentZ = player.position.z;
+
+            const dx = velocityX.current * delta;
+            const dz = velocityZ.current * delta;
+
+            const targetX = currentX + dx;
+            const targetZ = currentZ + dz;
+
+            // Chỉ xử lý va chạm một lần.
+            // Hàm này tự thử di chuyển chéo và trượt dọc tường.
+            const result = moveWithWallCollision(
+                currentX,
+                currentZ,
+                targetX,
+                targetZ,
+                0.4,
             );
 
+            player.position.x = result.x;
+            player.position.z = result.z;
 
-        // ====================================================
-        // CHARACTER ANIMATION
-        // ====================================================
+            const movedX =
+                Math.abs(result.x - currentX) > 0.00001;
 
-        const nextMoving =
-            actualSpeed > 0.1;
+            const movedZ =
+                Math.abs(result.z - currentZ) > 0.00001;
 
+            // Nếu bị chặn hoàn toàn theo một trục,
+            // xóa vận tốc ở trục đó nhưng giữ vận tốc trượt.
+            if (
+                !movedX &&
+                Math.abs(dx) > 0.00001
+            ) {
+                velocityX.current = 0;
+            }
+
+            if (
+                !movedZ &&
+                Math.abs(dz) > 0.00001
+            ) {
+                velocityZ.current = 0;
+            }
+        }
+
+
+
+   // ====================================================
+// MOVEMENT ANIMATION
+// ====================================================
+
+// Nhân vật vẫn chạy animation khi người chơi giữ joystick,
+// kể cả lúc bị góc tường chặn hoàn toàn.
+const hasMovementInput = strength > 0.08;
+
+const actualSpeed = Math.hypot(
+    velocityX.current,
+    velocityZ.current,
+);
+
+const nextMoving = hasMovementInput || actualSpeed > 0.1;
 
         if (
             nextMoving !==
@@ -1610,31 +1603,31 @@ if (currentSpeed > 0.001) {
         }
 
 
-        // ====================================================
-        // PLAYER ROTATION
-        // ====================================================
+    
+/* ====================================================
+   PLAYER ROTATION
+   Giữ hướng joystick khi va chạm với tường.
+==================================================== */
 
-        if (
-            actualSpeed >
-            0.05
-        ) {
+if (hasMovementInput) {
+    // Lấy hướng điều khiển ban đầu, không dùng vận tốc
+    // đã bị thay đổi bởi xử lý va chạm.
+    targetRotation.current = Math.atan2(
+        moveX,
+        moveZ,
+    );
+}
 
-            const directionX =
-                velocityX.current /
-                actualSpeed;
+// Xoay theo góc ngắn nhất để tránh giật khi qua ±PI.
+const angleDifference = Math.atan2(
+    Math.sin(targetRotation.current - player.rotation.y),
+    Math.cos(targetRotation.current - player.rotation.y),
+);
 
-            const directionZ =
-                velocityZ.current /
-                actualSpeed;
-
-
-            player.rotation.y =
-                Math.atan2(
-                    directionX,
-                    directionZ
-                );
-
-        }
+// Nội suy góc xoay để chuyển hướng mượt hơn.
+player.rotation.y +=
+    angleDifference *
+    (1 - Math.exp(-12 * delta));
 
 
         // ====================================================
