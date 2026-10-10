@@ -164,6 +164,8 @@ function RemotePlayer({
                     player?.name ||
                     "Player"
                 }
+                    moving={Boolean(player?.moving)}
+
             />
 
         </group>

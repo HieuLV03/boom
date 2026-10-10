@@ -45,7 +45,7 @@ const BOMB_DELAY = 3000;
 
 const BOMB_RADIUS = 4;
 
-const BOMB_DAMAGE = 50;
+const BOMB_DAMAGE = 20;
 
 
 // ============================================================
@@ -446,7 +446,12 @@ this.onMessage(
 
         player.rotation =
             requestedRotation;
+const dx = finalX - player.x;
+const dz = finalZ - player.z;
 
+player.moving =
+    Math.abs(dx) > 0.001 ||
+    Math.abs(dz) > 0.001;
     }
 );
 
