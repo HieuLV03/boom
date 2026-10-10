@@ -48,9 +48,43 @@ function RemotePlayer({
     player: any;
 }) {
 
-    const groupRef =
-        useRef<Group>(null);
+const groupRef = useRef<Group>(null);
 
+const room = useMultiplayerStore(
+    (state) => state.room
+);
+const lastSentMoving = useRef<boolean | null>(null);
+const [moving, setMoving] = useState(
+    Boolean(player?.moving)
+);
+
+const [playerName, setPlayerName] = useState(
+    player?.name || "Player"
+);
+
+useEffect(() => {
+    if (!room || !player) {
+        setMoving(false);
+        setPlayerName("Player");
+        return;
+    }
+
+    const $ = getStateCallbacks(room);
+
+    // Đồng bộ giá trị ban đầu.
+    setMoving(Boolean(player.moving));
+    setPlayerName(player.name || "Player");
+
+    // Theo dõi thay đổi từ Colyseus.
+    const unsubscribe = $(player).onChange(() => {
+        setMoving(Boolean(player.moving));
+        setPlayerName(player.name || "Player");
+    });
+
+    return () => {
+        unsubscribe?.();
+    };
+}, [room, player]);
 
     // ========================================================
     // LOG
@@ -154,19 +188,11 @@ function RemotePlayer({
             ref={groupRef}
         >
 
-            <Player
-                position={[
-                    0,
-                    0,
-                    0,
-                ]}
-                name={
-                    player?.name ||
-                    "Player"
-                }
-                    moving={Boolean(player?.moving)}
-
-            />
+     <Player
+    position={[0, 0, 0]}
+    name={playerName}
+    moving={moving}
+/>
 
         </group>
 

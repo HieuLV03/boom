@@ -122,7 +122,7 @@ const targetRotation = useRef(0);
 
     const isMovingRef =
         useRef(false);
-
+const lastSentMoving = useRef<boolean | null>(null);
     const [
         isMoving,
         setIsMoving,
@@ -1634,30 +1634,23 @@ player.rotation.y +=
         // MULTIPLAYER
         // ====================================================
 
-        if (
-            room &&
-            actualSpeed >
-            0.001
-        ) {
+  if (room) {
+    const shouldSendMovement =
+        actualSpeed > 0.001 ||
+        lastSentMoving.current !== nextMoving;
 
-            room.send(
-                "move",
-                {
-                    x:
-                        player.position.x,
+    if (shouldSendMovement) {
+        room.send("move", {
+            x: player.position.x,
+            y: player.position.y,
+            z: player.position.z,
+            rotation: player.rotation.y,
+            moving: nextMoving,
+        });
 
-                    y:
-                        player.position.y,
-
-                    z:
-                        player.position.z,
-
-                    rotation:
-                        player.rotation.y,
-                }
-            );
-
-        }
+        lastSentMoving.current = nextMoving;
+    }
+}
 
     });
 

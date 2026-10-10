@@ -429,28 +429,39 @@ this.onMessage(
         // APPLY POSITION
         // ==================================================
 
-        player.x =
-            finalX;
+// ==================================================
+// MOVEMENT STATE
+// Phải tính trước khi cập nhật vị trí
+// ==================================================
 
-        player.y =
-            requestedY;
-
-        player.z =
-            finalZ;
-
-
-        // ==================================================
-        // ROTATION
-        // ==================================================
-
-        player.rotation =
-            requestedRotation;
 const dx = finalX - player.x;
 const dz = finalZ - player.z;
 
-player.moving =
+const calculatedMoving =
     Math.abs(dx) > 0.001 ||
     Math.abs(dz) > 0.001;
+
+// Ưu tiên trạng thái animation do client gửi.
+// Nếu client chưa gửi moving thì dùng vị trí để tính.
+player.moving =
+    typeof message?.moving === "boolean"
+        ? message.moving
+        : calculatedMoving;
+
+// ==================================================
+// APPLY POSITION
+// ==================================================
+
+player.x = finalX;
+player.y = requestedY;
+player.z = finalZ;
+
+// ==================================================
+// ROTATION
+// ==================================================
+
+player.rotation = requestedRotation;
+
     }
 );
 
