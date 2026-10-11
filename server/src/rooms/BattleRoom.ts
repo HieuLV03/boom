@@ -433,7 +433,6 @@ this.onMessage(
 // MOVEMENT STATE
 // Phải tính trước khi cập nhật vị trí
 // ==================================================
-
 const dx = finalX - player.x;
 const dz = finalZ - player.z;
 
