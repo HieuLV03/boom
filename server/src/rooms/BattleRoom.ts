@@ -39,7 +39,7 @@ interface BattleRoomOptions extends RoomOptions {
 
 const MAX_HP = 100;
 
-const MATCH_DURATION = 180;
+const MATCH_DURATION = 300;
 
 const RESPAWN_DELAY = 3000;
 
