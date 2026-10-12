@@ -122,7 +122,21 @@ export class BattleRoom extends Room<{
     private mapId: MapId =
         "tropical-village";
 private lastAttackAt = new Map<string, number>();
+// ============================================================
+// JUMPSCARE OBJECT
+// ============================================================
 
+private scareObjectHp = 100;
+private readonly scareObjectMaxHp = 100;
+private scareObjectDestroyed = false;
+
+private readonly scareObjectPosition = {
+    x: 0,
+    y: 1.2,
+    z: 0,
+};
+
+private readonly scareObjectRadius = 1.05;
     // ========================================================
     // CREATE
     // ========================================================
@@ -261,7 +275,7 @@ const damage = isRifle ? RIFLE_DAMAGE : PUNCH_DAMAGE;
 
 let target: PlayerState | null = null;
 let bestDistance = Infinity;
-
+let scareObjectHitDistance = Infinity;
 // Dữ liệu dùng để hiển thị hiệu ứng đạn trên client.
 let shotOrigin: {
     x: number;
@@ -377,6 +391,40 @@ this.state.players.forEach((candidate, sessionId) => {
     }
 });
 
+// ==================================================
+// CHECK SCARE OBJECT HIT
+// Vị trí vật thể phải khớp với ScareObject.tsx
+// ==================================================
+
+if (!this.scareObjectDestroyed) {
+    const object = this.scareObjectPosition;
+
+    const toX = object.x - ox;
+    const toY = object.y - oy;
+    const toZ = object.z - oz;
+
+    const alongRay =
+        toX * dirX +
+        toY * dirY +
+        toZ * dirZ;
+
+    if (alongRay >= 0 && alongRay <= range) {
+        const closestX = ox + dirX * alongRay;
+        const closestY = oy + dirY * alongRay;
+        const closestZ = oz + dirZ * alongRay;
+
+        const missDistance = Math.hypot(
+            object.x - closestX,
+            object.y - closestY,
+            object.z - closestZ,
+        );
+
+        if (missDistance <= this.scareObjectRadius) {
+            scareObjectHitDistance = alongRay;
+        }
+    }
+}
+
 console.log("[ATTACK] Shot result", {
     attacker: client.sessionId,
     hit: target !== null,
@@ -417,16 +465,86 @@ console.log("[ATTACK] Shot result", {
     });
 }
 
-if (!target) {
-   this.broadcast("attackPerformed", {
-    playerId: client.sessionId,
-    action,
-    hit: false,
-    origin: shotOrigin,
-    direction: shotDirection,
-});
+
+// ==================================================
+// HANDLE SCARE OBJECT HIT
+// ==================================================
+
+if (
+    isRifle &&
+    !this.scareObjectDestroyed &&
+    scareObjectHitDistance < bestDistance
+) {
+    const oldHp = this.scareObjectHp;
+
+    this.scareObjectHp = Math.max(
+        0,
+        this.scareObjectHp - damage,
+    );
+
+    const actualDamage =
+        oldHp - this.scareObjectHp;
+
+    const destroyed =
+        this.scareObjectHp <= 0;
+
+    if (destroyed) {
+        this.scareObjectDestroyed = true;
+    }
+
+    console.log("[SCARE OBJECT] Hit", {
+        attacker: client.sessionId,
+        damage: actualDamage,
+        hp: this.scareObjectHp,
+        destroyed,
+    });
+
+    this.broadcast("scareObjectDamaged", {
+        objectId: "scare-object-1",
+        attackerId: client.sessionId,
+        damage: actualDamage,
+        hp: this.scareObjectHp,
+        maxHp: this.scareObjectMaxHp,
+        destroyed,
+    });
+
+    this.broadcast("attackPerformed", {
+        playerId: client.sessionId,
+        action,
+        hit: true,
+        targetId: "scare-object-1",
+        origin: shotOrigin,
+        direction: shotDirection,
+    });
+
+    if (destroyed) {
+        this.broadcast("scareObjectDestroyed", {
+            objectId: "scare-object-1",
+            attackerId: client.sessionId,
+        });
+
+        console.log("[SCARE OBJECT] DESTROYED");
+    }
+
     return;
 }
+
+// ==================================================
+// KHÔNG TRÚNG NGƯỜI CHƠI HOẶC VẬT THỂ
+// ==================================================
+
+if (!target) {
+    this.broadcast("attackPerformed", {
+        playerId: client.sessionId,
+        action,
+        hit: false,
+        origin: shotOrigin,
+        direction: shotDirection,
+    });
+
+    return;
+}
+
 
 
 

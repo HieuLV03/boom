@@ -8,7 +8,7 @@ import {
 } from "react";
 
 import "./BoomGame.css";
-
+import JumpScareOverlay from "../JumpScareOverlay/JumpScareOverlay";
 import {
     Canvas,
 } from "@react-three/fiber";
@@ -77,7 +77,7 @@ export default function BoomGame({
                 state.requestBomb
         );
 
-
+const [scareTrigger, setScareTrigger] = useState(0);
     // ========================================================
     // LEAVING
     // ========================================================
@@ -120,25 +120,60 @@ export default function BoomGame({
     //
     // ========================================================
 
-    useEffect(() => {
 
-        if (!room) {
-            return;
+// ========================================================
+// ROOM EVENTS: CONNECTION + JUMPSCARE
+// ========================================================
+
+useEffect(() => {
+    if (!room) {
+        return;
+    }
+
+    console.log(
+        "[ROOM] BoomGame connected:",
+        {
+            roomId: room.roomId,
+            sessionId: room.sessionId,
         }
+    );
 
+    // Khi vật thể bị bắn, server thông báo HP mới.
+    const handleScareObjectDamaged = (data: {
+        objectId: string;
+        attackerId: string;
+        damage: number;
+        hp: number;
+        maxHp: number;
+        destroyed: boolean;
+    }) => {
+        console.log("[SCARE OBJECT] Damaged:", data);
+    };
 
-        console.log(
-            "[ROOM] BoomGame connected:",
-            {
-                roomId:
-                    room.roomId,
+    // Khi HP vật thể về 0, kích hoạt jumpscare.
+    const handleScareObjectDestroyed = (data: {
+        objectId: string;
+        attackerId: string;
+    }) => {
+        console.log("[SCARE OBJECT] Destroyed:", data);
 
-                sessionId:
-                    room.sessionId,
-            }
-        );
+        setScareTrigger((previous) => previous + 1);
+    };
+const unsubscribeDamaged = room.onMessage(
+    "scareObjectDamaged",
+    handleScareObjectDamaged
+);
 
-    }, [room]);
+const unsubscribeDestroyed = room.onMessage(
+    "scareObjectDestroyed",
+    handleScareObjectDestroyed
+);
+
+return () => {
+    unsubscribeDamaged?.();
+    unsubscribeDestroyed?.();
+};
+}, [room]);
 
 
     // ========================================================
@@ -367,7 +402,15 @@ export default function BoomGame({
 
             </Canvas>
 
+{/* ==================================================
+    JUMPSCARE - MA NHÀO LÊN MÀN HÌNH
+================================================== */}
 
+<JumpScareOverlay
+    trigger={scareTrigger}
+    imageSrc="/assets/horror/ghost.jpg"
+    audioSrc="/assets/horror/sound-jumpscale.mp3"
+/>
             {/* ==================================================
                 OUT
             ================================================== */}

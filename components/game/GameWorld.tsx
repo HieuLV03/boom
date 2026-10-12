@@ -3,7 +3,7 @@
 import WeaponPickupController
     from "./weapons/WeaponPickupController";
 import { useRef } from "react";
-
+import ScareObject from "./ScareObject";
 import type { Group } from "three";
 import BulletEffects from "./BulletEffects";
 import MapRenderer from "./maps/MapRenderer";
@@ -29,6 +29,8 @@ export default function GameWorld() {
             <MapRenderer
                 mapId="tropical-village"
             />
+            <ScareObject />
+
 <WeaponPickupController />
             <CameraController
                 target={playerRef}
