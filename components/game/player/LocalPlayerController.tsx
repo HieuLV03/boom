@@ -1176,11 +1176,25 @@ targetRotation.current = player.rotation.y;
         // JOYSTICK
         // ====================================================
 
-        let {
-            x,
-            y,
-        } =
-            useMovementStore.getState();
+    
+let {
+    x,
+    y,
+} = useMovementStore.getState();
+
+// Chuyển input màn hình dọc về hệ tọa độ game.
+// Chỉ đổi trục khi màn hình vật lý đang ở portrait.
+const isPortrait =
+    typeof window !== "undefined" &&
+    window.innerHeight > window.innerWidth;
+
+if (isPortrait) {
+    const screenX = x;
+    const screenY = y;
+
+    x = screenY;
+    y = -screenX;
+}
 
 
         // ====================================================
