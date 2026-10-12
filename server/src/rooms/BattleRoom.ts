@@ -8,6 +8,8 @@ import {
     BattleState,
     PlayerState,
     BombState,
+        WeaponPickupState,
+
 } from "../schema/BattleState.js";
 
 import {
@@ -47,7 +49,12 @@ const BOMB_RADIUS = 4;
 
 const BOMB_DAMAGE = 20;
 
-
+const WEAPON_PICKUP_DISTANCE = 2.0;
+const PUNCH_RANGE = 1.8;
+const PUNCH_DAMAGE = 10;
+const RIFLE_RANGE = 22;
+const RIFLE_DAMAGE = 25;
+const RIFLE_COOLDOWN = 250;
 // ============================================================
 // ROOM CODE
 // ============================================================
@@ -114,7 +121,7 @@ export class BattleRoom extends Room<{
 
     private mapId: MapId =
         "tropical-village";
-
+private lastAttackAt = new Map<string, number>();
 
     // ========================================================
     // CREATE
@@ -142,7 +149,302 @@ export class BattleRoom extends Room<{
             "================================================"
         );
 
+this.onMessage("pickupWeapon", (client) => {
+    if (this.state.gameOver) return;
 
+    const player = this.state.players.get(client.sessionId);
+    if (!player || !player.alive) return;
+
+    let nearest: WeaponPickupState | null = null;
+    let nearestDistance = Infinity;
+
+    this.state.weaponPickups.forEach((pickup) => {
+        if (!pickup.available) return;
+
+        const distance = distanceXZ(
+            player.x,
+            player.z,
+            pickup.x,
+            pickup.z,
+        );
+
+        if (distance < nearestDistance) {
+            nearest = pickup;
+            nearestDistance = distance;
+        }
+    });
+
+    if (!nearest || nearestDistance > WEAPON_PICKUP_DISTANCE) {
+        return;
+    }
+
+    const pickup = nearest as WeaponPickupState;
+
+    // Chọn ô trống trước; nếu đã đầy thì thay vũ khí ở ô đang dùng.
+    let slot: 1 | 2;
+
+    if (!player.weapon1) {
+        slot = 1;
+    } else if (!player.weapon2) {
+        slot = 2;
+    } else {
+        slot = player.equippedSlot === 2 ? 2 : 1;
+    }
+
+    if (slot === 1) {
+        player.weapon1 = pickup.weaponType;
+    } else {
+        player.weapon2 = pickup.weaponType;
+    }
+
+    player.equippedSlot = slot;
+    player.ammo = 999;
+
+    pickup.available = false;
+    this.state.weaponPickups.delete(pickup.id);
+
+    this.broadcast("weaponPickedUp", {
+        playerId: client.sessionId,
+        weaponType: pickup.weaponType,
+        slot,
+        pickupId: pickup.id,
+    });
+
+    console.log(
+        `[WEAPON] ${player.name} picked up ${pickup.weaponType} in slot ${slot}`,
+    );
+});
+this.onMessage("switchWeapon", (client, message) => {
+    if (this.state.gameOver) return;
+
+    const player = this.state.players.get(client.sessionId);
+    if (!player || !player.alive) return;
+
+    const slot = Number(message?.slot);
+
+    if (slot !== 0 && slot !== 1 && slot !== 2) return;
+
+    if (slot === 1 && !player.weapon1) return;
+    if (slot === 2 && !player.weapon2) return;
+
+    player.equippedSlot = slot;
+});
+this.onMessage("attack", (client, message) => {
+    if (this.state.gameOver) return;
+
+    const attacker = this.state.players.get(client.sessionId);
+    if (!attacker || !attacker.alive) return;
+
+    const now = Date.now();
+    const currentWeapon =
+        attacker.equippedSlot === 1
+            ? attacker.weapon1
+            : attacker.equippedSlot === 2
+                ? attacker.weapon2
+                : "";
+
+    const isRifle = currentWeapon === "rifle";
+    const action = isRifle ? "shoot" : "punch";
+
+    // Không cho client giả mạo kiểu tấn công.
+    if (message?.action !== action) return;
+
+    const cooldown = isRifle ? RIFLE_COOLDOWN : 500;
+    const lastAttack = this.lastAttackAt.get(client.sessionId) ?? 0;
+
+    if (now - lastAttack < cooldown) return;
+    this.lastAttackAt.set(client.sessionId, now);
+
+   
+const range = isRifle ? RIFLE_RANGE : PUNCH_RANGE;
+const damage = isRifle ? RIFLE_DAMAGE : PUNCH_DAMAGE;
+
+let target: PlayerState | null = null;
+let bestDistance = Infinity;
+
+// Dữ liệu dùng để hiển thị hiệu ứng đạn trên client.
+let shotOrigin: {
+    x: number;
+    y: number;
+    z: number;
+} | null = null;
+
+let shotDirection: {
+    x: number;
+    y: number;
+    z: number;
+} | null = null;
+
+if (isRifle) {
+    const origin = message?.origin;
+    const direction = message?.direction;
+
+    const ox = Number(origin?.x);
+    const oy = Number(origin?.y);
+    const oz = Number(origin?.z);
+
+    const dx = Number(direction?.x);
+    const dy = Number(direction?.y);
+    const dz = Number(direction?.z);
+
+    if (![ox, oy, oz, dx, dy, dz].every(Number.isFinite)) {
+        this.broadcast("attackPerformed", {
+            playerId: client.sessionId,
+            action,
+            hit: false,
+        });
+        return;
+    }
+
+    const length = Math.hypot(dx, dy, dz);
+
+    if (length < 0.0001) return;
+
+    // Kiểm tra vị trí camera gửi lên.
+    const cameraOffset = Math.hypot(
+        ox - attacker.x,
+        oy - (attacker.y + 1.1),
+        oz - attacker.z,
+    );
+
+    if (cameraOffset > 10.5) return;
+
+    const dirX = dx / length;
+    const dirY = dy / length;
+    const dirZ = dz / length;
+shotOrigin = {
+    x: ox,
+    y: oy,
+    z: oz,
+};
+
+shotDirection = {
+    x: dirX,
+    y: dirY,
+    z: dirZ,
+};
+    const HIT_RADIUS = 0.7;
+
+    this.state.players.forEach((candidate, sessionId) => {
+        if (sessionId === client.sessionId || !candidate.alive) {
+            return;
+        }
+
+        // Tâm gần giữa thân nhân vật.
+        const tx = candidate.x;
+        const ty = candidate.y + 1.0;
+        const tz = candidate.z;
+
+        const toX = tx - ox;
+        const toY = ty - oy;
+        const toZ = tz - oz;
+
+        // Khoảng cách từ camera dọc theo tia ngắm.
+        const alongRay =
+            toX * dirX +
+            toY * dirY +
+            toZ * dirZ;
+
+        if (alongRay < 0 || alongRay > range) {
+            return;
+        }
+
+        const closestX = ox + dirX * alongRay;
+        const closestY = oy + dirY * alongRay;
+        const closestZ = oz + dirZ * alongRay;
+
+        const missDistance = Math.hypot(
+            tx - closestX,
+            ty - closestY,
+            tz - closestZ,
+        );
+
+        if (
+            missDistance <= HIT_RADIUS &&
+            alongRay < bestDistance
+        ) {
+            target = candidate;
+            bestDistance = alongRay;
+        }
+    });
+} else {
+    // Đấm tay: giữ cách kiểm tra hướng trước nhân vật.
+    const forwardX = Math.sin(attacker.rotation);
+    const forwardZ = Math.cos(attacker.rotation);
+
+    this.state.players.forEach((candidate, sessionId) => {
+        if (sessionId === client.sessionId || !candidate.alive) {
+            return;
+        }
+
+        const dx = candidate.x - attacker.x;
+        const dz = candidate.z - attacker.z;
+        const distance = Math.hypot(dx, dz);
+
+        if (distance > range || distance < 0.001) return;
+
+        const directionX = dx / distance;
+        const directionZ = dz / distance;
+
+        const dot =
+            forwardX * directionX +
+            forwardZ * directionZ;
+
+        if (dot < 0.45) return;
+
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            target = candidate;
+        }
+    });
+}
+
+if (!target) {
+   this.broadcast("attackPerformed", {
+    playerId: client.sessionId,
+    action,
+    hit: false,
+    origin: shotOrigin,
+    direction: shotDirection,
+});
+    return;
+}
+
+
+
+    const victim = target as PlayerState;
+    const actualDamage = Math.min(victim.hp, damage);
+
+    victim.hp = Math.max(0, victim.hp - actualDamage);
+
+    if (victim.hp <= 0) {
+        victim.hp = 0;
+        victim.alive = false;
+
+        this.clock.setTimeout(() => {
+            this.respawnPlayer(victim.id);
+        }, RESPAWN_DELAY);
+    }
+
+    this.broadcast("playerDamaged", {
+        playerId: victim.id,
+        attackerId: client.sessionId,
+        damage: actualDamage,
+        hp: victim.hp,
+        alive: victim.alive,
+        distance: bestDistance,
+        weapon: action,
+    });
+
+this.broadcast("attackPerformed", {
+    playerId: client.sessionId,
+    action,
+    hit: true,
+    targetId: victim.id,
+    origin: shotOrigin,
+    direction: shotDirection,
+});
+});
         // ====================================================
         // MAP
         // ====================================================
@@ -183,7 +485,19 @@ export class BattleRoom extends Room<{
         this.state.mapId =
             this.mapId;
 
+for (let i = 0; i < 3; i++) {
+    const position = this.getRandomWalkablePosition();
+    const pickup = new WeaponPickupState();
 
+    pickup.id = `rifle-${i + 1}`;
+    pickup.weaponType = "rifle";
+    pickup.x = position.x;
+    pickup.y = 0;
+    pickup.z = position.z;
+    pickup.available = true;
+
+    this.state.weaponPickups.set(pickup.id, pickup);
+}
         console.log(
             `[ROOM] Map: ${this.mapId}`
         );
@@ -766,6 +1080,52 @@ player.rotation = requestedRotation;
         );
 
     }
+
+
+private getRandomWalkablePosition() {
+    const map = getMapConfig(this.mapId);
+
+    const {
+        CELL_SIZE,
+        MAP_WIDTH,
+        MAP_HEIGHT,
+    } = map;
+
+    const centerX = Math.floor(MAP_WIDTH / 2);
+    const centerZ = Math.floor(MAP_HEIGHT / 2);
+
+    const candidates: { x: number; y: number; z: number }[] = [];
+
+    for (let cellZ = 0; cellZ < MAP_HEIGHT; cellZ++) {
+        for (let cellX = 0; cellX < MAP_WIDTH; cellX++) {
+            const x = (cellX - centerX) * CELL_SIZE;
+            const z = (cellZ - centerZ) * CELL_SIZE;
+
+            if (!map.canMoveTo(x, z)) continue;
+
+            // Tránh đặt súng quá gần nhau.
+            let tooClose = false;
+
+            this.state.weaponPickups.forEach((pickup) => {
+                if (distanceXZ(x, z, pickup.x, pickup.z) < 4) {
+                    tooClose = true;
+                }
+            });
+
+            if (!tooClose) {
+                candidates.push({ x, y: 0, z });
+            }
+        }
+    }
+
+    if (candidates.length === 0) {
+        return { x: 0, y: 0, z: 0 };
+    }
+
+    return candidates[
+        Math.floor(Math.random() * candidates.length)
+    ];
+}
 
 
     // ========================================================
@@ -1448,6 +1808,7 @@ player.rotation = requestedRotation;
     onJoin(
         client: Client,
         options: BattleRoomOptions
+        
     ) {
 
         console.log("");
@@ -1512,8 +1873,17 @@ player.rotation = requestedRotation;
         // CREATE PLAYER
         // ====================================================
 
-        const player =
-            new PlayerState();
+
+const player = new PlayerState();
+
+// ====================================================
+// DEFAULT WEAPON STATE
+// ====================================================
+
+player.weapon1 = "";
+player.weapon2 = "";
+player.equippedSlot = 0;
+player.ammo = 0;
 
 
         player.id =
@@ -1635,8 +2005,11 @@ player.rotation = requestedRotation;
 
     onLeave(
         client: Client,
-        code?: number
-    ) {
+        
+        code?: number,
+        
+    ) 
+    {
 
         console.log("");
 
@@ -1669,7 +2042,7 @@ player.rotation = requestedRotation;
         this.state.players.delete(
             client.sessionId
         );
-
+this.lastAttackAt.delete(client.sessionId);
 
         console.log(
             `[ROOM] Removed player: ${client.sessionId}`

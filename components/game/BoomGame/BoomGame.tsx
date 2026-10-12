@@ -22,7 +22,7 @@ import {
 } from "next/navigation";
 
 import GameWorld from "../GameWorld";
-import GameHUD from "../GameHUD";
+import GameHUD from "../GameHUD/GameHUD";
 import VirtualJoystick from "../VirtualJoystick/VirtualJoystick";
 import TouchCamera from "../TouchCamera";
 

@@ -35,6 +35,18 @@ moving: boolean = false;
 
     @type("boolean")
     alive: boolean = true;
+
+    @type("string")
+weapon1: string = "";
+
+@type("string")
+weapon2: string = "";
+
+@type("number")
+equippedSlot: number = 0;
+
+@type("number")
+ammo: number = 0;
 }
 
 
@@ -78,7 +90,25 @@ export class BombState extends Schema {
     explosionType: string = "circle";
 }
 
+export class WeaponPickupState extends Schema {
+    @type("string")
+    id: string = "";
 
+    @type("string")
+    weaponType: string = "rifle";
+
+    @type("number")
+    x: number = 0;
+
+    @type("number")
+    y: number = 0;
+
+    @type("number")
+    z: number = 0;
+
+    @type("boolean")
+    available: boolean = true;
+}
 // ============================================================
 // BATTLE STATE
 // ============================================================
@@ -92,7 +122,8 @@ export class BattleState extends Schema {
     @type("string")
     roomCode: string = "";
 
-
+@type({ map: WeaponPickupState })
+weaponPickups = new MapSchema<WeaponPickupState>();
     // ========================================================
     // MAP
     // ========================================================

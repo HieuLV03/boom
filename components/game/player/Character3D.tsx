@@ -3,6 +3,7 @@
 
 import {
     useEffect,
+    useLayoutEffect,
     useMemo,
     useRef,
 } from "react";
@@ -22,6 +23,7 @@ import {
 
 import {
     Box3,
+    Group,
     CapsuleGeometry,
     Color,
     LoopRepeat,
@@ -36,6 +38,7 @@ import type {
     Object3D,
 } from "three";
 
+import WeaponModel from "../weapons/WeaponModel";
 
 // ============================================================
 // CONFIG
@@ -43,6 +46,24 @@ import type {
 
 const MODEL_PATH = "/models/character/character.glb";
 const MODEL_SCALE = 0.015;
+
+// Súng được phóng to so với cấu hình cũ.
+// Nếu súng quá to, giảm xuống 5 hoặc 6.
+const WEAPON_SCALE = 8;
+
+// Offset tính theo hệ tọa độ local của xương bàn tay.
+// Điều chỉnh các giá trị này nếu súng lệch khỏi bàn tay.
+const WEAPON_POSITION: [number, number, number] = [
+    0,
+    0,
+    0,
+];
+
+const WEAPON_ROTATION: [number, number, number] = [
+    0,
+    0,
+    0,
+];
 
 const COLORS = {
     hoodie: "#202633",
@@ -53,13 +74,13 @@ const COLORS = {
     hood: "#252D3B",
 };
 
-
 // ============================================================
 // TYPES
 // ============================================================
 
 type Props = {
     moving?: boolean;
+    weaponType?: string;
 };
 
 type SegmentProps = {
@@ -79,13 +100,14 @@ type AccessoryProps = {
     offset?: [number, number, number];
 };
 
-
 // ============================================================
 // BONE HELPERS
 // ============================================================
 
 function normalizeName(name: string) {
-    return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
 }
 
 function findBone(
@@ -102,32 +124,31 @@ function findBone(
 
     const names = candidates.map(normalizeName);
 
-    // Ưu tiên tên xương khớp chính xác.
     for (const name of names) {
         const found = bones.find(
             (bone) => normalizeName(bone.name) === name,
         );
 
-        if (found) return found;
+        if (found) {
+            return found;
+        }
     }
 
-    // Hỗ trợ tên có tiền tố như mixamorig:LeftArm.
     for (const name of names) {
         const found = bones.find(
             (bone) => normalizeName(bone.name).endsWith(name),
         );
 
-        if (found) return found;
+        if (found) {
+            return found;
+        }
     }
 
     return null;
 }
 
-
 // ============================================================
-// SEGMENT CLOTHING
-// Mesh chạy từ xương đầu đến xương cuối.
-// Tất cả kích thước tính theo đơn vị model gốc.
+// CLOTHING SEGMENT
 // ============================================================
 
 function ClothingSegment({
@@ -173,7 +194,9 @@ function ClothingSegment({
     useFrame(() => {
         const mesh = meshRef.current;
 
-        if (!mesh || !start || !end) return;
+        if (!mesh || !start || !end) {
+            return;
+        }
 
         root.updateMatrixWorld(true);
 
@@ -210,7 +233,6 @@ function ClothingSegment({
             direction,
         );
 
-        // CapsuleGeometry cao 3 đơn vị khi scale = 1.
         mesh.scale.set(
             radius,
             length / 3,
@@ -218,7 +240,15 @@ function ClothingSegment({
         );
     });
 
-    if (!start || !end) return null;
+    useEffect(() => {
+        return () => {
+            geometry.dispose();
+        };
+    }, [geometry]);
+
+    if (!start || !end) {
+        return null;
+    }
 
     return (
         <mesh
@@ -231,9 +261,8 @@ function ClothingSegment({
     );
 }
 
-
 // ============================================================
-// ACCESSORY
+// CLOTHING ACCESSORY
 // ============================================================
 
 function ClothingAccessory({
@@ -263,7 +292,9 @@ function ClothingAccessory({
     useFrame(() => {
         const mesh = meshRef.current;
 
-        if (!mesh || !bone) return;
+        if (!mesh || !bone) {
+            return;
+        }
 
         root.updateMatrixWorld(true);
 
@@ -275,7 +306,15 @@ function ClothingAccessory({
             .add(localOffset);
     });
 
-    if (!bone) return null;
+    useEffect(() => {
+        return () => {
+            geometry.dispose();
+        };
+    }, [geometry]);
+
+    if (!bone) {
+        return null;
+    }
 
     return (
         <mesh
@@ -288,7 +327,6 @@ function ClothingAccessory({
         />
     );
 }
-
 
 // ============================================================
 // CLOTHING
@@ -307,8 +345,6 @@ function CharacterClothing({
 
         bounds.getSize(size);
 
-        // Không phụ thuộc trực tiếp vào MODEL_SCALE.
-        // Kích thước được lấy từ model gốc.
         const height = Math.max(size.y, 1);
 
         return {
@@ -329,16 +365,16 @@ function CharacterClothing({
         neck: findBone(root, ["Neck"]),
 
         leftArm: findBone(root, ["LeftArm"]),
-        leftForeArm: findBone(root, [
-            "LeftForeArm",
-            "LeftForearm",
-        ]),
+        leftForeArm: findBone(
+            root,
+            ["LeftForeArm", "LeftForearm"],
+        ),
 
         rightArm: findBone(root, ["RightArm"]),
-        rightForeArm: findBone(root, [
-            "RightForeArm",
-            "RightForearm",
-        ]),
+        rightForeArm: findBone(
+            root,
+            ["RightForeArm", "RightForearm"],
+        ),
 
         leftUpLeg: findBone(root, ["LeftUpLeg"]),
         leftLeg: findBone(root, ["LeftLeg"]),
@@ -382,7 +418,10 @@ function CharacterClothing({
     }), []);
 
     useEffect(() => {
-        console.log("[Character3D] Model dimensions:", dimensions);
+        console.log(
+            "[Character3D] Model dimensions:",
+            dimensions,
+        );
 
         console.table(
             Object.entries(bones).map(([part, bone]) => ({
@@ -402,7 +441,6 @@ function CharacterClothing({
 
     return (
         <group>
-            {/* HOODIE BODY */}
             <ClothingSegment
                 root={root}
                 start={bones.hips}
@@ -412,7 +450,6 @@ function CharacterClothing({
                 depthRatio={0.75}
             />
 
-            {/* SLEEVES */}
             <ClothingSegment
                 root={root}
                 start={bones.leftArm}
@@ -429,7 +466,6 @@ function CharacterClothing({
                 radius={d.armRadius}
             />
 
-            {/* PANTS: THIGHS */}
             <ClothingSegment
                 root={root}
                 start={bones.hips}
@@ -446,7 +482,6 @@ function CharacterClothing({
                 radius={d.thighRadius}
             />
 
-            {/* PANTS: LOWER LEGS */}
             <ClothingSegment
                 root={root}
                 start={bones.leftLeg}
@@ -463,7 +498,6 @@ function CharacterClothing({
                 radius={d.legRadius}
             />
 
-            {/* SHOES */}
             <ClothingAccessory
                 root={root}
                 bone={bones.leftFoot}
@@ -486,7 +520,6 @@ function CharacterClothing({
                 ]}
             />
 
-            {/* SOLES */}
             <ClothingAccessory
                 root={root}
                 bone={bones.leftFoot}
@@ -496,7 +529,11 @@ function CharacterClothing({
                     d.shoeHeight * 0.35,
                     d.shoeLength * 1.04,
                 ]}
-                offset={[0, -d.shoeHeight * 0.7, 0]}
+                offset={[
+                    0,
+                    -d.shoeHeight * 0.7,
+                    0,
+                ]}
             />
 
             <ClothingAccessory
@@ -508,10 +545,13 @@ function CharacterClothing({
                     d.shoeHeight * 0.35,
                     d.shoeLength * 1.04,
                 ]}
-                offset={[0, -d.shoeHeight * 0.7, 0]}
+                offset={[
+                    0,
+                    -d.shoeHeight * 0.7,
+                    0,
+                ]}
             />
 
-            {/* HOOD */}
             <ClothingAccessory
                 root={root}
                 bone={bones.neck}
@@ -531,6 +571,82 @@ function CharacterClothing({
     );
 }
 
+// ============================================================
+// HELD WEAPON
+// ============================================================
+
+function HeldWeapon({
+    root,
+    weaponType,
+}: {
+    root: Object3D;
+    weaponType: string;
+}) {
+    const mountRef = useRef<Group>(null);
+
+    const normalizedWeaponType = weaponType
+        .trim()
+        .toLowerCase();
+
+    const hand = useMemo(
+        () =>
+            findBone(root, [
+                "RightHand",
+                "mixamorig:RightHand",
+                "mixamorigRightHand",
+            ]),
+        [root],
+    );
+
+    useLayoutEffect(() => {
+        const mount = mountRef.current;
+
+        if (!mount || !hand) {
+            console.warn("[HELD WEAPON] Cannot mount weapon", {
+                hand: hand?.name ?? "NOT FOUND",
+                weaponType: normalizedWeaponType,
+            });
+
+            return;
+        }
+
+        // Gắn mount vào bàn tay phải.
+        // Khi đổi vũ khí hoặc unmount, cleanup sẽ gỡ mount.
+        hand.add(mount);
+
+        mount.position.set(...WEAPON_POSITION);
+        mount.rotation.set(...WEAPON_ROTATION);
+        mount.scale.setScalar(WEAPON_SCALE);
+
+        mount.updateMatrix();
+        hand.updateMatrixWorld(true);
+
+        console.log("[HELD WEAPON] Mounted", {
+            hand: hand.name,
+            weaponType: normalizedWeaponType,
+            position: mount.position.toArray(),
+            rotation: mount.rotation.toArray(),
+            scale: mount.scale.toArray(),
+            children: mount.children.length,
+        });
+
+        return () => {
+            if (mount.parent === hand) {
+                hand.remove(mount);
+            }
+        };
+    }, [hand, normalizedWeaponType]);
+
+    if (normalizedWeaponType !== "rifle" || !hand) {
+        return null;
+    }
+
+    return (
+        <group ref={mountRef}>
+            <WeaponModel weaponType={normalizedWeaponType} />
+        </group>
+    );
+}
 
 // ============================================================
 // CHARACTER
@@ -538,6 +654,7 @@ function CharacterClothing({
 
 export default function Character3D({
     moving = false,
+    weaponType = "",
 }: Props) {
     const { scene, animations } = useGLTF(MODEL_PATH);
 
@@ -551,6 +668,10 @@ export default function Character3D({
         clonedScene,
     );
 
+    // ========================================================
+    // MODEL DEBUG
+    // ========================================================
+
     useEffect(() => {
         clonedScene.updateMatrixWorld(true);
 
@@ -559,12 +680,32 @@ export default function Character3D({
 
         box.getSize(size);
 
+        const rightHand = findBone(clonedScene, [
+            "RightHand",
+            "mixamorig:RightHand",
+            "mixamorigRightHand",
+        ]);
+
         console.log("[Character3D] Model size:", {
             x: size.x,
             y: size.y,
             z: size.z,
         });
-    }, [clonedScene]);
+
+        console.log(
+            "[Character3D] Right hand:",
+            rightHand?.name ?? "NOT FOUND",
+        );
+
+        console.log(
+            "[Character3D] Current weaponType:",
+            weaponType,
+        );
+    }, [clonedScene, weaponType]);
+
+    // ========================================================
+    // ANIMATION
+    // ========================================================
 
     useEffect(() => {
         const animation = actions["mixamo.com"];
@@ -593,11 +734,20 @@ export default function Character3D({
         };
     }, [actions, moving]);
 
+    // ========================================================
+    // RENDER
+    // ========================================================
+
     return (
         <group scale={MODEL_SCALE}>
             <primitive object={clonedScene} />
 
             <CharacterClothing root={clonedScene} />
+
+            <HeldWeapon
+                root={clonedScene}
+                weaponType={weaponType}
+            />
         </group>
     );
 }

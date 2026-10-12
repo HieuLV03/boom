@@ -1,10 +1,11 @@
 
 "use client";
-
+import WeaponPickupController
+    from "./weapons/WeaponPickupController";
 import { useRef } from "react";
 
 import type { Group } from "three";
-
+import BulletEffects from "./BulletEffects";
 import MapRenderer from "./maps/MapRenderer";
 
 import CameraController
@@ -28,7 +29,7 @@ export default function GameWorld() {
             <MapRenderer
                 mapId="tropical-village"
             />
-
+<WeaponPickupController />
             <CameraController
                 target={playerRef}
             />
@@ -42,6 +43,8 @@ export default function GameWorld() {
             />
 
             <RemotePlayers />
+                        <BulletEffects />
+
         </group>
     );
 }

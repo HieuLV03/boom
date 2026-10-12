@@ -6,23 +6,25 @@ import {
     useState,
     type RefObject,
 } from "react";
-
+import { useAimStore } from "@/stores/aim.store";
 import {
     useFrame,
     useThree,
 } from "@react-three/fiber";
 
 import {
+    Vector2,
     Vector3,
+    Raycaster,
     type Group,
+    type Bone,
 } from "three";
-
 import {
     getStateCallbacks,
 } from "@colyseus/sdk";
 
 import Player from "./Player";
-
+import { useCrosshairStore } from "@/stores/crosshair.store";
 import {
     useMovementStore,
 } from "@/stores/movement.store";
@@ -38,10 +40,10 @@ import {
 // CAMERA DIRECTION CACHE
 // ============================================================
 
-const _cameraDirection =
-    new Vector3();
+const _cameraDirection = new Vector3();
 
-
+// Đẩy tâm ngắm lên cao hơn đầu nhân vật 0.25 đơn vị.
+const _crosshairOffset = new Vector3(0, 0.69, 0);
 // ============================================================
 // TYPES
 // ============================================================
@@ -49,7 +51,26 @@ const _cameraDirection =
 type Props = {
     playerRef: RefObject<Group | null>;
 };
+function findHeadBone(root: Group): Bone | null {
+    let head: Bone | null = null;
 
+    root.traverse((object) => {
+        if (!head && (object as Bone).isBone) {
+            const name = object.name
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, "");
+
+            if (
+                name === "head" ||
+                name.endsWith("head")
+            ) {
+                head = object as Bone;
+            }
+        }
+    });
+
+    return head;
+}
 
 // ============================================================
 // LOCAL PLAYER CONTROLLER
@@ -84,7 +105,31 @@ export default function LocalPlayerController({
         setPlayerName,
     ] = useState("Player");
 
+// ========================================================
+// PLAYER WEAPONS
+// ========================================================
+const crosshairWorldPositionRef = useRef(
+    new Vector3(),
+);
 
+const crosshairFrameAccumulator = useRef(0);
+const [weapon1, setWeapon1] = useState("");
+const [weapon2, setWeapon2] = useState("");
+const [equippedSlot, setEquippedSlot] = useState(0);
+const headBoneRef = useRef<Bone | null>(null);
+
+const headPositionRef = useRef(new Vector3());
+const aimTargetRef = useRef(new Vector3());
+const shotDirectionRef = useRef(new Vector3());
+
+const raycasterRef = useRef(new Raycaster());
+const crosshairNdcRef = useRef(new Vector2());
+const weaponType =
+    equippedSlot === 1
+        ? weapon1
+        : equippedSlot === 2
+            ? weapon2
+            : "";
     // ========================================================
     // PLAYER ALIVE
     // ========================================================
@@ -180,7 +225,6 @@ const lastSentMoving = useRef<boolean | null>(null);
             return;
         }
 
-
         const x =
             Number(
                 serverPlayer.x ?? 0
@@ -271,7 +315,9 @@ targetRotation.current = rotation;
     useEffect(() => {
 
         if (!room) {
-
+setWeapon1("");
+setWeapon2("");
+setEquippedSlot(0);
             console.log(
                 "[PLAYER] ❌ No Colyseus room"
             );
@@ -318,7 +364,9 @@ targetRotation.current = rotation;
         console.log(
             "[PLAYER] 🔄 NEW ROOM"
         );
-
+setWeapon1("");
+setWeapon2("");
+setEquippedSlot(0);
         console.log(
             "[PLAYER] roomId:",
             room.roomId
@@ -457,7 +505,11 @@ targetRotation.current = rotation;
                     serverPlayer.name ||
                     "Player"
                 );
-
+setWeapon1(serverPlayer.weapon1 || "");
+setWeapon2(serverPlayer.weapon2 || "");
+setEquippedSlot(
+    Number(serverPlayer.equippedSlot || 0),
+);
 
                 // ================================================
                 // ALIVE
@@ -522,7 +574,13 @@ targetRotation.current = rotation;
                                 "Player"
                             );
 
+// ================================================
+// WEAPON STATE
+// ================================================
 
+setWeapon1(serverPlayer.weapon1 || "");
+setWeapon2(serverPlayer.weapon2 || "");
+setEquippedSlot(Number(serverPlayer.equippedSlot || 0));
                             // ====================================
                             // ALIVE
                             // ====================================
@@ -790,6 +848,9 @@ targetRotation.current = rotation;
 
         if (!player) {
             return;
+            // Cập nhật tia ngắm qua chính giữa màn hình.
+
+
         }
 
 
@@ -985,7 +1046,99 @@ targetRotation.current = player.rotation.y;
         if (!player) {
             return;
         }
+// ================================================
+// AIM FROM ACTUAL CHARACTER HEAD
+// ================================================
 
+        // ================================================
+        // AIM: CROSSHAIR -> 3D TARGET -> CHARACTER HEAD
+        // ================================================
+
+      
+        // ================================================
+        // CROSSHAIR BÁM THEO ĐẦU NHÂN VẬT
+        // ================================================
+
+        if (!headBoneRef.current) {
+            headBoneRef.current = findHeadBone(player);
+        }
+
+        player.updateMatrixWorld(true);
+
+        const headBone = headBoneRef.current;
+
+        if (headBone) {
+            headBone.getWorldPosition(headPositionRef.current);
+        } else {
+            headPositionRef.current.set(
+                player.position.x,
+                player.position.y + 1.5,
+                player.position.z,
+            );
+        }
+
+        // Vị trí 3D của dấu +, phía trên đầu nhân vật.
+        crosshairWorldPositionRef.current
+            .copy(headPositionRef.current)
+            .add(_crosshairOffset);
+
+        // Chuyển tọa độ 3D sang tọa độ màn hình.
+        const projected =
+            crosshairWorldPositionRef.current.clone().project(camera);
+
+        const visible =
+            !isDead &&
+            projected.z >= -1 &&
+            projected.z <= 1 &&
+            projected.x >= -1 &&
+            projected.x <= 1 &&
+            projected.y >= -1 &&
+            projected.y <= 1;
+
+        crosshairFrameAccumulator.current += delta;
+
+        if (crosshairFrameAccumulator.current >= 1 / 30) {
+            crosshairFrameAccumulator.current = 0;
+
+            useCrosshairStore.getState().setPosition(
+                (projected.x + 1) / 2,
+                (1 - projected.y) / 2,
+                visible,
+            );
+        }
+
+        // Tia bắn đi qua chính xác vị trí dấu +.
+        const crosshairNdc = crosshairNdcRef.current.set(
+            projected.x,
+            projected.y,
+        );
+
+        const raycaster = raycasterRef.current;
+        raycaster.setFromCamera(crosshairNdc, camera);
+
+        aimTargetRef.current
+            .copy(raycaster.ray.origin)
+            .addScaledVector(raycaster.ray.direction, 30);
+
+        shotDirectionRef.current
+            .subVectors(
+                aimTargetRef.current,
+                headPositionRef.current,
+            )
+            .normalize();
+
+        useAimStore.getState().setAim(
+            {
+                x: headPositionRef.current.x,
+                y: headPositionRef.current.y,
+                z: headPositionRef.current.z,
+            },
+            {
+                x: shotDirectionRef.current.x,
+                y: shotDirectionRef.current.y,
+                z: shotDirectionRef.current.z,
+            },
+        );
 
         // ====================================================
         // DEAD
@@ -1041,30 +1194,6 @@ targetRotation.current = player.rotation.y;
         // camera-relative movement.
         //
         // ====================================================
-
-        const isPortrait =
-            window.innerHeight >
-            window.innerWidth;
-
-
-        if (
-            isPortrait
-        ) {
-
-            const screenX =
-                x;
-
-            const screenY =
-                y;
-
-
-            x =
-                screenY;
-
-            y =
-                -screenX;
-
-        }
 
 
         // ====================================================
@@ -1659,24 +1788,15 @@ player.rotation.y +=
     // PLAYER
     // ========================================================
 
-    return (
-
-        <group
-            ref={playerRef}
-        >
-
-            <Player
-                position={[
-                    0,
-                    0,
-                    0,
-                ]}
-                name={playerName}
-                moving={isMoving}
-            />
-
-        </group>
-
-    );
+return (
+    <group ref={playerRef}>
+        <Player
+            position={[0, 0, 0]}
+            name={playerName}
+            moving={isMoving}
+            weaponType={weaponType}
+        />
+    </group>
+);
 
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import type {
@@ -14,13 +15,11 @@ import {
     Text,
 } from "@react-three/drei";
 
-
 // ============================================================
 // TYPES
 // ============================================================
 
 type Props = {
-
     position?: [
         number,
         number,
@@ -34,20 +33,16 @@ type Props = {
     name?: string;
 
     moving?: boolean;
-};
 
+    weaponType?: string;
+};
 
 // ============================================================
 // PLAYER
 // ============================================================
 
 export default function Player({
-
-    position = [
-        0,
-        0,
-        0,
-    ],
+    position = [0, 0, 0],
 
     rotation = 0,
 
@@ -57,28 +52,17 @@ export default function Player({
 
     moving = false,
 
+    weaponType = "",
 }: Props) {
-
-    const safeName =
-        String(
-            name || "Player"
-        )
-            .trim()
-            .slice(
-                0,
-                20
-            );
-
+    const safeName = String(
+        name || "Player",
+    )
+        .trim()
+        .slice(0, 20);
 
     return (
-
-        <group
-            position={position}
-        >
-
-            {/* =================================================
-                CHARACTER
-            ================================================= */}
+        <group position={position}>
+            {/* CHARACTER + HELD WEAPON */}
 
             <group
                 rotation={[
@@ -87,17 +71,13 @@ export default function Player({
                     0,
                 ]}
             >
-
                 <Character3D
                     moving={moving}
+                    weaponType={weaponType}
                 />
-
             </group>
 
-
-            {/* =================================================
-                PLAYER NAME
-            ================================================= */}
+            {/* PLAYER NAME */}
 
             <Text
                 position={[
@@ -113,12 +93,8 @@ export default function Player({
                 outlineColor="#000000"
                 renderOrder={100}
             >
-
                 {safeName}
-
             </Text>
-
         </group>
-
     );
 }
