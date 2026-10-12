@@ -52,7 +52,7 @@ const BOMB_DAMAGE = 20;
 const WEAPON_PICKUP_DISTANCE = 2.0;
 const PUNCH_RANGE = 1.8;
 const PUNCH_DAMAGE = 10;
-const RIFLE_RANGE = 22;
+const RIFLE_RANGE = 51;
 const RIFLE_DAMAGE = 25;
 const RIFLE_COOLDOWN = 250;
 // ============================================================

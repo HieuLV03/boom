@@ -3,8 +3,16 @@
 
 import {
     useEffect,
+    useRef,
     useState,
+        type PointerEvent,
+
 } from "react";
+
+import {
+    useCameraStore,
+} from "@/stores/camera.store";
+
 import "./GameHUD.css";
 import { useAimStore } from "@/stores/aim.store";
 import { getStateCallbacks } from "@colyseus/sdk";
@@ -33,6 +41,21 @@ type NearbyWeapon = {
 // ============================================================
 
 export default function GameHUD() {
+    const fireIntervalRef = useRef<number | null>(null);
+const firePointerRef = useRef<number | null>(null);
+
+const lastPointerRef = useRef({
+    x: 0,
+    y: 0,
+});
+
+const isFiringRef = useRef(false);
+
+const FIRE_INTERVAL = 240;
+const CAMERA_SENSITIVITY = 0.003;
+
+const MIN_CAMERA_PITCH = -0.75;
+const MAX_CAMERA_PITCH = 0.35;
     const room = useMultiplayerStore(
         (state) => state.room,
     );
@@ -64,17 +87,128 @@ const crosshairVisible = useCrosshairStore(
     // ATTACK
     // ========================================================
 
-    const handleAttack = () => {
-        if (!room) return;
+  const handleAttack = () => {
+    if (!room) return;
 
-        const aim = useAimStore.getState();
+    const aim = useAimStore.getState();
 
-        room.send("attack", {
-            action: weaponType === "rifle" ? "shoot" : "punch",
-            origin: aim.origin,
-            direction: aim.direction,
-        });
+    room.send("attack", {
+        action: weaponType === "rifle" ? "shoot" : "punch",
+        origin: aim.origin,
+        direction: aim.direction,
+    });
+};
+
+const stopFiring = () => {
+    isFiringRef.current = false;
+
+    if (fireIntervalRef.current !== null) {
+        window.clearInterval(fireIntervalRef.current);
+        fireIntervalRef.current = null;
+    }
+};
+
+const handleFirePointerDown = (
+    event: PointerEvent<HTMLButtonElement>,
+) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (firePointerRef.current !== null) return;
+
+    firePointerRef.current = event.pointerId;
+
+    lastPointerRef.current = {
+        x: event.clientX,
+        y: event.clientY,
     };
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    // Đấm chỉ một lần mỗi lần chạm.
+    if (weaponType !== "rifle") {
+        handleAttack();
+        return;
+    }
+
+    // Súng: bắn ngay viên đầu tiên.
+    isFiringRef.current = true;
+    handleAttack();
+
+    // Tiếp tục bắn khi người chơi vẫn giữ nút.
+    fireIntervalRef.current = window.setInterval(() => {
+        if (isFiringRef.current) {
+            handleAttack();
+        }
+    }, FIRE_INTERVAL);
+};
+
+const handleFirePointerMove = (
+    event: PointerEvent<HTMLButtonElement>,
+) => {
+    if (firePointerRef.current !== event.pointerId) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const deltaScreenX =
+        event.clientX - lastPointerRef.current.x;
+
+    const deltaScreenY =
+        event.clientY - lastPointerRef.current.y;
+
+    lastPointerRef.current = {
+        x: event.clientX,
+        y: event.clientY,
+    };
+
+    let deltaX = deltaScreenX;
+    let deltaY = deltaScreenY;
+
+    // Giữ quy ước xoay camera dọc mà TouchCamera đang dùng.
+    if (window.innerHeight > window.innerWidth) {
+        deltaX = deltaScreenY;
+        deltaY = -deltaScreenX;
+    }
+
+    const {
+        yaw,
+        pitch,
+        setRotation,
+    } = useCameraStore.getState();
+
+    const nextYaw =
+        yaw + deltaX * CAMERA_SENSITIVITY;
+
+    const nextPitch = Math.max(
+        MIN_CAMERA_PITCH,
+        Math.min(
+            MAX_CAMERA_PITCH,
+            pitch + deltaY * CAMERA_SENSITIVITY,
+        ),
+    );
+
+    setRotation(nextYaw, nextPitch);
+};
+
+const handleFirePointerUp = (
+    event: PointerEvent<HTMLButtonElement>,
+) => {
+    if (
+        firePointerRef.current !== null &&
+        event.pointerId !== firePointerRef.current
+    ) {
+        return;
+    }
+
+    stopFiring();
+    firePointerRef.current = null;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+};
+
 
     // ========================================================
     // ORIENTATION
@@ -500,17 +634,31 @@ const crosshairVisible = useCrosshairStore(
                         : ""
                 }`}
             >
-                <button
-                    type="button"
-                    onClick={handleAttack}
-                    className={`game-hud__attack-button ${
-                        weaponType === "rifle"
-                            ? "game-hud__attack-button--rifle"
-                            : "game-hud__attack-button--punch"
-                    }`}
-                >
-                    {weaponType === "rifle" ? "BẮN" : "ĐẤM"}
-                </button>
+           <button
+    type="button"
+    onPointerDown={handleFirePointerDown}
+    onPointerMove={handleFirePointerMove}
+    onPointerUp={handleFirePointerUp}
+    onPointerCancel={handleFirePointerUp}
+    onLostPointerCapture={() => {
+        stopFiring();
+        firePointerRef.current = null;
+    }}
+    className={`game-hud__attack-button ${
+        weaponType === "rifle"
+            ? "game-hud__attack-button--rifle"
+            : "game-hud__attack-button--punch"
+    }`}
+    style={{
+        position: "relative",
+        zIndex: 30,
+        touchAction: "none",
+        userSelect: "none",
+        WebkitUserSelect: "none",
+    }}
+>
+    {weaponType === "rifle" ? "BẮN" : "ĐẤM"}
+</button>
             </div>
 
             {/* PICKUP WEAPON BUTTON */}
