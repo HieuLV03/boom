@@ -249,7 +249,6 @@ export default function TouchCamera() {
                 zIndex: 10,
 
                 background: "transparent",
-
             }}
             onPointerDown={
                 handlePointerDown
