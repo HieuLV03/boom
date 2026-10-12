@@ -323,32 +323,40 @@ shotDirection = {
     y: dirY,
     z: dirZ,
 };
-    const HIT_RADIUS = 0.7;
+  
+const HIT_RADIUS = 0.75;
 
-    this.state.players.forEach((candidate, sessionId) => {
-        if (sessionId === client.sessionId || !candidate.alive) {
-            return;
-        }
+// Kiểm tra nhiều điểm từ chân/thân lên đầu nhân vật.
+const HIT_HEIGHTS = [0.45, 1.0, 1.55, 2.0];
 
-        // Tâm gần giữa thân nhân vật.
+this.state.players.forEach((candidate, sessionId) => {
+    if (
+        sessionId === client.sessionId ||
+        !candidate.alive
+    ) {
+        return;
+    }
+
+    for (const height of HIT_HEIGHTS) {
         const tx = candidate.x;
-        const ty = candidate.y + 1.0;
+        const ty = candidate.y + height;
         const tz = candidate.z;
 
         const toX = tx - ox;
         const toY = ty - oy;
         const toZ = tz - oz;
 
-        // Khoảng cách từ camera dọc theo tia ngắm.
+        // Khoảng cách dọc theo tia bắn.
         const alongRay =
             toX * dirX +
             toY * dirY +
             toZ * dirZ;
 
         if (alongRay < 0 || alongRay > range) {
-            return;
+            continue;
         }
 
+        // Điểm gần nhất trên tia bắn.
         const closestX = ox + dirX * alongRay;
         const closestY = oy + dirY * alongRay;
         const closestZ = oz + dirZ * alongRay;
@@ -366,7 +374,17 @@ shotDirection = {
             target = candidate;
             bestDistance = alongRay;
         }
-    });
+    }
+});
+
+console.log("[ATTACK] Shot result", {
+    attacker: client.sessionId,
+    hit: target !== null,
+    range,
+    origin: shotOrigin,
+    direction: shotDirection,
+});
+
 } else {
     // Đấm tay: giữ cách kiểm tra hướng trước nhân vật.
     const forwardX = Math.sin(attacker.rotation);
