@@ -47,176 +47,123 @@ export default function WeaponPickupController() {
     const [pickups, setPickups] =
         useState<WeaponPickup[]>([]);
 
-    useEffect(() => {
-        if (!room) {
-            setPickups([]);
-            return;
-        }
+ 
+useEffect(() => {
+    let active = true;
 
-        const state = room.state as any;
-        const pickupMap = state?.weaponPickups;
+    setPickups([]);
 
-        if (!pickupMap) {
-            setPickups([]);
+    if (!room) {
+        return;
+    }
 
-            console.warn(
-                "[WEAPON PICKUP] Không tìm thấy weaponPickups trong room.state",
-            );
+    const state = room.state as any;
+    const pickupMap = state?.weaponPickups;
 
-            return;
-        }
+    if (!pickupMap) {
+        console.warn(
+            "[WEAPON PICKUP] weaponPickups chưa tồn tại trong room.state",
+        );
+        return;
+    }
 
-        let active = true;
+    const readPickup = (
+        pickup: any,
+        key: string,
+    ): WeaponPickup => ({
+        id: String(pickup?.id || key),
+        weaponType: String(pickup?.weaponType || "rifle"),
+        x: Number(pickup?.x ?? 0),
+        y: Number(pickup?.y ?? 0),
+        z: Number(pickup?.z ?? 0),
+    });
 
-        // ====================================================
-        // CONVERT PICKUP
-        // ====================================================
+    const syncPickups = () => {
+        if (!active) return;
 
-        const readPickup = (
-            pickup: any,
-            key: string,
-        ): WeaponPickup => ({
-            id: String(pickup?.id || key),
-            weaponType: String(
-                pickup?.weaponType || "rifle",
-            ),
-            x: Number(pickup?.x ?? 0),
-            y: Number(pickup?.y ?? 0),
-            z: Number(pickup?.z ?? 0),
+        const result: WeaponPickup[] = [];
+
+        pickupMap.forEach((pickup: any, key: string) => {
+            if (!pickup || pickup.available === false) {
+                return;
+            }
+
+            result.push(readPickup(pickup, String(key)));
         });
 
-        // ====================================================
-        // READ CURRENT SERVER STATE
-        // ====================================================
+        setPickups(result);
+    };
 
-        const readAllPickups = (): WeaponPickup[] => {
-            const result: WeaponPickup[] = [];
+    const callbacks = getStateCallbacks(room);
+    const pickupCallbacks = callbacks(pickupMap);
 
-            pickupMap.forEach(
-                (pickup: any, key: string) => {
-                    if (
-                        !pickup ||
-                        pickup.available === false
-                    ) {
-                        return;
-                    }
+    // Đồng bộ dữ liệu hiện có khi vào phòng.
+    syncPickups();
 
-                    result.push(
-                        readPickup(pickup, String(key)),
-                    );
-                },
-            );
-
-            return result;
-        };
-
-        const syncPickups = () => {
+    // Súng được thêm vào bản đồ.
+    const removeAddListener = pickupCallbacks.onAdd(
+        (pickup: any, key: string) => {
             if (!active) return;
 
-            setPickups(readAllPickups());
-        };
+            const id = String(pickup?.id || key);
 
-        // Đồng bộ súng đã tồn tại khi vào phòng.
-        syncPickups();
+            if (pickup?.available === false) {
+                setPickups((previous) =>
+                    previous.filter((item) => item.id !== id),
+                );
+                return;
+            }
 
-        // ====================================================
-        // COLYSEUS STATE CALLBACKS
-        // ====================================================
+            const item = readPickup(pickup, String(key));
 
-        const callbacks = getStateCallbacks(room);
-        const pickupCallbacks = callbacks(pickupMap);
+            setPickups((previous) => {
+                const index = previous.findIndex(
+                    (current) => current.id === item.id,
+                );
 
-        // ----------------------------------------------------
-        // Khi server thêm súng vào bản đồ
-        // ----------------------------------------------------
+                if (index === -1) {
+                    return [...previous, item];
+                }
 
-        const removeAddListener =
-            pickupCallbacks.onAdd(
-                (pickup: any, key: string) => {
-                    if (!active || !pickup) return;
+                return previous.map((current) =>
+                    current.id === item.id ? item : current,
+                );
+            });
 
-                    const item = readPickup(
-                        pickup,
-                        String(key),
-                    );
+            console.log("[WEAPON PICKUP] Added:", item);
+        },
+    );
 
-                    // Không render pickup đã bị vô hiệu hóa.
-                    if (pickup.available === false) {
-                        setPickups((previous) =>
-                            previous.filter(
-                                (current) =>
-                                    current.id !== item.id,
-                            ),
-                        );
+    // Súng bị xóa khỏi bản đồ.
+    const removeRemoveListener = pickupCallbacks.onRemove(
+        (pickup: any, key: string) => {
+            if (!active) return;
 
-                        return;
-                    }
+            const id = String(pickup?.id || key);
 
-                    setPickups((previous) => {
-                        const exists = previous.some(
-                            (current) =>
-                                current.id === item.id,
-                        );
-
-                        if (exists) {
-                            return previous.map(
-                                (current) =>
-                                    current.id === item.id
-                                        ? item
-                                        : current,
-                            );
-                        }
-
-                        return [
-                            ...previous,
-                            item,
-                        ];
-                    });
-
-                    console.log(
-                        "[WEAPON PICKUP] Added:",
-                        item.id,
-                    );
-                },
+            setPickups((previous) =>
+                previous.filter((item) => item.id !== id),
             );
 
-        // ----------------------------------------------------
-        // Khi server xóa súng sau khi nhặt
-        // ----------------------------------------------------
+            console.log("[WEAPON PICKUP] Removed:", id);
+        },
+    );
 
-        const removeRemoveListener =
-            pickupCallbacks.onRemove(
-                (pickup: any, key: string) => {
-                    const id = String(
-                        pickup?.id || key,
-                    );
+    // Theo dõi thay đổi vị trí/trạng thái của pickup.
+    const removeChangeListener = pickupCallbacks.onChange(
+        () => {
+            syncPickups();
+        },
+    );
 
-                    console.log(
-                        "[WEAPON PICKUP] Removed:",
-                        id,
-                    );
+    return () => {
+        active = false;
 
-                    if (!active) return;
-
-                    setPickups((previous) =>
-                        previous.filter(
-                            (item) => item.id !== id,
-                        ),
-                    );
-                },
-            );
-
-        // ====================================================
-        // CLEANUP
-        // ====================================================
-
-        return () => {
-            active = false;
-
-            removeAddListener();
-            removeRemoveListener();
-        };
-    }, [room]);
+        removeAddListener();
+        removeRemoveListener();
+        removeChangeListener();
+    };
+}, [room]);
 
     // ========================================================
     // RENDER PICKUPS
