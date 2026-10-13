@@ -398,160 +398,119 @@ const handleFirePointerUp = (
     // DETECT NEARBY WEAPON
     // ========================================================
 
-    useEffect(() => {
-        if (!room) {
+
+useEffect(() => {
+    let active = true;
+    let intervalId: number | undefined;
+
+    setNearbyWeapon(null);
+    setIsPicking(false);
+    setPickupMessage("");
+
+    if (!room) return;
+
+    const state = room.state as any;
+    const playersMap = state?.players;
+    const pickupMap = state?.weaponPickups;
+
+    if (!playersMap || !pickupMap) {
+        console.warn("[PICKUP] Thiếu state", {
+            roomId: room.roomId,
+            sessionId: room.sessionId,
+            hasPlayers: !!playersMap,
+            hasPickups: !!pickupMap,
+        });
+        return;
+    }
+
+    const updateNearbyWeapon = () => {
+        if (!active) return;
+
+        const localPlayer = playersMap.get(room.sessionId);
+
+        if (!localPlayer || localPlayer.alive === false) {
             setNearbyWeapon(null);
-            setPickupMessage("");
-            setIsPicking(false);
             return;
         }
 
-        const playersMap: any =
-            (room.state as any)?.players;
+        const playerX = Number(localPlayer.x ?? 0);
+        const playerZ = Number(localPlayer.z ?? 0);
 
-        const pickupMap: any =
-            (room.state as any)?.weaponPickups;
+        let nearest: NearbyWeapon | null = null;
 
-        if (!playersMap || !pickupMap) {
-            setNearbyWeapon(null);
-            return;
-        }
+        pickupMap.forEach((pickup: any, key: string) => {
+            if (!pickup || pickup.available === false) return;
 
-        const $ = getStateCallbacks(room);
+            const dx = playerX - Number(pickup.x ?? 0);
+            const dz = playerZ - Number(pickup.z ?? 0);
+            const distance = Math.hypot(dx, dz);
 
-        let localPlayer: any = null;
-
-        const updateNearbyWeapon = () => {
             if (
-                !localPlayer ||
-                localPlayer.alive === false
+                distance <= 2.8 &&
+                (!nearest || distance < nearest.distance)
             ) {
-                setNearbyWeapon(null);
+                nearest = {
+                    id: String(pickup.id || key),
+                    weaponType: String(pickup.weaponType || "rifle"),
+                    distance,
+                };
+            }
+        });
+
+        setNearbyWeapon(nearest);
+    };
+
+    // Kiểm tra ngay, sau đó kiểm tra định kỳ.
+    updateNearbyWeapon();
+
+    intervalId = window.setInterval(() => {
+        updateNearbyWeapon();
+    }, 100);
+
+    const callbacks = getStateCallbacks(room);
+
+    const removePickedUpListener = room.onMessage(
+        "weaponPickedUp",
+        (message: {
+            playerId?: string;
+            weaponType?: string;
+            slot?: number;
+        }) => {
+            if (!active || message?.playerId !== room.sessionId) {
                 return;
             }
 
-            const playerX = Number(localPlayer.x ?? 0);
-            const playerZ = Number(localPlayer.z ?? 0);
+            const weaponName =
+                message.weaponType === "rifle"
+                    ? "Súng trường"
+                    : message.weaponType || "Vũ khí";
 
-            let nearest: NearbyWeapon | null = null;
-
-            pickupMap.forEach(
-                (pickup: any, key: string) => {
-                    if (
-                        !pickup ||
-                        pickup.available === false
-                    ) {
-                        return;
-                    }
-
-                    const dx =
-                        playerX - Number(pickup.x ?? 0);
-
-                    const dz =
-                        playerZ - Number(pickup.z ?? 0);
-
-                    const distance = Math.sqrt(
-                        dx * dx + dz * dz,
-                    );
-
-                    if (
-                        distance <= 2.0 &&
-                        (
-                            !nearest ||
-                            distance < nearest.distance
-                        )
-                    ) {
-                        nearest = {
-                            id: String(pickup.id || key),
-                            weaponType: String(
-                                pickup.weaponType || "rifle",
-                            ),
-                            distance,
-                        };
-                    }
-                },
+            setPickupMessage(
+                `Đã nhặt ${weaponName} · Slot ${message.slot ?? 1}`,
             );
 
-            setNearbyWeapon(nearest);
-        };
-
-        localPlayer = playersMap.get(room.sessionId);
-
-        let playerUnsubscribe: (() => void) | undefined;
-
-        const bindLocalPlayer = (serverPlayer: any) => {
-            playerUnsubscribe?.();
-
-            localPlayer = serverPlayer;
-
-            playerUnsubscribe = $(serverPlayer).onChange(
-                () => {
-                    updateNearbyWeapon();
-                },
-            );
-
+            setIsPicking(false);
             updateNearbyWeapon();
-        };
+        },
+    );
 
-        if (localPlayer) {
-            bindLocalPlayer(localPlayer);
+    console.log("[PICKUP] Detection started", {
+        roomId: room.roomId,
+        sessionId: room.sessionId,
+        playerFound: !!playersMap.get(room.sessionId),
+        pickupCount: pickupMap.size,
+    });
+
+    return () => {
+        active = false;
+
+        if (intervalId !== undefined) {
+            window.clearInterval(intervalId);
         }
 
-        const removePlayerAddListener = $(playersMap).onAdd(
-            (serverPlayer: any, playerId: string) => {
-                if (playerId === room.sessionId) {
-                    bindLocalPlayer(serverPlayer);
-                }
-            },
-        );
-
-        const removePickupAddListener = $(pickupMap).onAdd(
-            () => {
-                updateNearbyWeapon();
-            },
-        );
-
-        const removePickupRemoveListener = $(
-            pickupMap,
-        ).onRemove(() => {
-            updateNearbyWeapon();
-        });
-
-        const removePickedUpListener = room.onMessage(
-            "weaponPickedUp",
-            (message: {
-                playerId?: string;
-                weaponType?: string;
-                slot?: number;
-            }) => {
-                if (message?.playerId !== room.sessionId) {
-                    return;
-                }
-
-                const weaponName =
-                    message.weaponType === "rifle"
-                        ? "Súng trường"
-                        : message.weaponType || "Vũ khí";
-
-                setPickupMessage(
-                    `Đã nhặt ${weaponName} · Slot ${message.slot ?? 1}`,
-                );
-
-                setIsPicking(false);
-
-                updateNearbyWeapon();
-            },
-        );
-
-        return () => {
-            playerUnsubscribe?.();
-
-            removePlayerAddListener();
-            removePickupAddListener();
-            removePickupRemoveListener();
-            removePickedUpListener();
-        };
-    }, [room]);
+        removePickedUpListener();
+    };
+}, [room]);
 
     // ========================================================
     // PICKUP WEAPON

@@ -49,7 +49,7 @@ const BOMB_RADIUS = 4;
 
 const BOMB_DAMAGE = 20;
 
-const WEAPON_PICKUP_DISTANCE = 2.0;
+const WEAPON_PICKUP_DISTANCE = 2.8;
 const PUNCH_RANGE = 1.8;
 const PUNCH_DAMAGE = 10;
 const RIFLE_RANGE = 51;
