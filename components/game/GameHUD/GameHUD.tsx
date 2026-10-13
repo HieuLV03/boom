@@ -498,33 +498,44 @@ useEffect(() => {
         setNearbyWeapon(nearest);
     };
 
-    const removePickedUpListener = room.onMessage(
-        "weaponPickedUp",
-        (message: {
-            playerId?: string;
-            weaponType?: string;
-            slot?: number;
-        }) => {
-            if (
-                !active ||
-                message?.playerId !== room.sessionId
-            ) {
-                return;
-            }
 
-            const weaponName =
-                message.weaponType === "rifle"
-                    ? "Súng trường"
-                    : message.weaponType || "Vũ khí";
+const removePickedUpListener = room.onMessage(
+    "weaponPickedUp",
+    (message: {
+        playerId?: string;
+        weaponType?: string;
+        slot?: number;
+    }) => {
+        if (
+            !active ||
+            message?.playerId !== room.sessionId
+        ) {
+            return;
+        }
 
-            setPickupMessage(
-                `Đã nhặt ${weaponName} · Slot ${message.slot ?? 1}`,
-            );
+        const pickedType = String(
+            message.weaponType ?? "",
+        ).toLowerCase();
 
-            setIsPicking(false);
-            updateNearbyWeapon();
-        },
-    );
+        // Cập nhật nút hành động ngay khi server xác nhận nhặt súng.
+        if (pickedType === "rifle") {
+            setWeaponType("rifle");
+        }
+
+        const weaponName =
+            pickedType === "rifle"
+                ? "Súng trường"
+                : message.weaponType || "Vũ khí";
+
+        setPickupMessage(
+            `Đã nhặt ${weaponName} · Slot ${message.slot ?? 1}`,
+        );
+
+        setIsPicking(false);
+        updateNearbyWeapon();
+    },
+);
+
 
     updateNearbyWeapon();
 
