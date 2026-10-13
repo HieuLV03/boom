@@ -9,10 +9,13 @@ import {
 
 } from "react";
 
+import { useCrouchStore } from "@/stores/crouch.store";
+import { useJumpStore } from "@/stores/jump.store";
+import { usePunchStore } from "@/stores/punch.store";
 import {
     useCameraStore,
 } from "@/stores/camera.store";
-
+import { useRunStore } from "@/stores/run.store";
 import "./GameHUD.css";
 import { useAimStore } from "@/stores/aim.store";
 import { getStateCallbacks } from "@colyseus/sdk";
@@ -87,17 +90,32 @@ const crosshairVisible = useCrosshairStore(
     // ATTACK
     // ========================================================
 
-  const handleAttack = () => {
+
+const handleAttack = () => {
     if (!room) return;
+
+    const isRifle =
+        weaponType.trim().toLowerCase() === "rifle";
+
+    // Không có súng: kích hoạt animation đấm.
+    if (!isRifle) {
+        usePunchStore.getState().triggerPunch();
+
+        console.log(
+            "[PUNCH] Trigger:",
+            usePunchStore.getState().punchTrigger,
+        );
+    }
 
     const aim = useAimStore.getState();
 
     room.send("attack", {
-        action: weaponType === "rifle" ? "shoot" : "punch",
+        action: isRifle ? "shoot" : "punch",
         origin: aim.origin,
         direction: aim.direction,
     });
 };
+
 
 const stopFiring = () => {
     isFiringRef.current = false;
@@ -105,6 +123,42 @@ const stopFiring = () => {
     if (fireIntervalRef.current !== null) {
         window.clearInterval(fireIntervalRef.current);
         fireIntervalRef.current = null;
+    }
+};
+
+const setRunning = useRunStore(
+    (state) => state.setRunning,
+);
+
+const handleRunPointerDown = (
+    event: PointerEvent<HTMLButtonElement>,
+) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    setRunning(true);
+
+    event.currentTarget.setPointerCapture(
+        event.pointerId,
+    );
+};
+
+const handleRunPointerUp = (
+    event: PointerEvent<HTMLButtonElement>,
+) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    setRunning(false);
+
+    if (
+        event.currentTarget.hasPointerCapture(
+            event.pointerId,
+        )
+    ) {
+        event.currentTarget.releasePointerCapture(
+            event.pointerId,
+        );
     }
 };
 
@@ -209,7 +263,21 @@ const handleFirePointerUp = (
     }
 };
 
+// ========================================================
+// JUMP & CROUCH
+// ========================================================
 
+const handleJump = () => {
+    useJumpStore.getState().triggerJump();
+};
+
+const handleCrouch = () => {
+    useCrouchStore.getState().toggleCrouch();
+};
+
+const isCrouching = useCrouchStore(
+    (state) => state.crouching,
+);
     // ========================================================
     // ORIENTATION
     // ========================================================
@@ -666,8 +734,84 @@ const removePickedUpListener = room.onMessage(
 >
     {weaponType === "rifle" ? "BẮN" : "ĐẤM"}
 </button>
-            </div>
 
+
+
+            </div>
+<button
+    type="button"
+    className={`game-hud__run-button ${
+        isPortrait
+            ? "game-hud__run-button--portrait"
+            : ""
+    }`}
+    onPointerDown={handleRunPointerDown}
+    onPointerUp={handleRunPointerUp}
+    onPointerCancel={handleRunPointerUp}
+    onLostPointerCapture={() => setRunning(false)}
+    style={{
+        touchAction: "none",
+        userSelect: "none",
+        WebkitUserSelect: "none",
+    }}
+>
+    CHẠY
+</button>
+{/* JUMP & CROUCH BUTTONS */}
+<div
+    className={`game-hud__movement-actions ${
+        isPortrait
+            ? "game-hud__movement-actions--portrait"
+            : ""
+    }`}
+>
+    <button
+        type="button"
+        className="game-hud__action-button game-hud__jump-button"
+        onPointerDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            handleJump();
+        }}
+        onContextMenu={(event) => event.preventDefault()}
+        aria-label="Nhảy"
+        style={{
+            touchAction: "none",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+        }}
+    >
+        <span className="game-hud__action-icon">↑</span>
+        <span>NHẢY</span>
+    </button>
+
+    <button
+        type="button"
+        className={`game-hud__action-button game-hud__crouch-button ${
+            isCrouching
+                ? "game-hud__crouch-button--active"
+                : ""
+        }`}
+        onPointerDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            handleCrouch();
+        }}
+        onContextMenu={(event) => event.preventDefault()}
+        aria-pressed={isCrouching}
+        aria-label={isCrouching ? "Đứng thẳng" : "Cúi"}
+        style={{
+            touchAction: "none",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+        }}
+    >
+        <span className="game-hud__action-icon">
+            {isCrouching ? "↑" : "↓"}
+        </span>
+        <span>{isCrouching ? "ĐỨNG" : "CÚI"}</span>
+    </button>
+</div>
             {/* PICKUP WEAPON BUTTON */}
             {nearbyWeapon && (
                 <div

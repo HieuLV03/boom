@@ -11,7 +11,7 @@ import {
     useFrame,
     useThree,
 } from "@react-three/fiber";
-
+import { useRunStore } from "@/stores/run.store";
 import {
     Vector2,
     Vector3,
@@ -20,7 +20,8 @@ import {
     type Bone,
     type Object3D,
 } from "three";
-
+import { useCrouchStore } from "@/stores/crouch.store";
+import { useJumpStore } from "@/stores/jump.store";
 import {
     getStateCallbacks,
 } from "@colyseus/sdk";
@@ -41,7 +42,6 @@ import {
 // ============================================================
 // CAMERA DIRECTION CACHE
 // ============================================================
-
 const _cameraDirection = new Vector3();
 
 // Đẩy tâm ngắm lên cao hơn đầu nhân vật 0.25 đơn vị.
@@ -86,6 +86,7 @@ export default function LocalPlayerController({
         camera,
     } = useThree();
 
+const running = useRunStore((state) => state.running);
 
     // ========================================================
     // MULTIPLAYER
@@ -167,6 +168,14 @@ const targetRotation = useRef(0);
     // isMovingRef dùng để tránh setState mỗi frame.
     //
     // ========================================================
+
+    const isCrouching = useCrouchStore(
+    (state) => state.crouching,
+);
+
+const jumpTrigger = useJumpStore(
+    (state) => state.jumpTrigger,
+);
 
     const isMovingRef =
         useRef(false);
@@ -1207,7 +1216,15 @@ if (isPortrait) {
     y = -screenX;
 }
 
+// Bấm CHẠY: tự tiến về phía trước nếu không đẩy joystick.
+const DEAD_ZONE = 0.08;
 
+const joystickMagnitude = Math.hypot(x, y);
+
+if (running && joystickMagnitude <= DEAD_ZONE) {
+    x = 0;
+    y = -1;
+}
         // ====================================================
         // PORTRAIT INPUT
         // ====================================================
@@ -1235,9 +1252,6 @@ if (isPortrait) {
         // ====================================================
         // DEAD ZONE
         // ====================================================
-
-        const DEAD_ZONE =
-            0.08;
 
 
         let strength =
@@ -1383,15 +1397,17 @@ if (isPortrait) {
         // SPEED
         // ====================================================
 
-        const MAX_SPEED =
-            5.5;
+const WALK_SPEED = 5.5;
+const RUN_SPEED = 9.0;
+const CROUCH_SPEED = 2.5;
 
+const MAX_SPEED = isCrouching
+    ? CROUCH_SPEED
+    : running
+        ? RUN_SPEED
+        : WALK_SPEED;
 
-        const targetSpeed =
-            MAX_SPEED *
-            strength;
-
-
+const targetSpeed = MAX_SPEED * strength;
         const targetVelocityX =
             moveX *
             targetSpeed;
@@ -1819,6 +1835,9 @@ return (
             position={[0, 0, 0]}
             name={playerName}
             moving={isMoving}
+            running={running && isMoving && !isCrouching}
+            crouching={isCrouching}
+            jumpTrigger={jumpTrigger}
             weaponType={weaponType}
         />
     </group>

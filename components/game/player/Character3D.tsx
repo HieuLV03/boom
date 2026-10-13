@@ -26,6 +26,7 @@ import {
     Group,
     CapsuleGeometry,
     Color,
+    LoopOnce,
     LoopRepeat,
     Mesh,
     MeshStandardMaterial,
@@ -34,6 +35,7 @@ import {
 } from "three";
 
 import type {
+    AnimationAction,
     Bone,
     Object3D,
 } from "three";
@@ -45,14 +47,11 @@ import WeaponModel from "../weapons/WeaponModel";
 // ============================================================
 
 const MODEL_PATH = "/models/character/character.glb";
-const MODEL_SCALE = 0.015;
 
-// Súng được phóng to so với cấu hình cũ.
-// Nếu súng quá to, giảm xuống 5 hoặc 6.
+const MODEL_SCALE = 1.5;
+
 const WEAPON_SCALE = 8;
 
-// Offset tính theo hệ tọa độ local của xương bàn tay.
-// Điều chỉnh các giá trị này nếu súng lệch khỏi bàn tay.
 const WEAPON_POSITION: [number, number, number] = [
     0,
     0,
@@ -80,6 +79,10 @@ const COLORS = {
 
 type Props = {
     moving?: boolean;
+    running?: boolean;
+    crouching?: boolean;
+    punchTrigger?: number;
+    jumpTrigger?: number;
     weaponType?: string;
 };
 
@@ -129,9 +132,7 @@ function findBone(
             (bone) => normalizeName(bone.name) === name,
         );
 
-        if (found) {
-            return found;
-        }
+        if (found) return found;
     }
 
     for (const name of names) {
@@ -139,9 +140,7 @@ function findBone(
             (bone) => normalizeName(bone.name).endsWith(name),
         );
 
-        if (found) {
-            return found;
-        }
+        if (found) return found;
     }
 
     return null;
@@ -194,9 +193,7 @@ function ClothingSegment({
     useFrame(() => {
         const mesh = meshRef.current;
 
-        if (!mesh || !start || !end) {
-            return;
-        }
+        if (!mesh || !start || !end) return;
 
         root.updateMatrixWorld(true);
 
@@ -241,14 +238,10 @@ function ClothingSegment({
     });
 
     useEffect(() => {
-        return () => {
-            geometry.dispose();
-        };
+        return () => geometry.dispose();
     }, [geometry]);
 
-    if (!start || !end) {
-        return null;
-    }
+    if (!start || !end) return null;
 
     return (
         <mesh
@@ -292,9 +285,7 @@ function ClothingAccessory({
     useFrame(() => {
         const mesh = meshRef.current;
 
-        if (!mesh || !bone) {
-            return;
-        }
+        if (!mesh || !bone) return;
 
         root.updateMatrixWorld(true);
 
@@ -307,14 +298,10 @@ function ClothingAccessory({
     });
 
     useEffect(() => {
-        return () => {
-            geometry.dispose();
-        };
+        return () => geometry.dispose();
     }, [geometry]);
 
-    if (!bone) {
-        return null;
-    }
+    if (!bone) return null;
 
     return (
         <mesh
@@ -376,11 +363,9 @@ function CharacterClothing({
             ["RightForeArm", "RightForearm"],
         ),
 
-        leftUpLeg: findBone(root, ["LeftUpLeg"]),
         leftLeg: findBone(root, ["LeftLeg"]),
         leftFoot: findBone(root, ["LeftFoot"]),
 
-        rightUpLeg: findBone(root, ["RightUpLeg"]),
         rightLeg: findBone(root, ["RightLeg"]),
         rightFoot: findBone(root, ["RightFoot"]),
     }), [root]);
@@ -589,12 +574,11 @@ function HeldWeapon({
         .toLowerCase();
 
     const hand = useMemo(
-        () =>
-            findBone(root, [
-                "RightHand",
-                "mixamorig:RightHand",
-                "mixamorigRightHand",
-            ]),
+        () => findBone(root, [
+            "RightHand",
+            "mixamorig:RightHand",
+            "mixamorigRightHand",
+        ]),
         [root],
     );
 
@@ -602,16 +586,19 @@ function HeldWeapon({
         const mount = mountRef.current;
 
         if (!mount || !hand) {
-            console.warn("[HELD WEAPON] Cannot mount weapon", {
-                hand: hand?.name ?? "NOT FOUND",
-                weaponType: normalizedWeaponType,
-            });
+            if (normalizedWeaponType === "rifle") {
+                console.warn(
+                    "[HELD WEAPON] Cannot mount weapon",
+                    {
+                        hand: hand?.name ?? "NOT FOUND",
+                        weaponType: normalizedWeaponType,
+                    },
+                );
+            }
 
             return;
         }
 
-        // Gắn mount vào bàn tay phải.
-        // Khi đổi vũ khí hoặc unmount, cleanup sẽ gỡ mount.
         hand.add(mount);
 
         mount.position.set(...WEAPON_POSITION);
@@ -624,10 +611,6 @@ function HeldWeapon({
         console.log("[HELD WEAPON] Mounted", {
             hand: hand.name,
             weaponType: normalizedWeaponType,
-            position: mount.position.toArray(),
-            rotation: mount.rotation.toArray(),
-            scale: mount.scale.toArray(),
-            children: mount.children.length,
         });
 
         return () => {
@@ -654,6 +637,10 @@ function HeldWeapon({
 
 export default function Character3D({
     moving = false,
+    running = false,
+    crouching = false,
+    punchTrigger = 0,
+    jumpTrigger = 0,
     weaponType = "",
 }: Props) {
     const { scene, animations } = useGLTF(MODEL_PATH);
@@ -663,11 +650,20 @@ export default function Character3D({
         [scene],
     );
 
-    const { actions } = useAnimations(
+    const { actions, mixer } = useAnimations(
         animations,
         clonedScene,
     );
 
+    const activeActionRef = useRef<AnimationAction | null>(null);
+    const locomotionActionRef = useRef<AnimationAction | null>(null);
+
+    const punchingRef = useRef(false);
+    const jumpingRef = useRef(false);
+
+    const lastPunchTriggerRef = useRef(punchTrigger);
+    const lastJumpTriggerRef = useRef(jumpTrigger);
+    
     // ========================================================
     // MODEL DEBUG
     // ========================================================
@@ -698,41 +694,335 @@ export default function Character3D({
         );
 
         console.log(
-            "[Character3D] Current weaponType:",
-            weaponType,
+            "[Character3D] Animation clips:",
+            animations.map((clip) => ({
+                name: clip.name,
+                duration: clip.duration,
+                tracks: clip.tracks.length,
+            })),
         );
-    }, [clonedScene, weaponType]);
+    }, [clonedScene, animations]);
 
     // ========================================================
-    // ANIMATION
+    // FIND ANIMATION ACTIONS
+    // ========================================================
+
+    // ========================================================
+    // FIND ANIMATION ACTIONS
+    // ========================================================
+
+    const findAction = (
+        pattern: RegExp,
+    ): AnimationAction | null => {
+        const entry = Object.entries(actions).find(
+            ([name, action]) =>
+                pattern.test(name) && action != null,
+        );
+
+        return entry?.[1] ?? null;
+    };
+
+    const getLocomotionAction = () => {
+        const idleAction = findAction(/^male_idle$/i)
+            ?? findAction(/idle/i);
+
+        const walkingAction = findAction(/^male_walking$/i)
+            ?? findAction(/crouch.*walk|walk.*crouch/i)
+            ?? findAction(/walking|walk/i);
+
+        const runAction = findAction(/^male_run$/i)
+            ?? findAction(/running|run/i);
+
+        const crouchIdleAction =
+            findAction(/^male_crouch_idle$/i)
+            ?? findAction(/crouch.*idle|idle.*crouch/i);
+
+        const crouchWalkingAction =
+            findAction(/^male_crouch_walking$/i)
+            ?? findAction(/crouch.*walk|walk.*crouch/i);
+
+        // Ngồi thấp: ưu tiên animation ngồi thấp.
+        if (crouching) {
+            if (moving) {
+                return crouchWalkingAction
+                    ?? walkingAction
+                    ?? crouchIdleAction
+                    ?? idleAction;
+            }
+
+            return crouchIdleAction
+                ?? idleAction
+                ?? crouchWalkingAction;
+        }
+
+        // Chạy.
+        if (running && moving) {
+            return runAction
+                ?? walkingAction
+                ?? idleAction;
+        }
+
+        // Đi bộ.
+        if (moving) {
+            return walkingAction
+                ?? runAction
+                ?? idleAction;
+        }
+
+        // Đứng yên.
+        return idleAction
+            ?? walkingAction
+            ?? runAction;
+    };
+
+    // ========================================================
+    // ANIMATION: IDLE / WALKING / RUN
     // ========================================================
 
     useEffect(() => {
-        const animation = actions["mixamo.com"];
+        const nextAction = getLocomotionAction();
 
-        if (!animation) {
-            console.warn(
-                "[Character3D] Animation not found",
-                Object.keys(actions),
-            );
+        locomotionActionRef.current = nextAction;
 
+        if (!nextAction || punchingRef.current) {
             return;
         }
 
-        if (moving) {
-            animation
-                .reset()
-                .setLoop(LoopRepeat, Infinity)
-                .fadeIn(0.15)
-                .play();
-        } else {
-            animation.stop();
+        const previousAction = activeActionRef.current;
+
+        if (
+            previousAction === nextAction &&
+            nextAction.isRunning()
+        ) {
+            return;
         }
 
-        return () => {
-            animation.stop();
+        nextAction.enabled = true;
+        nextAction.setLoop(LoopRepeat, Infinity);
+        nextAction.clampWhenFinished = false;
+        nextAction.setEffectiveWeight(1);
+        nextAction.setEffectiveTimeScale(1);
+
+        if (
+            previousAction &&
+            previousAction !== nextAction
+        ) {
+            previousAction.crossFadeTo(
+                nextAction,
+                0.2,
+                false,
+            );
+        }
+
+        nextAction.reset().play();
+
+        activeActionRef.current = nextAction;
+
+        console.log("[ANIMATION] Locomotion:", {
+            state: running
+                ? "run"
+                : moving
+                    ? "walking"
+                    : "idle",
+            clip: nextAction.getClip().name,
+        });
+    }, [actions, moving, running,crouching]);
+
+// ========================================================
+// ANIMATION: JUMP FINISHED
+// ========================================================
+
+useEffect(() => {
+    const jumpAction =
+        actions["male_jump"] ??
+        findAction(/^jump$/i) ??
+        findAction(/jump/i);
+
+    if (!jumpAction) {
+        console.warn(
+            "[ANIMATION] Không tìm thấy animation Jump.",
+        );
+        return;
+    }
+
+    const handleFinished = (
+        event: { action?: AnimationAction },
+    ) => {
+        if (event.action !== jumpAction) return;
+
+        jumpingRef.current = false;
+
+        const nextAction = locomotionActionRef.current;
+
+        if (!nextAction || punchingRef.current) return;
+
+        jumpAction.fadeOut(0.1);
+
+        nextAction.enabled = true;
+        nextAction.reset();
+        nextAction.setLoop(LoopRepeat, Infinity);
+        nextAction.setEffectiveWeight(1);
+        nextAction.fadeIn(0.15).play();
+
+        activeActionRef.current = nextAction;
+    };
+
+    mixer.addEventListener("finished", handleFinished);
+
+    return () => {
+        mixer.removeEventListener("finished", handleFinished);
+    };
+}, [actions, mixer]);
+
+// ========================================================
+// ANIMATION: JUMP TRIGGER
+// ========================================================
+
+useEffect(() => {
+    if (jumpTrigger === lastJumpTriggerRef.current) {
+        return;
+    }
+
+    lastJumpTriggerRef.current = jumpTrigger;
+
+    if (punchingRef.current || jumpingRef.current) {
+        return;
+    }
+
+    const jumpAction =
+        actions["male_jump"] ??
+        findAction(/^jump$/i) ??
+        findAction(/jump/i);
+
+    if (!jumpAction) {
+        console.warn(
+            "[ANIMATION] Không tìm thấy clip Jump trong GLB.",
+        );
+        return;
+    }
+
+    jumpingRef.current = true;
+
+    for (const action of Object.values(actions)) {
+        if (action && action !== jumpAction) {
+            action.fadeOut(0.1);
+        }
+    }
+
+    jumpAction.enabled = true;
+    jumpAction.reset();
+    jumpAction.setLoop(LoopOnce, 1);
+    jumpAction.clampWhenFinished = true;
+    jumpAction.setEffectiveWeight(1);
+    jumpAction.setEffectiveTimeScale(1);
+    jumpAction.fadeIn(0.1).play();
+
+    activeActionRef.current = jumpAction;
+
+    console.log("[ANIMATION] Jump started:", {
+        clip: jumpAction.getClip().name,
+        duration: jumpAction.getClip().duration,
+    });
+}, [actions, jumpTrigger]);
+
+    // ========================================================
+    // ANIMATION: PUNCH FINISHED
+    // ========================================================
+
+    useEffect(() => {
+        const punchAction = findAction(
+            /punch|attack|melee/i,
+        );
+
+        if (!punchAction) {
+            console.warn(
+                "[ANIMATION] Không tìm thấy animation Punch.",
+            );
+            return;
+        }
+
+        const handleFinished = (
+            event: { action?: AnimationAction },
+        ) => {
+            if (event.action !== punchAction) return;
+
+            punchingRef.current = false;
+
+            const nextAction = locomotionActionRef.current;
+
+            if (!nextAction) return;
+
+            punchAction.fadeOut(0.1);
+
+            nextAction.enabled = true;
+            nextAction.setLoop(LoopRepeat, Infinity);
+            nextAction.clampWhenFinished = false;
+            nextAction.setEffectiveWeight(1);
+            nextAction.reset();
+            nextAction.fadeIn(0.15).play();
+
+            activeActionRef.current = nextAction;
+
+            console.log(
+                "[ANIMATION] Punch finished; resumed:",
+                nextAction.getClip().name,
+            );
         };
-    }, [actions, moving]);
+
+        mixer.addEventListener("finished", handleFinished);
+
+        return () => {
+            mixer.removeEventListener("finished", handleFinished);
+        };
+    }, [actions, mixer]);
+
+    // ========================================================
+    // ANIMATION: PUNCH TRIGGER
+    // ========================================================
+
+    useEffect(() => {
+        if (
+            punchTrigger === lastPunchTriggerRef.current
+        ) {
+            return;
+        }
+
+        lastPunchTriggerRef.current = punchTrigger;
+
+        const punchAction = findAction(
+            /punch|attack|melee/i,
+        );
+
+        if (!punchAction) {
+            console.warn(
+                "[ANIMATION] Không tìm thấy clip Punch trong GLB.",
+            );
+            return;
+        }
+
+        punchingRef.current = true;
+
+        for (const action of Object.values(actions)) {
+            if (action && action !== punchAction) {
+                action.fadeOut(0.1);
+            }
+        }
+
+        punchAction.enabled = true;
+        punchAction.reset();
+        punchAction.setLoop(LoopOnce, 1);
+        punchAction.clampWhenFinished = true;
+        punchAction.setEffectiveWeight(1);
+        punchAction.setEffectiveTimeScale(1);
+        punchAction.fadeIn(0.1).play();
+
+        activeActionRef.current = punchAction;
+
+        console.log("[ANIMATION] Punch started:", {
+            clip: punchAction.getClip().name,
+            duration: punchAction.getClip().duration,
+        });
+    }, [actions, punchTrigger]);
 
     // ========================================================
     // RENDER
