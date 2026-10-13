@@ -382,3 +382,219 @@
 .game-hud__action-icon {
     font-size: 22px;
 }
+.game-hud__run-button--active {
+    background: rgba(30, 160, 90, 0.9);
+    border: 2px solid #75ffad;
+    color: #ffffff;
+}
+/* =========================================
+   JUMP & CROUCH - PORTRAIT
+========================================= */
+
+.game-hud__movement-actions--portrait {
+    position: fixed;
+    left: max(14px, env(safe-area-inset-right));
+    top: 50%;
+    transform: translateY(-50%);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+
+    z-index: 100;
+    pointer-events: none;
+}
+
+/* Nút nhảy và cúi */
+.game-hud__movement-actions--portrait
+.game-hud__action-button {
+    width: 58px;
+    height: 58px;
+    padding: 0;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+
+    background: rgba(20, 25, 35, 0.78);
+    color: #fff;
+
+    font-size: 10px;
+    font-weight: 800;
+
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+
+    pointer-events: auto;
+}
+
+/* Biểu tượng mũi tên */
+.game-hud__movement-actions--portrait
+.game-hud__action-icon {
+    font-size: 22px;
+    line-height: 1;
+    font-weight: 900;
+}
+
+/* Nút cúi đang bật */
+.game-hud__movement-actions--portrait
+.game-hud__crouch-button--active {
+    background: rgba(30, 160, 90, 0.92);
+    border-color: #75ffad;
+}
+
+/* Hiệu ứng nhấn */
+.game-hud__movement-actions--portrait
+.game-hud__action-button:active {
+    transform: scale(0.92);
+}
+
+/* Điện thoại nhỏ */
+@media (max-width: 480px) {
+    .game-hud__movement-actions--portrait {
+        right: max(10px, env(safe-area-inset-right));
+        gap: 10px;
+    }
+
+    .game-hud__movement-actions--portrait
+    .game-hud__action-button {
+        width: 52px;
+        height: 52px;
+        font-size: 9px;
+    }
+
+    .game-hud__movement-actions--portrait
+    .game-hud__action-icon {
+        font-size: 20px;
+    }
+}
+/* RUN BUTTON */
+.game-hud__run-button {
+    position: absolute;
+    left: 50px;
+    top: 54px;
+    z-index: 100;
+
+    min-width: 76px;
+    height: 52px;
+    padding: 0 14px;
+
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: 14px;
+
+    background: rgba(30, 35, 45, 0.85);
+    color: white;
+
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 1px;
+
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+
+    transform: none;
+    transform-origin: center;
+}
+
+/* Xoay khi màn hình dọc */
+.game-hud__run-button--portrait {
+    left: 179px;
+    right: auto;
+    top: 54px;
+    bottom: auto;
+
+    transform: rotate(90deg);
+}
+/* JUMP & CROUCH */
+.game-hud__movement-actions {
+    position: absolute;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+
+    z-index: 100;
+    pointer-events: none;
+}
+
+.game-hud__action-button {
+    width: 68px;
+    height: 68px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+
+    border: 2px solid rgba(255, 255, 255, 0.65);
+    border-radius: 50%;
+    background: rgba(20, 25, 35, 0.78);
+    color: white;
+
+    font-size: 11px;
+    font-weight: 800;
+
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.game-hud__action-icon {
+    font-size: 25px;
+    line-height: 1;
+    font-weight: 900;
+}
+
+.game-hud__crouch-button--active {
+    background: rgba(30, 160, 90, 0.92);
+    border-color: #75ffad;
+}
+
+/* Portrait: xoay cả nhóm nút */
+.game-hud__movement-actions--portrait {
+    position: fixed;
+    left: 79px;
+    right: auto;
+    top: 80%;
+
+    transform: translateY(-50%) rotate(90deg);
+    transform-origin: center center;
+
+    gap: 14px;
+}
+
+/* Giữ kích thước nút */
+.game-hud__movement-actions--portrait .game-hud__action-button {
+    width: 58px;
+    height: 58px;
+    font-size: 10px;
+}
+
+.game-hud__movement-actions--portrait .game-hud__action-icon {
+    font-size: 22px;
+}
+
+.game-hud__run-button--active {
+    background: rgba(30, 160, 90, 0.9);
+    border: 2px solid #75ffad;
+    color: white;
+}

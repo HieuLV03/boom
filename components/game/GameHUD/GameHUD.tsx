@@ -126,40 +126,21 @@ const stopFiring = () => {
     }
 };
 
+const running = useRunStore(
+    (state) => state.running,
+);
+
 const setRunning = useRunStore(
     (state) => state.setRunning,
 );
 
-const handleRunPointerDown = (
+const handleToggleRun = (
     event: PointerEvent<HTMLButtonElement>,
 ) => {
     event.preventDefault();
     event.stopPropagation();
 
-    setRunning(true);
-
-    event.currentTarget.setPointerCapture(
-        event.pointerId,
-    );
-};
-
-const handleRunPointerUp = (
-    event: PointerEvent<HTMLButtonElement>,
-) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    setRunning(false);
-
-    if (
-        event.currentTarget.hasPointerCapture(
-            event.pointerId,
-        )
-    ) {
-        event.currentTarget.releasePointerCapture(
-            event.pointerId,
-        );
-    }
+    setRunning(!useRunStore.getState().running);
 };
 
 const handleFirePointerDown = (
@@ -738,25 +719,29 @@ const removePickedUpListener = room.onMessage(
 
 
             </div>
+
 <button
     type="button"
     className={`game-hud__run-button ${
         isPortrait
             ? "game-hud__run-button--portrait"
             : ""
+    } ${
+        running
+            ? "game-hud__run-button--active"
+            : ""
     }`}
-    onPointerDown={handleRunPointerDown}
-    onPointerUp={handleRunPointerUp}
-    onPointerCancel={handleRunPointerUp}
-    onLostPointerCapture={() => setRunning(false)}
+    onPointerDown={handleToggleRun}
+    aria-pressed={running}
     style={{
         touchAction: "none",
         userSelect: "none",
         WebkitUserSelect: "none",
     }}
 >
-    CHẠY
+    {running ? "DỪNG CHẠY" : "CHẠY"}
 </button>
+
 {/* JUMP & CROUCH BUTTONS */}
 <div
     className={`game-hud__movement-actions ${
