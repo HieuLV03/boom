@@ -49,7 +49,7 @@ const DISTANCE = 7;
 const HEIGHT = 3;
 
 // Camera nhìn vào vị trí này trên nhân vật
-const TARGET_HEIGHT = 1.1;
+const TARGET_HEIGHT = 3.9;
 
 // Tốc độ camera bám theo nhân vật
 const SMOOTH_SPEED = 10;

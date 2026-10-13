@@ -51,7 +51,7 @@ export default function JumpScareOverlay({
 
         audio.pause();
         audio.src = audioSrc;
-        audio.currentTime = 3; // Bắt đầu ở giây thứ 2
+        audio.currentTime = 4;
 
         audio.volume = 1;
 

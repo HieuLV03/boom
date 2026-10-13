@@ -65,6 +65,8 @@ export default function Player({
             {/* CHARACTER + HELD WEAPON */}
 
             <group
+                position={[0, 0, 0]}
+
                 rotation={[
                     0,
                     rotation,
@@ -82,7 +84,7 @@ export default function Player({
             <Text
                 position={[
                     0,
-                    2.65,
+                    2.95,
                     0,
                 ]}
                 fontSize={0.28}

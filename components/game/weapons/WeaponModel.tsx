@@ -1,11 +1,8 @@
+
 "use client";
 
 import { useMemo } from "react";
-import {
-    BoxGeometry,
-    CylinderGeometry,
-    MeshStandardMaterial,
-} from "three";
+import { MeshStandardMaterial } from "three";
 
 type Props = {
     weaponType?: string;
@@ -32,7 +29,7 @@ export default function WeaponModel({
     }), []);
 
     return (
-        <group>
+        <group name="WeaponRoot">
             {/* Thân súng */}
             <mesh
                 position={[0, 0, 0]}
@@ -51,6 +48,12 @@ export default function WeaponModel({
             >
                 <cylinderGeometry args={[0.07, 0.07, 1.25, 10]} />
             </mesh>
+
+            {/* Điểm xuất phát của viên đạn ở đầu nòng */}
+            <group
+                name="MuzzlePoint"
+                position={[0, 0.02, -2.5]}
+            />
 
             {/* Báng súng */}
             <mesh

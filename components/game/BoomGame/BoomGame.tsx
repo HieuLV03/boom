@@ -6,7 +6,7 @@ import {
     useRef,
     useState,
 } from "react";
-
+import { useScareObjectStore } from "@/stores/scareObject.store";
 import "./BoomGame.css";
 import JumpScareOverlay from "../JumpScareOverlay/JumpScareOverlay";
 import {
@@ -139,16 +139,23 @@ useEffect(() => {
     );
 
     // Khi vật thể bị bắn, server thông báo HP mới.
-    const handleScareObjectDamaged = (data: {
-        objectId: string;
-        attackerId: string;
-        damage: number;
-        hp: number;
-        maxHp: number;
-        destroyed: boolean;
-    }) => {
-        console.log("[SCARE OBJECT] Damaged:", data);
-    };
+ 
+const handleScareObjectDamaged = (data: {
+    objectId: string;
+    attackerId: string;
+    damage: number;
+    hp: number;
+    maxHp: number;
+    destroyed: boolean;
+}) => {
+    console.log("[SCARE OBJECT] Damaged:", data);
+
+    if (data.objectId !== "scare-object-1") return;
+
+    // Đồng bộ HP và kích hoạt hiệu ứng đổi màu.
+    useScareObjectStore.getState().setHp(data.hp);
+};
+
 
     // Khi HP vật thể về 0, kích hoạt jumpscare.
     const handleScareObjectDestroyed = (data: {

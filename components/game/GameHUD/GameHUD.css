@@ -28,7 +28,7 @@
 }
 
 .game-hud__hp--portrait {
-    left: 0;
+    left: -60px;
     top: 50%;
     transform: translateY(-50%) rotate(90deg);
 }

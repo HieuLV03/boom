@@ -18,7 +18,9 @@ import {
     Raycaster,
     type Group,
     type Bone,
+    type Object3D,
 } from "three";
+
 import {
     getStateCallbacks,
 } from "@colyseus/sdk";
@@ -43,7 +45,7 @@ import {
 const _cameraDirection = new Vector3();
 
 // Đẩy tâm ngắm lên cao hơn đầu nhân vật 0.25 đơn vị.
-const _crosshairOffset = new Vector3(0, 0.69, 0);
+const _crosshairOffset = new Vector3(-0.54, 0.69, 0);
 // ============================================================
 // TYPES
 // ============================================================
@@ -121,7 +123,8 @@ const headBoneRef = useRef<Bone | null>(null);
 const headPositionRef = useRef(new Vector3());
 const aimTargetRef = useRef(new Vector3());
 const shotDirectionRef = useRef(new Vector3());
-
+const muzzlePositionRef = useRef(new Vector3());
+const muzzleObjectRef = useRef<Object3D | null>(null);
 const raycasterRef = useRef(new Raycaster());
 const crosshairNdcRef = useRef(new Vector2());
 const weaponType =
@@ -1106,37 +1109,45 @@ targetRotation.current = player.rotation.y;
                 visible,
             );
         }
+// ====================================================
+// AIM: GIỮ NGUYÊN CHỮ THẬP HIỆN TẠI
 
-        // Tia bắn đi qua chính xác vị trí dấu +.
+
+// ====================================================
+// AIM: ĐẠN XUẤT PHÁT TỪ NHÂN VẬT VÀ HƯỚNG ĐẾN TÂM NGẮM
+// ====================================================
+
+        // ====================================================
+        // AIM: BẮN THẲNG QUA TÂM NGẮM
+        // ====================================================
+
         const crosshairNdc = crosshairNdcRef.current.set(
             projected.x,
             projected.y,
         );
 
+        // Tạo tia bắn xuyên chính giữa tâm ngắm.
         const raycaster = raycasterRef.current;
         raycaster.setFromCamera(crosshairNdc, camera);
 
-        aimTargetRef.current
-            .copy(raycaster.ray.origin)
-            .addScaledVector(raycaster.ray.direction, 30);
+        // Điểm xuất phát: vị trí camera.
+        const shotOrigin = camera.getWorldPosition(
+            new Vector3(),
+        );
 
-        shotDirectionRef.current
-            .subVectors(
-                aimTargetRef.current,
-                headPositionRef.current,
-            )
-            .normalize();
+        // Hướng bắn chính là hướng tia đi qua tâm ngắm.
+        const shotDirection = raycaster.ray.direction;
 
         useAimStore.getState().setAim(
             {
-                x: headPositionRef.current.x,
-                y: headPositionRef.current.y,
-                z: headPositionRef.current.z,
+                x: shotOrigin.x,
+                y: shotOrigin.y,
+                z: shotOrigin.z,
             },
             {
-                x: shotDirectionRef.current.x,
-                y: shotDirectionRef.current.y,
-                z: shotDirectionRef.current.z,
+                x: shotDirection.x,
+                y: shotDirection.y,
+                z: shotDirection.z,
             },
         );
 
