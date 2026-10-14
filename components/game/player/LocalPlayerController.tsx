@@ -25,7 +25,9 @@ import { useJumpStore } from "@/stores/jump.store";
 import {
     getStateCallbacks,
 } from "@colyseus/sdk";
-
+import {
+    doorCellKey,
+} from "../../../shared/maps/doors";
 import {
     getMapConfig,
 } from "../../../shared/maps/map-registry";
@@ -175,7 +177,28 @@ const targetRotation = useRef(0);
     const isCrouching = useCrouchStore(
     (state) => state.crouching,
 );
+const getClosedDoorCells = (): Set<string> => {
+    const blocked = new Set<string>();
 
+    const doors = room?.state?.doors;
+
+    if (!doors) {
+        return blocked;
+    }
+
+    doors.forEach((door: any) => {
+        if (!door.open) {
+            blocked.add(
+                doorCellKey(
+                    Number(door.cellX),
+                    Number(door.cellZ),
+                ),
+            );
+        }
+    });
+
+    return blocked;
+};
 const jumpTrigger = useJumpStore(
     (state) => state.jumpTrigger,
 );
@@ -1708,6 +1731,7 @@ const targetSpeed = MAX_SPEED * strength;
             const targetX = currentX + dx;
             const targetZ = currentZ + dz;
 const activeMap = getMapConfig(mapId);
+const blockedDoorCells = getClosedDoorCells();
 
             // Chỉ xử lý va chạm một lần.
             // Hàm này tự thử di chuyển chéo và trượt dọc tường.
@@ -1718,6 +1742,8 @@ const activeMap = getMapConfig(mapId);
                 targetX,
                 targetZ,
                 0.4,
+                blockedDoorCells,
+
             );
 
             player.position.x = result.x;

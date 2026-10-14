@@ -3,13 +3,14 @@ import {
     Room,
     type RoomOptions,
 } from "colyseus";
-
+import { doorCellKey,    ZOMBIE_HOUSE_DOORS,
+ } from "../../../shared/maps/doors.js";
 import {
     BattleState,
     PlayerState,
     BombState,
         WeaponPickupState,
-
+DoorState,
 } from "../schema/BattleState.js";
 
 import {
@@ -119,6 +120,34 @@ export class BattleRoom extends Room<{
     // MAP
     // ========================================================
 
+private initializeDoors(): void {
+    // Xóa dữ liệu cửa cũ trước khi khởi tạo.
+    this.state.doors.clear();
+
+    // Chỉ tạo cửa cho map nhà zombie.
+    // Nếu map.config.ts sử dụng ID khác, đổi "zombie-house"
+    // thành đúng ID của map đó.
+    if (String(this.mapId) !== "zombie-house") {
+        return;
+    }
+
+    for (const config of ZOMBIE_HOUSE_DOORS) {
+        const door = new DoorState();
+
+        door.id = config.id;
+        door.cellX = config.cellX;
+        door.cellZ = config.cellZ;
+        door.axis = config.axis;
+        door.open = false;
+
+        this.state.doors.set(door.id, door);
+    }
+
+    console.log(
+        `[DOOR] Initialized ${this.state.doors.size} doors for map ${this.mapId}`,
+    );
+}
+
     private mapId: MapId =
         "tropical-village";
 private lastAttackAt = new Map<string, number>();
@@ -135,6 +164,23 @@ private readonly scareObjectPosition = {
     y: 1.2,
     z: 0,
 };
+
+private getClosedDoorCells(): Set<string> {
+    const blocked = new Set<string>();
+
+    this.state.doors.forEach((door) => {
+        if (!door.open) {
+            blocked.add(
+                doorCellKey(
+                    door.cellX,
+                    door.cellZ,
+                ),
+            );
+        }
+    });
+
+    return blocked;
+}
 
 private readonly scareObjectRadius = 1.05;
     // ========================================================
@@ -620,6 +666,95 @@ this.broadcast("attackPerformed", {
 
         this.state.mapId =
             this.mapId;
+// ====================================================
+// INITIALIZE DOORS
+// ====================================================
+
+this.initializeDoors();
+
+const interactDoor = (client: Client) => {
+    if (this.state.gameOver) return;
+
+    const player = this.state.players.get(client.sessionId);
+
+    if (!player || !player.alive) return;
+
+    if (this.state.doors.size === 0) {
+        client.send("doorInteractionResult", {
+            success: false,
+            reason: "no-doors",
+        });
+        return;
+    }
+
+    const map = getMapConfig(this.mapId);
+
+    let nearestDoor: DoorState | null = null;
+    let nearestDistance = Infinity;
+
+    this.state.doors.forEach((door) => {
+        const position = map.cellToWorld(
+            door.cellX,
+            door.cellZ,
+        );
+
+        const distance = distanceXZ(
+            player.x,
+            player.z,
+            position.x,
+            position.z,
+        );
+
+        if (distance < nearestDistance) {
+            nearestDistance = distance;
+            nearestDoor = door;
+        }
+    });
+
+    const INTERACTION_DISTANCE = 2.2;
+
+    if (
+        !nearestDoor ||
+        nearestDistance > INTERACTION_DISTANCE
+    ) {
+        client.send("doorInteractionResult", {
+            success: false,
+            reason: "too-far",
+        });
+        return;
+    }
+
+    const door = nearestDoor as DoorState;
+
+    // Đổi trạng thái cửa. Schema sẽ đồng bộ trạng thái mới
+    // đến tất cả client đang ở trong room.
+    door.open = !door.open;
+
+    this.broadcast("doorUpdated", {
+        id: door.id,
+        open: door.open,
+    });
+
+    client.send("doorInteractionResult", {
+        success: true,
+        id: door.id,
+        open: door.open,
+    });
+
+    console.log(
+        `[DOOR] ${player.name} ${door.open ? "opened" : "closed"} ${door.id}`,
+    );
+};
+
+// Tên message mà nút tương tác phía client sẽ gửi.
+this.onMessage("interactDoor", (client) => {
+    interactDoor(client);
+});
+
+// Hỗ trợ thêm tên message này nếu client hiện tại đang dùng openDoor.
+this.onMessage("openDoor", (client) => {
+    interactDoor(client);
+});
 
 for (let i = 0; i < 3; i++) {
     const position = this.getRandomWalkablePosition();
@@ -835,85 +970,64 @@ this.onMessage(
         // sau đó Z.
         // ==================================================
 
-        let finalX =
-            player.x;
+let finalX = player.x;
+let finalZ = player.z;
 
-        let finalZ =
-            player.z;
+const startX = player.x;
+const startZ = player.z;
 
+const blockedDoorCells = this.getClosedDoorCells();
 
-        // ==================================================
-        // MOVE X
-        // ==================================================
+let deltaX = requestedX - startX;
+let deltaZ = requestedZ - startZ;
 
-        if (
-            map.canMoveTo(
-                requestedX,
-                player.z
-            )
-        ) {
+// Giới hạn quãng đường mỗi message để tránh dịch chuyển bất thường.
+const maxMovePerMessage = 1.0;
+const distance = Math.hypot(deltaX, deltaZ);
 
-            finalX =
-                requestedX;
+if (distance > maxMovePerMessage) {
+    const scale = maxMovePerMessage / distance;
+    deltaX *= scale;
+    deltaZ *= scale;
+}
 
-        }
+// Chia nhỏ bước di chuyển để tránh vượt qua cửa đóng.
+const maxStep = 0.1;
+const steps = Math.max(
+    1,
+    Math.ceil(Math.hypot(deltaX, deltaZ) / maxStep),
+);
 
+const stepX = deltaX / steps;
+const stepZ = deltaZ / steps;
 
-        // ==================================================
-        // MOVE Z
-        // ==================================================
+for (let i = 0; i < steps; i++) {
+    const nextX = finalX + stepX;
 
-        if (
-            map.canMoveTo(
-                finalX,
-                requestedZ
-            )
-        ) {
+    if (map.canMoveTo(nextX, finalZ, 0.4, blockedDoorCells)) {
+        finalX = nextX;
+    }
 
-            finalZ =
-                requestedZ;
+    const nextZ = finalZ + stepZ;
 
-        }
+    if (map.canMoveTo(finalX, nextZ, 0.4, blockedDoorCells)) {
+        finalZ = nextZ;
+    }
+}
 
-        // ==================================================
-        // APPLY POSITION
-        // ==================================================
+const dx = finalX - startX;
+const dz = finalZ - startZ;
 
-// ==================================================
-// MOVEMENT STATE
-// Phải tính trước khi cập nhật vị trí
-// ==================================================
-const dx = finalX - player.x;
-const dz = finalZ - player.z;
-
-const calculatedMoving =
+player.moving =
     Math.abs(dx) > 0.001 ||
     Math.abs(dz) > 0.001;
-
-// Ưu tiên trạng thái animation do client gửi.
-// Nếu client chưa gửi moving thì dùng vị trí để tính.
-player.moving =
-    typeof message?.moving === "boolean"
-        ? message.moving
-        : calculatedMoving;
-
-// ==================================================
-// APPLY POSITION
-// ==================================================
 
 player.x = finalX;
 player.y = requestedY;
 player.z = finalZ;
-
-// ==================================================
-// ROTATION
-// ==================================================
-
 player.rotation = requestedRotation;
-
     }
 );
-
         // ====================================================
         // PLANT BOMB
         // ====================================================
@@ -1216,7 +1330,6 @@ player.rotation = requestedRotation;
         );
 
     }
-
 
 private getRandomWalkablePosition() {
     const map = getMapConfig(this.mapId);

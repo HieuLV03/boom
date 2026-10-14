@@ -209,11 +209,10 @@ export default function CameraController({
         // SMOOTH POSITION
         // ====================================================
 
-        const smooth =
-            1 - Math.exp(
-                -SMOOTH_SPEED * delta
-            );
-
+const smooth =
+    1 - Math.exp(
+        -SMOOTH_SPEED * delta
+    );
         camera.position.x +=
             (cameraX - camera.position.x) *
             smooth;

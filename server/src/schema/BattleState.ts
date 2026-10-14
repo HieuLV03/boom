@@ -108,6 +108,22 @@ export class WeaponPickupState extends Schema {
     @type("boolean")
     available: boolean = true;
 }
+export class DoorState extends Schema {
+    @type("string")
+    id: string = "";
+
+    @type("number")
+    cellX: number = 0;
+
+    @type("number")
+    cellZ: number = 0;
+
+    @type("string")
+    axis: string = "x";
+
+    @type("boolean")
+    open: boolean = false;
+}
 // ============================================================
 // BATTLE STATE
 // ============================================================
@@ -126,6 +142,9 @@ weaponPickups = new MapSchema<WeaponPickupState>();
     // ========================================================
     // MAP
     // ========================================================
+
+    @type({ map: DoorState })
+doors = new MapSchema<DoorState>();
 
     /*
      * ID của map hiện tại.

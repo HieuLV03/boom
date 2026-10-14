@@ -60,94 +60,117 @@ export function createGridMap(data: GridMapData) {
         };
     }
 
-    function getWallCollision(
-        x: number,
-        z: number,
-        radius: number,
-    ) {
-        const center = worldToCell(x, z);
+function getWallCollision(
+    x: number,
+    z: number,
+    radius: number,
+    blockedCells?: ReadonlySet<string>,
+) {
+    const center = worldToCell(x, z);
 
-        let pushX = 0;
-        let pushZ = 0;
-        let collided = false;
+    let pushX = 0;
+    let pushZ = 0;
+    let collided = false;
 
-        for (let offsetZ = -2; offsetZ <= 2; offsetZ++) {
-            for (let offsetX = -2; offsetX <= 2; offsetX++) {
-                const cellX = center.cellX + offsetX;
-                const cellZ = center.cellZ + offsetZ;
+    for (let offsetZ = -2; offsetZ <= 2; offsetZ++) {
+        for (let offsetX = -2; offsetX <= 2; offsetX++) {
+            const cellX = center.cellX + offsetX;
+            const cellZ = center.cellZ + offsetZ;
 
-                if (isWalkableCell(cellX, cellZ)) continue;
+            const isClosedDoor = blockedCells?.has(
+                `${cellX},${cellZ}`,
+            ) ?? false;
 
-                const wall = cellToWorld(cellX, cellZ);
-                const half = CELL_SIZE / 2;
-
-                const minX = wall.x - half;
-                const maxX = wall.x + half;
-                const minZ = wall.z - half;
-                const maxZ = wall.z + half;
-
-                const closestX = Math.max(minX, Math.min(x, maxX));
-                const closestZ = Math.max(minZ, Math.min(z, maxZ));
-
-                let dx = x - closestX;
-                let dz = z - closestZ;
-
-                const distanceSquared = dx * dx + dz * dz;
-
-                if (distanceSquared >= radius * radius) continue;
-
-                collided = true;
-
-                const distance = Math.sqrt(distanceSquared);
-
-                if (distance < 1e-10) {
-                    const sides = [
-                        { distance: Math.abs(x - minX), x: -1, z: 0 },
-                        { distance: Math.abs(maxX - x), x: 1, z: 0 },
-                        { distance: Math.abs(z - minZ), x: 0, z: -1 },
-                        { distance: Math.abs(maxZ - z), x: 0, z: 1 },
-                    ];
-
-                    sides.sort((a, b) => a.distance - b.distance);
-
-                    pushX += sides[0].x * radius;
-                    pushZ += sides[0].z * radius;
-                    continue;
-                }
-
-                const penetration = radius - distance;
-
-                dx /= distance;
-                dz /= distance;
-
-                pushX += dx * penetration;
-                pushZ += dz * penetration;
+            if (
+                isWalkableCell(cellX, cellZ) &&
+                !isClosedDoor
+            ) {
+                continue;
             }
+
+            const wall = cellToWorld(cellX, cellZ);
+            const half = CELL_SIZE / 2;
+
+            const minX = wall.x - half;
+            const maxX = wall.x + half;
+            const minZ = wall.z - half;
+            const maxZ = wall.z + half;
+
+            const closestX = Math.max(minX, Math.min(x, maxX));
+            const closestZ = Math.max(minZ, Math.min(z, maxZ));
+
+            let dx = x - closestX;
+            let dz = z - closestZ;
+
+            const distanceSquared = dx * dx + dz * dz;
+
+            if (distanceSquared >= radius * radius) continue;
+
+            collided = true;
+
+            const distance = Math.sqrt(distanceSquared);
+
+            if (distance < 1e-10) {
+                const sides = [
+                    { distance: Math.abs(x - minX), x: -1, z: 0 },
+                    { distance: Math.abs(maxX - x), x: 1, z: 0 },
+                    { distance: Math.abs(z - minZ), x: 0, z: -1 },
+                    { distance: Math.abs(maxZ - z), x: 0, z: 1 },
+                ];
+
+                sides.sort((a, b) => a.distance - b.distance);
+
+                pushX += sides[0].x * radius;
+                pushZ += sides[0].z * radius;
+                continue;
+            }
+
+            const penetration = radius - distance;
+
+            dx /= distance;
+            dz /= distance;
+
+            pushX += dx * penetration;
+            pushZ += dz * penetration;
         }
-
-        return { collided, pushX, pushZ };
     }
 
-    function canMoveTo(
-        x: number,
-        z: number,
-        radius = 0.4,
-    ): boolean {
-        return !getWallCollision(x, z, radius).collided;
-    }
+    return { collided, pushX, pushZ };
+}
 
-    function resolveWallCollision(
-        x: number,
-        z: number,
-        radius = 0.4,
-    ) {
-        const collision = getWallCollision(x, z, radius);
+  function canMoveTo(
+    x: number,
+    z: number,
+    radius = 0.4,
+    blockedCells?: ReadonlySet<string>,
+): boolean {
+    return !getWallCollision(
+        x,
+        z,
+        radius,
+        blockedCells,
+    ).collided;
+}
 
-        return {
-            x: x + collision.pushX,
-            z: z + collision.pushZ,
-        };
-    }
+function resolveWallCollision(
+    x: number,
+    z: number,
+    radius = 0.4,
+    blockedCells?: ReadonlySet<string>,
+) {
+    const collision = getWallCollision(
+        x,
+        z,
+        radius,
+        blockedCells,
+    );
+
+    return {
+        x: x + collision.pushX,
+        z: z + collision.pushZ,
+    };
+}
+  
 
     function getSpawnCells() {
         const result: Array<{ cellX: number; cellZ: number }> = [];
@@ -185,7 +208,6 @@ export function createGridMap(data: GridMapData) {
     };
 }
 
-// Dùng chung cho mọi cấu hình bản đồ.
 export function moveWithWallCollision(
     map: ReturnType<typeof createGridMap>,
     currentX: number,
@@ -193,16 +215,17 @@ export function moveWithWallCollision(
     targetX: number,
     targetZ: number,
     radius = 0.4,
+    blockedCells?: ReadonlySet<string>,
 ) {
-    if (map.canMoveTo(targetX, targetZ, radius)) {
+    if (map.canMoveTo(targetX, targetZ, radius, blockedCells)) {
         return { x: targetX, z: targetZ };
     }
 
-    if (map.canMoveTo(targetX, currentZ, radius)) {
+    if (map.canMoveTo(targetX, currentZ, radius, blockedCells)) {
         return { x: targetX, z: currentZ };
     }
 
-    if (map.canMoveTo(currentX, targetZ, radius)) {
+    if (map.canMoveTo(currentX, targetZ, radius, blockedCells)) {
         return { x: currentX, z: targetZ };
     }
 

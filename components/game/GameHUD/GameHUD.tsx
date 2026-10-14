@@ -30,7 +30,11 @@ type NearbyWeapon = {
     weaponType: string;
     distance: number;
 };
-
+type NearbyDoor = {
+    id: string;
+    open: boolean;
+    distance: number;
+};
 // ============================================================
 // CROSSHAIR SETTINGS
 // ============================================================
@@ -71,7 +75,11 @@ const MAX_CAMERA_PITCH = 0.35;
 
     const [nearbyWeapon, setNearbyWeapon] =
         useState<NearbyWeapon | null>(null);
+const [nearbyDoor, setNearbyDoor] =
+    useState<NearbyDoor | null>(null);
 
+const [isInteractingDoor, setIsInteractingDoor] =
+    useState(false);
     const [isPicking, setIsPicking] = useState(false);
 
     const [pickupMessage, setPickupMessage] = useState("");
@@ -443,6 +451,119 @@ const isCrouching = useCrouchStore(
         };
     }, [room]);
 
+// ============================================================
+// DETECT NEARBY DOOR
+// ============================================================
+
+useEffect(() => {
+    if (!room) {
+        setNearbyDoor(null);
+        setIsInteractingDoor(false);
+        return;
+    }
+
+    let active = true;
+
+    const updateNearbyDoor = () => {
+        if (!active) return;
+
+        const state = room.state as any;
+        const players = state?.players;
+        const doors = state?.doors;
+
+        if (!players || !doors) {
+            setNearbyDoor(null);
+            return;
+        }
+
+        // Chỉ hiển thị cửa trên map zombie-house.
+        if (state.mapId !== "zombie-house") {
+            setNearbyDoor(null);
+            return;
+        }
+
+        const player = players.get(room.sessionId);
+
+        if (!player || player.alive === false) {
+            setNearbyDoor(null);
+            return;
+        }
+
+        const playerX = Number(player.x ?? 0);
+        const playerZ = Number(player.z ?? 0);
+
+        const cellSize = 2;
+        const mapWidth = 31;
+        const mapHeight = 31;
+
+        let nearest: NearbyDoor | null = null;
+
+        doors.forEach((door: any, key: string) => {
+            if (!door) return;
+
+            const doorX =
+                (Number(door.cellX) - Math.floor(mapWidth / 2)) *
+                cellSize;
+
+            const doorZ =
+                (Number(door.cellZ) - Math.floor(mapHeight / 2)) *
+                cellSize;
+
+            const distance = Math.hypot(
+                playerX - doorX,
+                playerZ - doorZ,
+            );
+
+            if (
+                distance <= 2.3 &&
+                (!nearest || distance < nearest.distance)
+            ) {
+                nearest = {
+                    id: String(door.id || key),
+                    open: Boolean(door.open),
+                    distance,
+                };
+            }
+        });
+
+        setNearbyDoor(nearest);
+    };
+
+    updateNearbyDoor();
+
+    const intervalId = window.setInterval(
+        updateNearbyDoor,
+        100,
+    );
+
+    return () => {
+        active = false;
+        window.clearInterval(intervalId);
+    };
+}, [room]);
+
+    // ========================================================
+    // INTERACT WITH DOOR
+    // ========================================================
+
+    const handleInteractDoor = () => {
+        if (!room || !nearbyDoor || isInteractingDoor) {
+            return;
+        }
+
+        setIsInteractingDoor(true);
+
+        // Server sẽ xác minh khoảng cách và đổi trạng thái cửa.
+        room.send("interactDoor", {
+            doorId: nearbyDoor.id,
+        });
+
+        // Chống bấm liên tục; trạng thái thực tế vẫn do server quản lý.
+        window.setTimeout(() => {
+            setIsInteractingDoor(false);
+        }, 500);
+    };
+
     // ========================================================
     // DETECT NEARBY WEAPON
     // ========================================================
@@ -797,6 +918,52 @@ const removePickedUpListener = room.onMessage(
         <span>{isCrouching ? "ĐỨNG" : "CÚI"}</span>
     </button>
 </div>
+
+            {/* DOOR INTERACTION BUTTON */}
+            {nearbyDoor && (
+                <div
+                    className={`game-hud__door-position ${
+                        isPortrait
+                            ? "game-hud__door-position--portrait"
+                            : ""
+                    }`}
+                >
+                    <div className="game-hud__door-label">
+                        {nearbyDoor.open
+                            ? "CỬA ĐANG MỞ"
+                            : "CÓ CỬA Ở GẦN"}
+                    </div>
+
+                    <button
+                        type="button"
+                        className="game-hud__door-button"
+                        onPointerDown={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            handleInteractDoor();
+                        }}
+                        disabled={isInteractingDoor}
+                        aria-label={
+                            nearbyDoor.open
+                                ? "Đóng cửa"
+                                : "Mở cửa"
+                        }
+                    >
+                        <span className="game-hud__door-icon">
+                            🚪
+                        </span>
+
+                        <span>
+                            {isInteractingDoor
+                                ? "ĐANG XỬ LÝ..."
+                                : nearbyDoor.open
+                                    ? "ĐÓNG CỬA"
+                                    : "MỞ CỬA"}
+                        </span>
+                    </button>
+                </div>
+            )}
+
             {/* PICKUP WEAPON BUTTON */}
             {nearbyWeapon && (
                 <div

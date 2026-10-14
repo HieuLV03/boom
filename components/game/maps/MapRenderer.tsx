@@ -2,43 +2,23 @@
 "use client";
 
 import TropicalVillage from "./tropical-village/TropicalVillage";
-
-
-// ============================================================
-// TYPES
-// ============================================================
+import ZombieHouse from "./zombie-house/ZombieHouse";
 
 export type MapId =
-    | "tropical-village";
-
-
-// ============================================================
-// PROPS
-// ============================================================
+    | "tropical-village"
+    | "zombie-house";
 
 type Props = {
     mapId: MapId;
 };
 
-
-// ============================================================
-// MAP RENDERER
-// ============================================================
-
-export default function MapRenderer({
-    mapId,
-}: Props) {
-
+export default function MapRenderer({ mapId }: Props) {
     switch (mapId) {
+        case "zombie-house":
+            return <ZombieHouse />;
 
         case "tropical-village":
-            return (
-                <TropicalVillage />
-            );
-
         default:
-            return (
-                <TropicalVillage />
-            );
+            return <TropicalVillage />;
     }
 }

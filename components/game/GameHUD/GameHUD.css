@@ -598,3 +598,166 @@
     border: 2px solid #75ffad;
     color: white;
 }
+
+
+/* ============================================================
+   DOOR INTERACTION
+   ============================================================ */
+
+.game-hud__door-position {
+    position: absolute;
+    left: 50%;
+    bottom: 120px;
+    transform: translateX(-50%);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+
+    z-index: 200;
+    pointer-events: auto;
+}
+
+.game-hud__door-label {
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 8px;
+
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.game-hud__door-button {
+    min-width: 112px;
+    min-height: 54px;
+    padding: 8px 14px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    border: 2px solid #e7c49a;
+    border-radius: 14px;
+
+    background: rgba(85, 53, 35, 0.94);
+    color: #fff;
+
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+
+    cursor: pointer;
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.game-hud__door-icon {
+    font-size: 21px;
+    line-height: 1;
+}
+
+.game-hud__door-button:active {
+    transform: scale(0.94);
+    background: rgba(125, 77, 43, 0.98);
+}
+
+.game-hud__door-button:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+.game-hud__door-position--portrait {
+    left: 50%;
+    bottom: max(20px, env(safe-area-inset-bottom));
+    transform: translateX(-50%) rotate(90deg);
+}
+
+/* ============================================================
+   DOOR INTERACTION
+   ============================================================ */
+
+.game-hud__door-position {
+    position: absolute;
+    left: 50%;
+    bottom: 120px;
+    transform: translateX(-50%);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+
+    z-index: 200;
+    pointer-events: none;
+}
+
+.game-hud__door-label {
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.78);
+
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.game-hud__door-button {
+    min-width: 112px;
+    min-height: 54px;
+    padding: 8px 14px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    border: 2px solid #e7c49a;
+    border-radius: 14px;
+    background: rgba(85, 53, 35, 0.94);
+
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.game-hud__door-icon {
+    font-size: 21px;
+    line-height: 1;
+}
+
+.game-hud__door-button:active {
+    transform: scale(0.94);
+}
+
+.game-hud__door-button:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+/* Màn hình dọc */
+.game-hud__door-position--portrait {
+    left: 50%;
+    bottom: max(24px, env(safe-area-inset-bottom));
+    transform: translateX(-50%) rotate(90deg);
+}
