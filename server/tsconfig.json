@@ -6,6 +6,8 @@
 
         "strict": true,
         "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
         "skipLibCheck": true,
 
         "experimentalDecorators": true,
@@ -13,11 +15,12 @@
 
         "sourceMap": true,
 
-        "rootDir": "./src",
+        "rootDir": "..",
         "outDir": "./dist"
     },
 
     "include": [
-        "src/**/*.ts"
+        "src/**/*.ts",
+        "../shared/**/*.ts"
     ]
 }

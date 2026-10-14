@@ -227,3 +227,119 @@
     }
 
 }
+
+
+/* ============================================================
+   MAP SELECTION
+   ============================================================ */
+
+.map-selection {
+    width: 100%;
+    margin: 20px 0;
+}
+
+.map-selection-title {
+    margin: 0 0 12px;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: left;
+}
+
+.map-selection-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.map-option {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 155px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 7px;
+    padding: 14px 12px;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    color: #ffffff;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        border-color 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.map-option:hover {
+    transform: translateY(-2px);
+}
+
+.map-option-village {
+    background:
+        radial-gradient(ellipse at top right, #82c96a 0%, transparent 55%),
+        linear-gradient(145deg, #245b3b, #102d26);
+}
+
+.map-option-zombie {
+    background:
+        radial-gradient(ellipse at top right, #655080 0%, transparent 55%),
+        linear-gradient(145deg, #30283e, #14131c);
+}
+
+.map-option-selected {
+    border-color: #63e68b;
+    box-shadow: 0 0 0 2px rgba(99, 230, 139, 0.15);
+}
+
+.map-option-icon {
+    font-size: 30px;
+    line-height: 1.2;
+}
+
+.map-option-name {
+    font-size: 13px;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.map-option-description {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 12px;
+}
+
+.map-option-check {
+    margin-top: 3px;
+    color: #8dffad;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.map-selection-hint {
+    margin: 10px 0 0;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.multiplayer-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+@media (max-width: 380px) {
+    .map-selection-list {
+        gap: 8px;
+    }
+
+    .map-option {
+        padding: 11px 9px;
+    }
+
+    .map-option-name {
+        font-size: 12px;
+    }
+}

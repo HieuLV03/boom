@@ -26,6 +26,9 @@ import {
     getStateCallbacks,
 } from "@colyseus/sdk";
 
+import {
+    getMapConfig,
+} from "../../../shared/maps/map-registry";
 import Player from "./Player";
 import { useCrosshairStore } from "@/stores/crosshair.store";
 import {
@@ -38,7 +41,7 @@ import {
 
 import {
     moveWithWallCollision,
-} from "../../../components/game/maps/tropical-village/maze.config";
+} from "../../../shared/maps/grid-map";
 // ============================================================
 // CAMERA DIRECTION CACHE
 // ============================================================
@@ -102,7 +105,7 @@ const running = useRunStore((state) => state.running);
     // ========================================================
     // PLAYER NAME
     // ========================================================
-
+const mapId = room?.state?.mapId ?? "tropical-village";
     const [
         playerName,
         setPlayerName,
@@ -1704,10 +1707,12 @@ const targetSpeed = MAX_SPEED * strength;
 
             const targetX = currentX + dx;
             const targetZ = currentZ + dz;
+const activeMap = getMapConfig(mapId);
 
             // Chỉ xử lý va chạm một lần.
             // Hàm này tự thử di chuyển chéo và trượt dọc tường.
             const result = moveWithWallCollision(
+                    activeMap,
                 currentX,
                 currentZ,
                 targetX,

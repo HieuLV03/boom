@@ -43,6 +43,10 @@ type Props = {
     roomCode?: string;
 };
 
+type MapId =
+    | "tropical-village"
+    | "zombie-house";
+
 
 // ============================================================
 // BOOM GAME
@@ -68,6 +72,78 @@ export default function BoomGame({
 
 
     // ========================================================
+    // MAP STATE
+    // ========================================================
+
+    const [mapId, setMapId] = useState<MapId>(
+        "tropical-village"
+    );
+
+
+    // ========================================================
+    // JUMPSCARE STATE
+    // ========================================================
+
+    const [scareTrigger, setScareTrigger] = useState(0);
+
+
+    // ========================================================
+    // ROOM EVENTS: SCARE OBJECT
+    // ========================================================
+
+    useEffect(() => {
+        if (!room) return;
+
+        console.log("[ROOM] BoomGame connected:", {
+            roomId: room.roomId,
+            sessionId: room.sessionId,
+        });
+
+        const unsubscribeDamaged = room.onMessage(
+            "scareObjectDamaged",
+            (data: {
+                objectId: string;
+                attackerId: string;
+                damage: number;
+                hp: number;
+                maxHp: number;
+                destroyed: boolean;
+            }) => {
+                console.log("[SCARE OBJECT] Damaged:", data);
+
+                if (data.objectId !== "scare-object-1") return;
+
+                useScareObjectStore.getState().setHp(data.hp);
+            }
+        );
+
+        const unsubscribeDestroyed = room.onMessage(
+            "scareObjectDestroyed",
+            (data: {
+                objectId: string;
+                attackerId: string;
+            }) => {
+                console.log("[SCARE OBJECT] Destroyed:", data);
+
+                if (data.objectId !== "scare-object-1") return;
+
+                setScareTrigger((previous) => previous + 1);
+            }
+        );
+
+        return () => {
+            if (typeof unsubscribeDamaged === "function") {
+                unsubscribeDamaged();
+            }
+
+            if (typeof unsubscribeDestroyed === "function") {
+                unsubscribeDestroyed();
+            }
+        };
+    }, [room]);
+
+
+    // ========================================================
     // BOMB
     // ========================================================
 
@@ -77,7 +153,7 @@ export default function BoomGame({
                 state.requestBomb
         );
 
-const [scareTrigger, setScareTrigger] = useState(0);
+
     // ========================================================
     // LEAVING
     // ========================================================
@@ -109,6 +185,37 @@ const [scareTrigger, setScareTrigger] = useState(0);
 
 
     // ========================================================
+    // ROOM EVENTS: MAP
+    // ========================================================
+
+    useEffect(() => {
+        if (!room) {
+            setMapId("tropical-village");
+            return;
+        }
+
+        const updateMapId = () => {
+            const currentMapId = room.state?.mapId;
+
+            if (
+                currentMapId === "tropical-village" ||
+                currentMapId === "zombie-house"
+            ) {
+                setMapId(currentMapId);
+            }
+        };
+
+        updateMapId();
+
+        room.onStateChange(() => {
+            updateMapId();
+        });
+
+        // Không gọi unsubscribe nếu API không trả về hàm hủy đăng ký.
+    }, [room]);
+
+
+    // ========================================================
     // CONNECTION LOG ONLY
     // ========================================================
     //
@@ -119,68 +226,6 @@ const [scareTrigger, setScareTrigger] = useState(0);
     // GamePage là nơi duy nhất xử lý onLeave.
     //
     // ========================================================
-
-
-// ========================================================
-// ROOM EVENTS: CONNECTION + JUMPSCARE
-// ========================================================
-
-useEffect(() => {
-    if (!room) {
-        return;
-    }
-
-    console.log(
-        "[ROOM] BoomGame connected:",
-        {
-            roomId: room.roomId,
-            sessionId: room.sessionId,
-        }
-    );
-
-    // Khi vật thể bị bắn, server thông báo HP mới.
- 
-const handleScareObjectDamaged = (data: {
-    objectId: string;
-    attackerId: string;
-    damage: number;
-    hp: number;
-    maxHp: number;
-    destroyed: boolean;
-}) => {
-    console.log("[SCARE OBJECT] Damaged:", data);
-
-    if (data.objectId !== "scare-object-1") return;
-
-    // Đồng bộ HP và kích hoạt hiệu ứng đổi màu.
-    useScareObjectStore.getState().setHp(data.hp);
-};
-
-
-    // Khi HP vật thể về 0, kích hoạt jumpscare.
-    const handleScareObjectDestroyed = (data: {
-        objectId: string;
-        attackerId: string;
-    }) => {
-        console.log("[SCARE OBJECT] Destroyed:", data);
-
-        setScareTrigger((previous) => previous + 1);
-    };
-const unsubscribeDamaged = room.onMessage(
-    "scareObjectDamaged",
-    handleScareObjectDamaged
-);
-
-const unsubscribeDestroyed = room.onMessage(
-    "scareObjectDestroyed",
-    handleScareObjectDestroyed
-);
-
-return () => {
-    unsubscribeDamaged?.();
-    unsubscribeDestroyed?.();
-};
-}, [room]);
 
 
     // ========================================================
@@ -271,8 +316,6 @@ return () => {
         // ====================================================
         // LEAVE COLYSEUS
         // ====================================================
-        //
-        // QUAN TRỌNG:
         //
         // Chờ leave() hoàn thành trước khi clear store.
         //
@@ -404,20 +447,22 @@ return () => {
                     groundColor="#4d7c0f"
                 />
 
-
-                <GameWorld />
+                <GameWorld mapId={mapId} />
 
             </Canvas>
 
-{/* ==================================================
-    JUMPSCARE - MA NHÀO LÊN MÀN HÌNH
-================================================== */}
 
-<JumpScareOverlay
-    trigger={scareTrigger}
-    imageSrc="/assets/horror/ghost.jpg"
-    audioSrc="/assets/horror/sound-jumpscale.mp3"
-/>
+            {/* ==================================================
+                JUMPSCARE - MA NHÀO LÊN MÀN HÌNH
+            ================================================== */}
+
+            <JumpScareOverlay
+                trigger={scareTrigger}
+                imageSrc="/assets/horror/ghost.jpg"
+                audioSrc="/assets/horror/sound-jumpscale.mp3"
+            />
+
+
             {/* ==================================================
                 OUT
             ================================================== */}
@@ -493,29 +538,31 @@ return () => {
 
             <TouchCamera />
 
-{/* ==================================================
-    BOMB BUTTON - ĐỘC LẬP
-================================================== */}
 
-<button
-    type="button"
-    className="boom-game__bomb-button"
-    aria-label="Đặt bom"
-    onPointerDown={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
+            {/* ==================================================
+                BOMB BUTTON - ĐỘC LẬP
+            ================================================== */}
 
-        if (event.button !== 0) return;
+            <button
+                type="button"
+                className="boom-game__bomb-button"
+                aria-label="Đặt bom"
+                onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
 
-        requestBomb();
-    }}
->
-    💣
-</button>
+                    if (event.button !== 0) return;
 
-{/* ==================================================
-    JUMP BUTTON - ĐỘC LẬP
-================================================== */}
+                    requestBomb();
+                }}
+            >
+                💣
+            </button>
+
+
+            {/* ==================================================
+                JUMP BUTTON - ĐỘC LẬP
+            ================================================== */}
 
 
         </div>
