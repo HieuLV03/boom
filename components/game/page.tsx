@@ -4,12 +4,13 @@
 import {
     Suspense,
 } from "react";
+import GameAssetPreloader from "@/components/game/GameAssetPreloader/GameAssetPreloader";
 
 import {
     useSearchParams,
 } from "next/navigation";
 
-import BoomGame from "@/components/game/BoomGame/BoomGame";
+import MainGame from "@/components/game/MainGame/MainGame";
 
 import LandscapeGuard from "@/components/game/LandscapeGuard/LandscapeGuard";
 
@@ -32,8 +33,9 @@ function GamePageContent() {
 
     return (
         <LandscapeGuard>
+        <GameAssetPreloader />
 
-            <BoomGame
+            <MainGame
                 roomCode={roomCode}
             />
 

@@ -61,8 +61,8 @@ const isFiringRef = useRef(false);
 const FIRE_INTERVAL = 240;
 const CAMERA_SENSITIVITY = 0.003;
 
-const MIN_CAMERA_PITCH = -0.75;
-const MAX_CAMERA_PITCH = 0.35;
+const MIN_CAMERA_PITCH = -1.45;
+const MAX_CAMERA_PITCH = 1.52;
     const room = useMultiplayerStore(
         (state) => state.room,
     );

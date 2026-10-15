@@ -5,14 +5,13 @@ import {
     Suspense,
     useEffect,
 } from "react";
-
 import {
     useRouter,
     useSearchParams,
 } from "next/navigation";
 
-import BoomGame
-    from "@/components/game/BoomGame/BoomGame";
+import MainGame
+    from "@/components/game/MainGame/MainGame";
 
 import {
     useMultiplayerStore,
@@ -59,12 +58,11 @@ function GamePageContent() {
     // ========================================================
     //
     // GamePage KHÔNG xử lý:
-    //
+
     // - room.leave()
     // - room.onLeave()
     // - clearRoom()
     //
-    // BoomGame sẽ xử lý OUT.
     //
     // GamePage chỉ kiểm tra:
     //
@@ -148,7 +146,7 @@ function GamePageContent() {
     // ========================================================
 
     return (
-        <BoomGame
+        <MainGame
             roomCode={roomCode}
         />
     );

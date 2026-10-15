@@ -7,7 +7,7 @@ import {
     useState,
 } from "react";
 import { useScareObjectStore } from "@/stores/scareObject.store";
-import "./BoomGame.css";
+import "./MainGame.css";
 import JumpScareOverlay from "../JumpScareOverlay/JumpScareOverlay";
 import {
     Canvas,
@@ -52,7 +52,7 @@ type MapId =
 // BOOM GAME
 // ============================================================
 
-export default function BoomGame({
+export default function MainGame({
     roomCode = "",
 }: Props) {
 
@@ -94,7 +94,7 @@ export default function BoomGame({
     useEffect(() => {
         if (!room) return;
 
-        console.log("[ROOM] BoomGame connected:", {
+        console.log("[ROOM] MainGame connected:", {
             roomId: room.roomId,
             sessionId: room.sessionId,
         });

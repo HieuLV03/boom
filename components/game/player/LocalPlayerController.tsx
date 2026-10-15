@@ -50,7 +50,6 @@ import {
 const _cameraDirection = new Vector3();
 
 // Đẩy tâm ngắm lên cao hơn đầu nhân vật 0.25 đơn vị.
-const _crosshairOffset = new Vector3(-0.54, 0.69, 0);
 // ============================================================
 // TYPES
 // ============================================================
@@ -113,20 +112,11 @@ const mapId = room?.state?.mapId ?? "tropical-village";
         setPlayerName,
     ] = useState("Player");
 
-// ========================================================
-// PLAYER WEAPONS
-// ========================================================
-const crosshairWorldPositionRef = useRef(
-    new Vector3(),
-);
 
-const crosshairFrameAccumulator = useRef(0);
 const [weapon1, setWeapon1] = useState("");
 const [weapon2, setWeapon2] = useState("");
 const [equippedSlot, setEquippedSlot] = useState(0);
-const headBoneRef = useRef<Bone | null>(null);
 
-const headPositionRef = useRef(new Vector3());
 const aimTargetRef = useRef(new Vector3());
 const shotDirectionRef = useRef(new Vector3());
 const muzzlePositionRef = useRef(new Vector3());
@@ -1088,103 +1078,57 @@ targetRotation.current = player.rotation.y;
 // AIM FROM ACTUAL CHARACTER HEAD
 // ================================================
 
-        // ================================================
-        // AIM: CROSSHAIR -> 3D TARGET -> CHARACTER HEAD
-        // ================================================
-
-      
-        // ================================================
-        // CROSSHAIR BÁM THEO ĐẦU NHÂN VẬT
-        // ================================================
-
-        if (!headBoneRef.current) {
-            headBoneRef.current = findHeadBone(player);
-        }
-
-        player.updateMatrixWorld(true);
-
-        const headBone = headBoneRef.current;
-
-        if (headBone) {
-            headBone.getWorldPosition(headPositionRef.current);
-        } else {
-            headPositionRef.current.set(
-                player.position.x,
-                player.position.y + 1.5,
-                player.position.z,
-            );
-        }
-
-        // Vị trí 3D của dấu +, phía trên đầu nhân vật.
-        crosshairWorldPositionRef.current
-            .copy(headPositionRef.current)
-            .add(_crosshairOffset);
-
-        // Chuyển tọa độ 3D sang tọa độ màn hình.
-        const projected =
-            crosshairWorldPositionRef.current.clone().project(camera);
-
-        const visible =
-            !isDead &&
-            projected.z >= -1 &&
-            projected.z <= 1 &&
-            projected.x >= -1 &&
-            projected.x <= 1 &&
-            projected.y >= -1 &&
-            projected.y <= 1;
-
-        crosshairFrameAccumulator.current += delta;
-
-        if (crosshairFrameAccumulator.current >= 1 / 30) {
-            crosshairFrameAccumulator.current = 0;
-
-            useCrosshairStore.getState().setPosition(
-                (projected.x + 1) / 2,
-                (1 - projected.y) / 2,
-                visible,
-            );
-        }
 // ====================================================
-// AIM: GIỮ NGUYÊN CHỮ THẬP HIỆN TẠI
-
-
-// ====================================================
-// AIM: ĐẠN XUẤT PHÁT TỪ NHÂN VẬT VÀ HƯỚNG ĐẾN TÂM NGẮM
+// CROSSHAIR: FIXED SCREEN POSITION
 // ====================================================
 
-        // ====================================================
-        // AIM: BẮN THẲNG QUA TÂM NGẮM
-        // ====================================================
+// Giữ tâm ngắm ở vị trí cố định trên màn hình.
+// 0.5 = chính giữa; 0.65 = lệch phải 15% chiều rộng.
+const CROSSHAIR_X = 0.55;
+const CROSSHAIR_Y = 0.70;
 
-        const crosshairNdc = crosshairNdcRef.current.set(
-            projected.x,
-            projected.y,
-        );
+const crosshairStore = useCrosshairStore.getState();
 
-        // Tạo tia bắn xuyên chính giữa tâm ngắm.
-        const raycaster = raycasterRef.current;
-        raycaster.setFromCamera(crosshairNdc, camera);
+crosshairStore.setPosition(
+    CROSSHAIR_X,
+    CROSSHAIR_Y,
+    !isDead,
+);
 
-        // Điểm xuất phát: vị trí camera.
-        const shotOrigin = camera.getWorldPosition(
-            new Vector3(),
-        );
+// ====================================================
+// AIM RAY: CAMERA THROUGH CROSSHAIR
+// ====================================================
 
-        // Hướng bắn chính là hướng tia đi qua tâm ngắm.
-        const shotDirection = raycaster.ray.direction;
+// Chuyển tọa độ màn hình [0, 1] sang NDC [-1, 1].
+// Trục Y bị đảo vì tọa độ màn hình tăng từ trên xuống.
+const crosshairNdc = crosshairNdcRef.current.set(
+    CROSSHAIR_X * 2 - 1,
+    1 - CROSSHAIR_Y * 2,
+);
 
-        useAimStore.getState().setAim(
-            {
-                x: shotOrigin.x,
-                y: shotOrigin.y,
-                z: shotOrigin.z,
-            },
-            {
-                x: shotDirection.x,
-                y: shotDirection.y,
-                z: shotDirection.z,
-            },
-        );
+const raycaster = raycasterRef.current;
+raycaster.setFromCamera(crosshairNdc, camera);
+
+// Hướng bắn đi qua đúng vị trí tâm ngắm.
+const shotOrigin = camera.getWorldPosition(
+    new Vector3(),
+);
+
+const shotDirection = raycaster.ray.direction;
+
+useAimStore.getState().setAim(
+    {
+        x: shotOrigin.x,
+        y: shotOrigin.y,
+        z: shotOrigin.z,
+    },
+    {
+        x: shotDirection.x,
+        y: shotDirection.y,
+        z: shotDirection.z,
+    },
+);
+
 
         // ====================================================
         // DEAD
