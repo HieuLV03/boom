@@ -36,7 +36,7 @@ import { useCrosshairStore } from "@/stores/crosshair.store";
 import {
     useMovementStore,
 } from "@/stores/movement.store";
-
+import { useCameraViewStore } from "@/stores/camera-view.store";
 import {
     useMultiplayerStore,
 } from "@/stores/multiplayer.store";
@@ -102,7 +102,9 @@ const running = useRunStore((state) => state.running);
                 state.room
         );
 
-
+const firstPerson = useCameraViewStore(
+    (state) => state.firstPerson
+);
     // ========================================================
     // PLAYER NAME
     // ========================================================
@@ -1806,15 +1808,17 @@ player.rotation.y +=
 
 return (
     <group ref={playerRef}>
-        <Player
-            position={[0, 0, 0]}
-            name={playerName}
-            moving={isMoving}
-            running={running && isMoving && !isCrouching}
-            crouching={isCrouching}
-            jumpTrigger={jumpTrigger}
-            weaponType={weaponType}
-        />
+        <group visible={!firstPerson}>
+            <Player
+                position={[0, 0, 0]}
+                name={playerName}
+                moving={isMoving}
+                running={running && isMoving && !isCrouching}
+                crouching={isCrouching}
+                jumpTrigger={jumpTrigger}
+                weaponType={weaponType}
+            />
+        </group>
     </group>
 );
 
