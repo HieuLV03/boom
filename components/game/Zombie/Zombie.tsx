@@ -1,7 +1,13 @@
 
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
+
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import { getStateCallbacks } from "@colyseus/sdk";
@@ -9,6 +15,10 @@ import { SkeletonUtils } from "three-stdlib";
 import * as THREE from "three";
 
 import { useMultiplayerStore } from "@/stores/multiplayer.store";
+
+// ============================================================
+// TYPES
+// ============================================================
 
 interface ZombieSnapshot {
     id: string;
@@ -22,8 +32,8 @@ interface ZombieSnapshot {
     attacking: boolean;
 }
 
-// Đường dẫn model zombie GLB
 const ZOMBIE_MODEL_PATH = "/assets/zombie/zombie.glb";
+
 function readZombie(zombie: any): ZombieSnapshot {
     return {
         id: zombie.id,
@@ -38,6 +48,10 @@ function readZombie(zombie: any): ZombieSnapshot {
     };
 }
 
+// ============================================================
+// ZOMBIE MODEL
+// ============================================================
+
 function ZombieModel({
     zombie,
 }: {
@@ -45,7 +59,7 @@ function ZombieModel({
 }) {
     const { scene, animations } = useGLTF(ZOMBIE_MODEL_PATH);
 
-    // Mỗi zombie cần một bản clone riêng để không dùng chung skeleton.
+    // Clone model để mỗi zombie có skeleton riêng.
     const model = useMemo(() => {
         const cloned = SkeletonUtils.clone(scene);
 
@@ -64,45 +78,257 @@ function ZombieModel({
         [model],
     );
 
-    // Phát animation có sẵn trong file GLB, nếu có.
+    const idleActionRef =
+        useRef<THREE.AnimationAction | null>(null);
+
+    const walkActionRef =
+        useRef<THREE.AnimationAction | null>(null);
+
+    const punchActionRef =
+        useRef<THREE.AnimationAction | null>(null);
+
+    const currentBaseActionRef =
+        useRef<THREE.AnimationAction | null>(null);
+
+    const movingRef = useRef(zombie.moving);
+    const attackingRef = useRef(zombie.attacking);
+
+    // Luôn giữ trạng thái mới nhất từ Colyseus.
     useEffect(() => {
-        if (animations.length === 0) return;
+        movingRef.current = zombie.moving;
+        attackingRef.current = zombie.attacking;
+    }, [zombie.moving, zombie.attacking]);
 
-        const clip =
-            animations.find((item) =>
-                /walk|run|move/i.test(item.name),
-            ) ?? animations[0];
+    // --------------------------------------------------------
+    // FIND ANIMATIONS
+    // --------------------------------------------------------
 
-        const action = mixer.clipAction(clip);
-        action.reset().play();
+    useEffect(() => {
+        mixer.stopAllAction();
+
+        idleActionRef.current = null;
+        walkActionRef.current = null;
+        punchActionRef.current = null;
+        currentBaseActionRef.current = null;
+
+        if (animations.length === 0) {
+            console.warn(
+                "[ZOMBIE] Model không có animation",
+            );
+            return;
+        }
+
+        console.log(
+            "[ZOMBIE] Available animations:",
+            animations.map((clip) => clip.name),
+        );
+
+        const idleClip = animations.find((clip) =>
+            /idle|stand|standing|breath/i.test(clip.name),
+        );
+
+        const walkClip = animations.find((clip) =>
+            /walk|run|move/i.test(clip.name),
+        );
+
+        // Tìm đúng clip zombie_punch.
+        const punchClip = animations.find((clip) =>
+            /zombie[\s_-]*punch/i.test(clip.name),
+        );
+
+        idleActionRef.current = idleClip
+            ? mixer.clipAction(idleClip)
+            : null;
+
+        walkActionRef.current = walkClip
+            ? mixer.clipAction(walkClip)
+            : null;
+
+        punchActionRef.current = punchClip
+            ? mixer.clipAction(punchClip)
+            : null;
+
+        if (!punchClip) {
+            console.warn(
+                '[ZOMBIE] Không tìm thấy animation "zombie_punch".',
+                "Kiểm tra tên clip trong file zombie.glb.",
+            );
+        }
+
+        // Chọn animation nền khi khởi tạo.
+        const initialAction =
+            (movingRef.current
+                ? walkActionRef.current
+                : idleActionRef.current) ??
+            idleActionRef.current ??
+            walkActionRef.current ??
+            mixer.clipAction(animations[0]);
+
+        currentBaseActionRef.current = initialAction;
+
+        initialAction.reset();
+        initialAction.setLoop(THREE.LoopRepeat, Infinity);
+        initialAction.play();
+
+        // Khi animation đấm kết thúc, quay lại idle/walk.
+        const handleFinished = (
+            event: { action: THREE.AnimationAction },
+        ) => {
+            if (event.action !== punchActionRef.current) {
+                return;
+            }
+
+            event.action.fadeOut(0.12);
+
+            const nextBaseAction =
+                (movingRef.current
+                    ? walkActionRef.current
+                    : idleActionRef.current) ??
+                idleActionRef.current ??
+                walkActionRef.current;
+
+            if (nextBaseAction) {
+                currentBaseActionRef.current = nextBaseAction;
+
+                nextBaseAction
+                    .reset()
+                    .setLoop(THREE.LoopRepeat, Infinity)
+                    .fadeIn(0.12)
+                    .play();
+            }
+        };
+
+        mixer.addEventListener("finished", handleFinished);
+
+        // Nếu component được tạo lúc zombie đang tấn công.
+        if (attackingRef.current && punchClip) {
+            initialAction.fadeOut(0.1);
+
+            const punchAction = punchActionRef.current!;
+
+            punchAction
+                .reset()
+                .setLoop(THREE.LoopOnce, 1);
+
+            punchAction.clampWhenFinished = true;
+            punchAction.fadeIn(0.1).play();
+        }
 
         return () => {
-            action.stop();
+            mixer.removeEventListener(
+                "finished",
+                handleFinished,
+            );
+
             mixer.stopAllAction();
+
+            idleActionRef.current = null;
+            walkActionRef.current = null;
+            punchActionRef.current = null;
+            currentBaseActionRef.current = null;
         };
     }, [animations, mixer]);
 
+    // --------------------------------------------------------
+    // ATTACK ANIMATION
+    // --------------------------------------------------------
+
+    useEffect(() => {
+        if (!zombie.attacking) {
+            return;
+        }
+
+        const punchAction = punchActionRef.current;
+
+        // Không có clip đấm thì giữ animation nền.
+        if (!punchAction) {
+            return;
+        }
+
+        const currentBase = currentBaseActionRef.current;
+
+        // Không khởi động lại nếu punch đang chạy.
+        if (punchAction.isRunning()) {
+            return;
+        }
+
+        currentBase?.fadeOut(0.1);
+
+        punchAction.reset();
+        punchAction.setLoop(THREE.LoopOnce, 1);
+        punchAction.clampWhenFinished = true;
+        punchAction.fadeIn(0.1).play();
+    }, [zombie.attacking]);
+
+    // --------------------------------------------------------
+    // IDLE / WALK ANIMATION
+    // --------------------------------------------------------
+
+    useEffect(() => {
+        // Nếu punch đang chạy, không để animation di chuyển
+        // ghi đè animation tấn công.
+        if (punchActionRef.current?.isRunning()) {
+            return;
+        }
+
+        const nextAction =
+            (zombie.moving
+                ? walkActionRef.current
+                : idleActionRef.current) ??
+            idleActionRef.current ??
+            walkActionRef.current;
+
+        if (!nextAction) {
+            return;
+        }
+
+        const currentAction = currentBaseActionRef.current;
+
+        if (currentAction === nextAction) {
+            return;
+        }
+
+        currentAction?.fadeOut(0.12);
+
+        currentBaseActionRef.current = nextAction;
+
+        nextAction
+            .reset()
+            .setLoop(THREE.LoopRepeat, Infinity)
+            .fadeIn(0.12)
+            .play();
+    }, [zombie.moving]);
+
+    // Cập nhật animation mixer mỗi frame.
     useFrame((_, delta) => {
         mixer.update(delta);
     });
 
-    const health = THREE.MathUtils.clamp(zombie.hp / 100, 0, 1);
+    // --------------------------------------------------------
+    // HEALTH BAR
+    // --------------------------------------------------------
+
+    const health = THREE.MathUtils.clamp(
+        zombie.hp / 100,
+        0,
+        1,
+    );
 
     return (
         <group
-            position={[zombie.x, zombie.y, zombie.z]}
+            position={[
+                zombie.x,
+                zombie.y,
+                zombie.z,
+            ]}
             rotation={[0, zombie.rotation, 0]}
         >
-            {/* Model zombie */}
-          <primitive
-    object={model}
-    scale={1}
-/>
+            <primitive object={model} scale={1} />
 
-            {/* Thanh máu */}
             <group position={[0, 2.2, 0]}>
                 <mesh>
                     <planeGeometry args={[0.8, 0.09]} />
+
                     <meshBasicMaterial
                         color="#333333"
                         depthTest={false}
@@ -110,13 +336,25 @@ function ZombieModel({
                 </mesh>
 
                 <mesh
-                    position={[-0.4 * (1 - health), 0, 0.005]}
+                    position={[
+                        -0.4 * (1 - health),
+                        0,
+                        0.005,
+                    ]}
                 >
                     <planeGeometry
-                        args={[0.8 * health, 0.07]}
+                        args={[
+                            0.8 * health,
+                            0.07,
+                        ]}
                     />
+
                     <meshBasicMaterial
-                        color={zombie.attacking ? "#ff2222" : "#e53935"}
+                        color={
+                            zombie.attacking
+                                ? "#ff2222"
+                                : "#e53935"
+                        }
                         toneMapped={false}
                         depthTest={false}
                     />
@@ -126,71 +364,74 @@ function ZombieModel({
     );
 }
 
+// ============================================================
+// ZOMBIE STATE SYNC
+// ============================================================
+
 export default function Zombie() {
     const room = useMultiplayerStore((s) => s.room);
 
-    const [zombies, setZombies] = useState<ZombieSnapshot[]>([]);
+    const [zombies, setZombies] =
+        useState<ZombieSnapshot[]>([]);
 
-useEffect(() => {
-    if (!room) {
-        setZombies([]);
-        return;
-    }
+    useEffect(() => {
+        if (!room) {
+            setZombies([]);
+            return;
+        }
 
-    const callbacks = getStateCallbacks(room);
-    const collection = room.state.zombies;
-    const unsubscribers: Array<() => void> = [];
+        const callbacks = getStateCallbacks(room);
+        const collection = room.state.zombies;
 
-    const syncZombies = () => {
-        const next: ZombieSnapshot[] = [];
+        const unsubscribers: Array<() => void> = [];
+
+        const syncZombies = () => {
+            const next: ZombieSnapshot[] = [];
+
+            collection.forEach((zombie: any) => {
+                next.push(readZombie(zombie));
+            });
+
+            setZombies(next);
+        };
+
+        const bindZombie = (zombie: any) => {
+            const unsubscribe =
+                callbacks(zombie).onChange(() => {
+                    syncZombies();
+                });
+
+            unsubscribers.push(unsubscribe);
+        };
 
         collection.forEach((zombie: any) => {
-            next.push(readZombie(zombie));
-        });
-
-        setZombies(next);
-    };
-
-    // Lắng nghe thay đổi tọa độ và trạng thái
-    // của từng zombie, không chỉ của collection.
-    const bindZombie = (zombie: any) => {
-        const unsubscribe = callbacks(zombie).onChange(() => {
-            syncZombies();
-        });
-
-        unsubscribers.push(unsubscribe);
-    };
-
-    collection.forEach((zombie: any) => {
-        bindZombie(zombie);
-    });
-
-    const unsubscribeAdd = callbacks(collection).onAdd(
-        (zombie: any) => {
             bindZombie(zombie);
-            syncZombies();
-        },
-    );
-
-    const unsubscribeRemove = callbacks(collection).onRemove(
-        () => {
-            syncZombies();
-        },
-    );
-
-    syncZombies();
-
-    return () => {
-        unsubscribeAdd();
-        unsubscribeRemove();
-
-        unsubscribers.forEach((unsubscribe) => {
-            unsubscribe();
         });
-    };
-}, [room]);
 
+        const unsubscribeAdd =
+            callbacks(collection).onAdd(
+                (zombie: any) => {
+                    bindZombie(zombie);
+                    syncZombies();
+                },
+            );
 
+        const unsubscribeRemove =
+            callbacks(collection).onRemove(() => {
+                syncZombies();
+            });
+
+        syncZombies();
+
+        return () => {
+            unsubscribeAdd();
+            unsubscribeRemove();
+
+            unsubscribers.forEach((unsubscribe) => {
+                unsubscribe();
+            });
+        };
+    }, [room]);
 
     return (
         <group>
