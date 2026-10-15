@@ -43,10 +43,10 @@ type Props = {
 // ============================================================
 
 // Khoảng cách camera đến nhân vật
-const DISTANCE = 7;
+const DISTANCE = 4;
 
 // Độ cao camera
-const HEIGHT = 3;
+const HEIGHT = 2.4;
 
 // Camera nhìn vào vị trí này trên nhân vật
 const TARGET_HEIGHT = 3.9;

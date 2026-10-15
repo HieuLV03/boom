@@ -2,8 +2,15 @@
 "use client";
 
 import { Box } from "@react-three/drei";
-import { useEffect, useMemo, useState } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import {
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import { getStateCallbacks } from "@colyseus/sdk";
+import * as THREE from "three";
 
 import zombieHouseData from "../../../../shared/maps/zombie-house.json";
 import { createGridMap } from "../../../../shared/maps/grid-map";
@@ -23,10 +30,13 @@ const MAP_WIDTH = mapConfig.MAP_WIDTH;
 const MAP_HEIGHT = mapConfig.MAP_HEIGHT;
 const MAZE_MAP = mapConfig.MAZE_MAP;
 
-const WALL_HEIGHT = 2.8;
-const DOOR_HEIGHT = 2.2;
+const WALL_HEIGHT = 6;
+const DOOR_HEIGHT = 5.4;
 const DOOR_FRAME_THICKNESS = 0.12;
 const DOOR_FRAME_DEPTH = 0.2;
+
+const ROOF_THICKNESS = 0.4;
+const ROOF_COLOR = "#403b35";
 
 // ============================================================
 // TYPES
@@ -41,11 +51,90 @@ type DoorVisual = {
 };
 
 // ============================================================
+// HOUSE ROOF
+// ============================================================
+
+
+function HouseRoof() {
+    const roofRef = useRef<THREE.Mesh>(null);
+    const { camera } = useThree();
+
+    const roofWidth = MAP_WIDTH * CELL_SIZE;
+    const roofDepth = MAP_HEIGHT * CELL_SIZE;
+
+    // Nâng mái cao hơn đỉnh tường.
+    const roofY = WALL_HEIGHT + 1.5;
+
+    const cameraPosition = useMemo(
+        () => new THREE.Vector3(),
+        [],
+    );
+
+    const cameraDirection = useMemo(
+        () => new THREE.Vector3(),
+        [],
+    );
+
+    useFrame(() => {
+        const roof = roofRef.current;
+        if (!roof) return;
+
+        camera.getWorldPosition(cameraPosition);
+        camera.getWorldDirection(cameraDirection);
+
+        // Camera có nằm trong phạm vi ngôi nhà không?
+        const insideHouse =
+            Math.abs(cameraPosition.x) < roofWidth / 2 &&
+            Math.abs(cameraPosition.z) < roofDepth / 2;
+
+        // Camera đang hướng xuống dưới hay nhìn ngang?
+        const lookingDown = cameraDirection.y < -0.15;
+
+        // Ẩn mái khi camera ở trong nhà và nhìn xuống.
+        // Khi nhìn lên, mái hiện lại.
+        const hideRoof = insideHouse && lookingDown;
+
+        roof.visible = !hideRoof;
+    });
+
+    return (
+        <mesh
+            ref={roofRef}
+            position={[0, roofY, 0]}
+            castShadow
+            receiveShadow
+        >
+            <boxGeometry
+                args={[
+                    roofWidth,
+                    ROOF_THICKNESS,
+                    roofDepth,
+                ]}
+            />
+
+            <meshStandardMaterial
+                color="#403b35"
+                roughness={0.95}
+                metalness={0}
+                side={THREE.DoubleSide}
+                transparent={false}
+                opacity={1}
+                depthWrite
+            />
+        </mesh>
+    );
+}
+
+
+
+// ============================================================
 // ZOMBIE HOUSE
 // ============================================================
 
 export default function ZombieHouse() {
-    const room = useMultiplayerStore((state) => state.room);
+    const room = useMultiplayerStore(
+        (state) => state.room,
+    );
 
     const [doorStates, setDoorStates] = useState<
         Record<string, boolean>
@@ -72,7 +161,10 @@ export default function ZombieHouse() {
 
         let disposed = false;
 
-        const doorUnsubscribers = new Map<string, () => void>();
+        const doorUnsubscribers = new Map<
+            string,
+            () => void
+        >();
 
         const bindDoor = (
             door: any,
@@ -80,12 +172,12 @@ export default function ZombieHouse() {
         ) => {
             const id = String(door.id ?? key);
 
-            // Avoid duplicate subscriptions.
+            // Tránh đăng ký listener trùng.
             if (doorUnsubscribers.has(id)) {
                 return;
             }
 
-            // Initialize the current door state.
+            // Đồng bộ trạng thái cửa ban đầu.
             setDoorStates((previous) => {
                 const open = Boolean(door.open);
 
@@ -99,7 +191,7 @@ export default function ZombieHouse() {
                 };
             });
 
-            // Subscribe to changes from Colyseus.
+            // Theo dõi thay đổi từ Colyseus.
             const unsubscribe = $(door).onChange(() => {
                 if (disposed) return;
 
@@ -120,19 +212,19 @@ export default function ZombieHouse() {
             doorUnsubscribers.set(id, unsubscribe);
         };
 
-        // Subscribe to doors already in the collection.
+        // Đăng ký các cửa đã tồn tại.
         doors.forEach((door: any, key: string) => {
             bindDoor(door, key);
         });
 
-        // Subscribe to newly added doors.
+        // Theo dõi cửa mới được thêm.
         const unsubscribeAdd = $(doors as any).onAdd(
             (door: any, key: string | number) => {
                 bindDoor(door, key);
             },
         );
 
-        // Subscribe to removed doors.
+        // Theo dõi cửa bị xóa.
         const unsubscribeRemove = $(doors as any).onRemove(
             (door: any, key: string | number) => {
                 const id = String(door.id ?? key);
@@ -215,9 +307,9 @@ export default function ZombieHouse() {
 
     return (
         <group>
-            {/* =================================================
+            {/* ================================================
                 FLOOR
-            ================================================= */}
+            ================================================ */}
 
             <mesh
                 position={[0, -0.08, 0]}
@@ -237,9 +329,9 @@ export default function ZombieHouse() {
                 />
             </mesh>
 
-            {/* =================================================
+            {/* ================================================
                 WALLS
-            ================================================= */}
+            ================================================ */}
 
             {walls.map((wall) => (
                 <group
@@ -267,9 +359,9 @@ export default function ZombieHouse() {
                 </group>
             ))}
 
-            {/* =================================================
+            {/* ================================================
                 DOORS
-            ================================================= */}
+            ================================================ */}
 
             {doors.map((door) => {
                 const x =
@@ -284,27 +376,17 @@ export default function ZombieHouse() {
                         Math.floor(MAP_HEIGHT / 2)
                     ) * CELL_SIZE;
 
-             // Lối đi rộng 2 ô
-const doorWidth = CELL_SIZE * 2;
-const thickness = 0.12;
+                // Lối đi rộng 2 ô.
+                const doorWidth = CELL_SIZE * 2;
+                const thickness = 0.12;
 
-// Cửa xoay quanh bản lề bên trái
-
-// Cửa có thể nằm theo trục X hoặc Z
-const doorRotation =
-    door.axis === "z"
-        ? Math.PI / 2
-        : 0;
                 return (
                     <group
                         key={door.id}
                         position={[x, 0, z]}
                     >
-                        {/* =====================================
-                            DOOR FRAME — 3 SEPARATE BARS
-                        ===================================== */}
+                        {/* LEFT FRAME BAR */}
 
-                        {/* Left frame bar */}
                         <Box
                             args={[
                                 DOOR_FRAME_THICKNESS,
@@ -323,7 +405,8 @@ const doorRotation =
                             />
                         </Box>
 
-                        {/* Right frame bar */}
+                        {/* RIGHT FRAME BAR */}
+
                         <Box
                             args={[
                                 DOOR_FRAME_THICKNESS,
@@ -342,10 +425,12 @@ const doorRotation =
                             />
                         </Box>
 
-                        {/* Top frame bar */}
+                        {/* TOP FRAME BAR */}
+
                         <Box
                             args={[
-                                doorWidth + DOOR_FRAME_THICKNESS * 2,
+                                doorWidth +
+                                    DOOR_FRAME_THICKNESS * 2,
                                 DOOR_FRAME_THICKNESS,
                                 DOOR_FRAME_DEPTH,
                             ]}
@@ -362,46 +447,66 @@ const doorRotation =
                             />
                         </Box>
 
-   {/* DOOR LEAF */}
-<group
-    position={[-doorWidth / 2, 0, 0]}
-    rotation={[0, door.open ? -Math.PI / 2 : 0, 0]}
->
-    <Box
-        args={[doorWidth, DOOR_HEIGHT, thickness]}
-        position={[
-            doorWidth / 2,
-            DOOR_HEIGHT / 2,
-            0,
-        ]}
-        castShadow
-        receiveShadow
-    >
-        <meshStandardMaterial
-            color={door.open ? "#9a7955" : "#65432d"}
-            roughness={0.88}
-        />
-    </Box>
+                        {/* DOOR LEAF */}
 
-    {/* Tay nắm cửa */}
-    <mesh
-        position={[
-            doorWidth * 0.8,
-            DOOR_HEIGHT * 0.48,
-            0.09,
-        ]}
-    >
-        <sphereGeometry args={[0.07, 12, 12]} />
-        <meshStandardMaterial
-            color="#d6b36b"
-            metalness={0.65}
-            roughness={0.3}
-        />
-    </mesh>
-</group>
-                        {/* =====================================
-                            DOOR MARKER
-                        ===================================== */}
+                        <group
+                            position={[
+                                -doorWidth / 2,
+                                0,
+                                0,
+                            ]}
+                            rotation={[
+                                0,
+                                door.open ? -Math.PI / 2 : 0,
+                                0,
+                            ]}
+                        >
+                            <Box
+                                args={[
+                                    doorWidth,
+                                    DOOR_HEIGHT,
+                                    thickness,
+                                ]}
+                                position={[
+                                    doorWidth / 2,
+                                    DOOR_HEIGHT / 2,
+                                    0,
+                                ]}
+                                castShadow
+                                receiveShadow
+                            >
+                                <meshStandardMaterial
+                                    color={
+                                        door.open
+                                            ? "#9a7955"
+                                            : "#65432d"
+                                    }
+                                    roughness={0.88}
+                                />
+                            </Box>
+
+                            {/* DOOR HANDLE */}
+
+                            <mesh
+                                position={[
+                                    doorWidth * 0.8,
+                                    DOOR_HEIGHT * 0.48,
+                                    0.09,
+                                ]}
+                            >
+                                <sphereGeometry
+                                    args={[0.07, 12, 12]}
+                                />
+
+                                <meshStandardMaterial
+                                    color="#d6b36b"
+                                    metalness={0.65}
+                                    roughness={0.3}
+                                />
+                            </mesh>
+                        </group>
+
+                        {/* DOOR MARKER */}
 
                         <mesh
                             position={[0, 0.12, 0.16]}
@@ -417,6 +522,12 @@ const doorRotation =
                     </group>
                 );
             })}
+
+            {/* ================================================
+                ROOF
+            ================================================ */}
+
+            <HouseRoof />
         </group>
     );
 }

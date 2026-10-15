@@ -15,9 +15,9 @@ import {
 
 const SENSITIVITY = 0.008;
 
-const MIN_PITCH = -0.75;
+const MIN_PITCH = -1.2;
 
-const MAX_PITCH = 0.35;
+const MAX_PITCH = 1.2;
 
 
 // ============================================================

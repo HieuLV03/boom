@@ -458,8 +458,6 @@ export default function BoomGame({
 
             <JumpScareOverlay
                 trigger={scareTrigger}
-                imageSrc="/assets/horror/ghost.jpg"
-                audioSrc="/assets/horror/sound-jumpscale.mp3"
             />
 
 

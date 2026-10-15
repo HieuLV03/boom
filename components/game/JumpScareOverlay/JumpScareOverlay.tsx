@@ -18,7 +18,7 @@ type JumpScareOverlayProps = {
 
 export default function JumpScareOverlay({
     trigger,
-    imageSrc = "/assets/horror/ghost.jpg",
+    imageSrc = "/assets/horror/ghost.png",
     audioSrc = "/assets/horror/sound-jumpscale.mp3",
     onComplete,
 }: JumpScareOverlayProps) {
@@ -51,7 +51,7 @@ export default function JumpScareOverlay({
 
         audio.pause();
         audio.src = audioSrc;
-        audio.currentTime = 4;
+        audio.currentTime = 2.7;
 
         audio.volume = 1;
 

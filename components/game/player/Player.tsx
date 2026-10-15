@@ -78,8 +78,8 @@ export default function Player({
 
             {/* PLAYER NAME */}
             <Text
-                position={[0, 2.95, 0]}
-                fontSize={0.28}
+                position={[0, 2.7, 0]}
+                fontSize={0.15}
                 color="#ffffff"
                 anchorX="center"
                 anchorY="middle"

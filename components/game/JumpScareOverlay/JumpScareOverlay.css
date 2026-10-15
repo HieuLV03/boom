@@ -18,49 +18,56 @@
 
 .jump-scare-ghost {
     position: absolute;
-    inset: 0;
 
-    width: 100%;
-    height: 100%;
+    /* Luôn nằm chính giữa màn hình */
+    left: 50%;
+    top: 50%;
 
-    object-fit: cover;
+    /* Kích thước ảnh */
+    width: 94vw;
+    height: 94vh;
+
+    max-width: 400px;
+    max-height: 400px;
+
+    object-fit: contain;
     object-position: center;
 
     user-select: none;
     -webkit-user-drag: none;
 
-    transform: scale(0.12);
+    transform: translate(-50%, -50%) scale(0.12);
     transform-origin: center center;
 
-    animation: ghost-rush 0.9s cubic-bezier(0.12, 0.72, 0.2, 1)
-        forwards;
+    animation: ghost-rush 0.9s
+        cubic-bezier(0.12, 0.72, 0.2, 1) forwards;
 
     will-change: transform, filter;
 }
 
 @keyframes ghost-rush {
     0% {
-        transform: scale(0.12);
+        transform: translate(-50%, -50%) scale(0.12);
         filter: brightness(0.2) contrast(1.2);
     }
 
     35% {
-        transform: scale(0.65);
+        transform: translate(-50%, -50%) scale(0.45);
         filter: brightness(0.65) contrast(1.2);
     }
 
     60% {
-        transform: scale(1.15);
+        transform: translate(-50%, -50%) scale(0.75);
         filter: brightness(1.3) contrast(1.3);
     }
 
     78% {
-        transform: scale(1.05);
+        transform: translate(-50%, -50%) scale(0.85);
         filter: brightness(1.05);
     }
 
     100% {
-        transform: scale(1.4);
+        transform: translate(-50%, -50%) scale(0.9);
         filter: brightness(0.8) contrast(1.15);
     }
 }
@@ -71,19 +78,19 @@
     }
 
     20% {
-        transform: translate(-6px, 3px);
+        transform: translate(-4px, 2px);
     }
 
     40% {
-        transform: translate(5px, -4px);
+        transform: translate(4px, -3px);
     }
 
     60% {
-        transform: translate(-4px, -3px);
+        transform: translate(-3px, -2px);
     }
 
     80% {
-        transform: translate(6px, 4px);
+        transform: translate(4px, 3px);
     }
 
     100% {
@@ -91,103 +98,14 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .jump-scare-overlay {
-        animation: none;
-    }
 
-    .jump-scare-ghost {
-        animation-duration: 0.4s;
-    }
-}
-
-
-/* Màn hình dọc: xoay ảnh jumpscare 90 độ */
-@media (orientation: portrait) {
-    .jumpscare-overlay img {
-        transform: rotate(90deg);
-        width: 100dvh;
-        height: 100vw;
-        max-width: none;
-        max-height: none;
-        object-fit: contain;
-    }
-}
-
-/* Màn hình ngang: hiển thị bình thường */
-@media (orientation: landscape) {
-    .jumpscare-overlay img {
-        transform: none;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-}
-
-.jump-scare-ghost {
-    position: absolute;
-    inset: 0;
-
-    width: 100%;
-    height: 100%;
-
-    object-fit: cover;
-    object-position: center;
-
-    user-select: none;
-    -webkit-user-drag: none;
-
-    transform: scale(0.12);
-    transform-origin: center center;
-
-    animation: ghost-rush 0.9s cubic-bezier(0.12, 0.72, 0.2, 1)
-        forwards;
-
-    will-change: transform, filter;
-}
-
-/* Mặc định: màn hình ngang */
-@keyframes ghost-rush {
-    0% {
-        transform: scale(0.12);
-        filter: brightness(0.2) contrast(1.2);
-    }
-
-    35% {
-        transform: scale(0.65);
-        filter: brightness(0.65) contrast(1.2);
-    }
-
-    60% {
-        transform: scale(1.15);
-        filter: brightness(1.3) contrast(1.3);
-    }
-
-    78% {
-        transform: scale(1.05);
-        filter: brightness(1.05);
-    }
-
-    100% {
-        transform: scale(1.4);
-        filter: brightness(0.8) contrast(1.15);
-    }
-}
-
-/* Màn hình dọc: xoay ảnh 90 độ và dùng kích thước đã đảo */
 @media (orientation: portrait) {
     .jump-scare-ghost {
-        inset: auto;
-        width: 100dvh;
-        height: 100vw;
+        width: 90vw;
+        height: 90vh;
 
-        max-width: none;
-        max-height: none;
-
-        left: 50%;
-        top: 50%;
-
-        object-fit: cover;
+        max-width: 300px;
+        max-height: 350px;
 
         animation-name: ghost-rush-portrait;
     }
@@ -199,23 +117,34 @@
         }
 
         35% {
-            transform: translate(-50%, -50%) rotate(90deg) scale(0.65);
+            transform: translate(-50%, -50%) rotate(90deg) scale(0.45);
             filter: brightness(0.65) contrast(1.2);
         }
 
         60% {
-            transform: translate(-50%, -50%) rotate(90deg) scale(1.15);
+            transform: translate(-50%, -50%) rotate(90deg) scale(0.75);
             filter: brightness(1.3) contrast(1.3);
         }
 
         78% {
-            transform: translate(-50%, -50%) rotate(90deg) scale(1.05);
+            transform: translate(-50%, -50%) rotate(90deg) scale(0.85);
             filter: brightness(1.05);
         }
 
         100% {
-            transform: translate(-50%, -50%) rotate(90deg) scale(1.4);
+            transform: translate(-50%, -50%) rotate(90deg) scale(0.9);
             filter: brightness(0.8) contrast(1.15);
         }
+    }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+    .jump-scare-overlay {
+        animation: none;
+    }
+
+    .jump-scare-ghost {
+        animation-duration: 0.4s;
     }
 }
