@@ -11,8 +11,10 @@ import {
     BombState,
         WeaponPickupState,
 DoorState,
-} from "../schema/BattleState.js";
+ZombieState,
 
+} from "../schema/BattleState.js";
+import { ZombieSystem } from "../systems/ZombieSystem.js";
 import {
     getMapConfig,
     type MapId,
@@ -33,10 +35,6 @@ interface BattleRoomOptions extends RoomOptions {
 
 }
 
-
-// ============================================================
-// CONFIG
-// ============================================================
 
 const MAX_HP = 100;
 
@@ -115,7 +113,7 @@ export class BattleRoom extends Room<{
     private hostSessionId:
         string | null = null;
 
-
+private zombieSystem!: ZombieSystem;
     // ========================================================
     // MAP
     // ========================================================
@@ -154,7 +152,6 @@ private lastAttackAt = new Map<string, number>();
 // ============================================================
 // JUMPSCARE OBJECT
 // ============================================================
-
 private scareObjectHp = 100;
 private readonly scareObjectMaxHp = 100;
 private scareObjectDestroyed = false;
@@ -181,6 +178,7 @@ private getClosedDoorCells(): Set<string> {
 
     return blocked;
 }
+
 
 private readonly scareObjectRadius = 1.05;
     // ========================================================
@@ -274,6 +272,9 @@ this.onMessage("pickupWeapon", (client) => {
         `[WEAPON] ${player.name} picked up ${pickup.weaponType} in slot ${slot}`,
     );
 });
+
+
+
 this.onMessage("switchWeapon", (client, message) => {
     if (this.state.gameOver) return;
 
@@ -322,6 +323,16 @@ const damage = isRifle ? RIFLE_DAMAGE : PUNCH_DAMAGE;
 let target: PlayerState | null = null;
 let bestDistance = Infinity;
 let scareObjectHitDistance = Infinity;
+
+
+const zombieHit: {
+    target: ZombieState | null;
+    distance: number;
+} = {
+    target: null,
+    distance: Infinity,
+};
+
 // Dữ liệu dùng để hiển thị hiệu ứng đạn trên client.
 let shotOrigin: {
     x: number;
@@ -438,6 +449,57 @@ this.state.players.forEach((candidate, sessionId) => {
 });
 
 // ==================================================
+// CHECK ZOMBIE HIT
+// Chọn zombie gần nhất trên đường đạn.
+// ==================================================
+
+for (const zombie of this.state.zombies.values()) {
+    if (!zombie.alive || zombie.hp <= 0) {
+        continue;
+    }
+
+    const hitHeights = [0.4, 0.9, 1.4, 1.9];
+    const hitRadius = 0.75;
+
+    for (const height of hitHeights) {
+        const tx = zombie.x;
+        const ty = zombie.y + height;
+        const tz = zombie.z;
+
+        const toX = tx - ox;
+        const toY = ty - oy;
+        const toZ = tz - oz;
+
+        const alongRay =
+            toX * dirX +
+            toY * dirY +
+            toZ * dirZ;
+
+        if (alongRay < 0 || alongRay > range) {
+            continue;
+        }
+
+        const closestX = ox + dirX * alongRay;
+        const closestY = oy + dirY * alongRay;
+        const closestZ = oz + dirZ * alongRay;
+
+        const missDistance = Math.hypot(
+            tx - closestX,
+            ty - closestY,
+            tz - closestZ,
+        );
+
+        if (
+            missDistance <= hitRadius &&
+            alongRay < zombieHit.distance
+        ) {
+            zombieHit.target = zombie;
+            zombieHit.distance = alongRay;
+        }
+    }
+}
+
+// ==================================================
 // CHECK SCARE OBJECT HIT
 // Vị trí vật thể phải khớp với ScareObject.tsx
 // ==================================================
@@ -509,6 +571,60 @@ console.log("[ATTACK] Shot result", {
             target = candidate;
         }
     });
+}
+
+
+// ==================================================
+// HANDLE ZOMBIE HIT
+// ==================================================
+
+if (
+    isRifle &&
+    zombieHit.target !== null &&
+    zombieHit.distance < bestDistance &&
+    zombieHit.distance < scareObjectHitDistance
+) {
+    const zombie = zombieHit.target;
+
+    const oldHp = zombie.hp;
+    const actualDamage = Math.min(oldHp, damage);
+
+    zombie.hp = Math.max(0, oldHp - actualDamage);
+
+    if (zombie.hp <= 0) {
+        zombie.hp = 0;
+        zombie.alive = false;
+        zombie.moving = false;
+        zombie.attacking = false;
+    }
+
+    console.log("[ZOMBIE] Shot hit", {
+        zombieId: zombie.id,
+        oldHp,
+        damage: actualDamage,
+        newHp: zombie.hp,
+        alive: zombie.alive,
+        hitDistance: zombieHit.distance,
+    });
+
+    this.broadcast("zombieDamaged", {
+        zombieId: zombie.id,
+        attackerId: client.sessionId,
+        damage: actualDamage,
+        hp: zombie.hp,
+        alive: zombie.alive,
+    });
+
+    this.broadcast("attackPerformed", {
+        playerId: client.sessionId,
+        action,
+        hit: true,
+        targetId: zombie.id,
+        origin: shotOrigin,
+        direction: shotDirection,
+    });
+
+    return;
 }
 
 
@@ -672,6 +788,40 @@ this.broadcast("attackPerformed", {
 
 this.initializeDoors();
 
+// ====================================================
+// ZOMBIE SYSTEM
+// Phải khởi tạo sau khi đã xác định mapId.
+// ====================================================
+
+this.zombieSystem = new ZombieSystem({
+    state: this.state,
+    mapId: this.mapId,
+
+    getClosedDoorCells: () =>
+        this.getClosedDoorCells(),
+
+    getRandomWalkablePosition: () =>
+        this.getRandomWalkablePosition(),
+
+    respawnPlayer: (sessionId) =>
+        this.respawnPlayer(sessionId),
+
+    broadcast: (type, message) =>
+        this.broadcast(type, message),
+
+    setTimeout: (callback, ms) => {
+        this.clock.setTimeout(callback, ms);
+    },
+});
+
+this.zombieSystem.initialize();
+
+this.clock.setInterval(() => {
+    this.zombieSystem.update(this.state.gameOver);
+}, 100);
+
+console.log(`[ROOM] Zombie system ready for map: ${this.mapId}`);
+
 const interactDoor = (client: Client) => {
     if (this.state.gameOver) return;
 
@@ -769,6 +919,10 @@ for (let i = 0; i < 3; i++) {
 
     this.state.weaponPickups.set(pickup.id, pickup);
 }
+// ====================================================
+// ZOMBIE AI
+// ====================================================
+
         console.log(
             `[ROOM] Map: ${this.mapId}`
         );

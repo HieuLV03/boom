@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRef } from "react";
@@ -9,6 +8,7 @@ import WeaponPickupController
 import ScareObject from "./ScareObject";
 import BulletEffects from "./BulletEffects";
 import MapRenderer from "./maps/MapRenderer";
+import Zombie from "./Zombie/Zombie";
 
 import CameraController
     from "./camera/CameraController";
@@ -34,6 +34,9 @@ export default function GameWorld({
 
             <ScareObject />
             <WeaponPickupController />
+
+            {/* Zombie chỉ xuất hiện trong map zombie-house */}
+            {mapId === "zombie-house" && <Zombie />}
 
             <CameraController target={playerRef} />
 

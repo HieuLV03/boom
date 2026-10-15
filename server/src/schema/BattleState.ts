@@ -125,6 +125,38 @@ export class DoorState extends Schema {
     open: boolean = false;
 }
 // ============================================================
+// ZOMBIE NPC
+// ============================================================
+
+export class ZombieState extends Schema {
+    @type("string")
+    id: string = "";
+
+    @type("number")
+    x: number = 0;
+
+    @type("number")
+    y: number = 0;
+
+    @type("number")
+    z: number = 0;
+
+    @type("number")
+    rotation: number = 0;
+
+    @type("number")
+    hp: number = 100;
+
+    @type("boolean")
+    alive: boolean = true;
+
+    @type("boolean")
+    moving: boolean = false;
+
+    @type("boolean")
+    attacking: boolean = false;
+}
+// ============================================================
 // BATTLE STATE
 // ============================================================
 
@@ -145,7 +177,8 @@ weaponPickups = new MapSchema<WeaponPickupState>();
 
     @type({ map: DoorState })
 doors = new MapSchema<DoorState>();
-
+@type({ map: ZombieState })
+zombies = new MapSchema<ZombieState>();
     /*
      * ID của map hiện tại.
      *
