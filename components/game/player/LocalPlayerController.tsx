@@ -1087,8 +1087,8 @@ const isPortrait =
 // Tọa độ tâm ngắm theo vùng game đã xoay.
 // Landscape giữ nguyên vị trí hiện tại.
 // Portrait cần xác định theo giao diện thực tế.
-const CROSSHAIR_X = isPortrait ? 0.36 : 0.55;
-const CROSSHAIR_Y = isPortrait ? 0.54 : 0.70;
+const CROSSHAIR_X = isPortrait ? 0.35 : 0.54;
+const CROSSHAIR_Y = isPortrait ? 0.52 : 0.70;
 
 const crosshairStore = useCrosshairStore.getState();
 
