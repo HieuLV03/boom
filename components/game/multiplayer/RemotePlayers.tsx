@@ -190,7 +190,6 @@ useEffect(() => {
 
      <Player
     position={[0, 0, 0]}
-    name={playerName}
     moving={moving}
 />
 
