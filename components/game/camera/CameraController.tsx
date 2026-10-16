@@ -21,9 +21,11 @@ type Props = {
 // CAMERA SETTINGS
 // ============================================================
 
-const DISTANCE = 4;
+const LANDSCAPE_DISTANCE = 4;
+const PORTRAIT_DISTANCE = 6;
+
 const HEIGHT = 2.4;
-const TARGET_HEIGHT = 3.9;
+const TARGET_HEIGHT = 3.8;
 const SMOOTH_SPEED = 10;
 
 const FIRST_PERSON_HEIGHT = 1.65;
@@ -39,7 +41,7 @@ const MIN_PITCH = -1.2;
 const MAX_PITCH = 1.2;
 
 const LANDSCAPE_FOV = 65;
-const PORTRAIT_FOV = 85;
+const PORTRAIT_FOV = 75;
 
 export default function CameraController({ target }: Props) {
     const { camera, scene } = useThree();
@@ -112,9 +114,12 @@ export default function CameraController({ target }: Props) {
         // Chuyển sang góc nhìn thứ nhất gần góc ngẩng tối đa.
         const firstPerson = lookupAmount >= 0.95;
 useCameraViewStore.getState().setFirstPerson(firstPerson);
-        const currentDistance =
-            DISTANCE * (1 - lookupAmount);
+     const baseDistance = isPortrait
+    ? PORTRAIT_DISTANCE
+    : LANDSCAPE_DISTANCE;
 
+const currentDistance =
+    baseDistance * (1 - lookupAmount);
         cameraTarget.current.set(
             player.position.x,
             player.position.y + TARGET_HEIGHT,

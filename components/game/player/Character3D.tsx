@@ -6,6 +6,8 @@ import {
     useLayoutEffect,
     useMemo,
     useRef,
+    useState,
+
 } from "react";
 
 import {
@@ -48,8 +50,8 @@ import WeaponModel from "../weapons/WeaponModel";
 
 const MODEL_PATH = "/models/character/character.glb";
 
-const MODEL_SCALE = 1.5;
-
+const LANDSCAPE_MODEL_SCALE = 1.5;
+const PORTRAIT_MODEL_SCALE = 1.65;
 const WEAPON_SCALE = 8;
 
 const WEAPON_POSITION: [number, number, number] = [
@@ -423,7 +425,13 @@ function CharacterClothing({
     }, [bones, dimensions, materials]);
 
     const d = dimensions;
+const isPortrait =
+    typeof window !== "undefined" &&
+    window.innerHeight > window.innerWidth;
 
+const modelScale = isPortrait
+    ? PORTRAIT_MODEL_SCALE
+    : LANDSCAPE_MODEL_SCALE;
     return (
         <group>
             <ClothingSegment
@@ -644,7 +652,29 @@ export default function Character3D({
     weaponType = "",
 }: Props) {
     const { scene, animations } = useGLTF(MODEL_PATH);
+const [isPortrait, setIsPortrait] = useState(false);
 
+useEffect(() => {
+    const updateOrientation = () => {
+        setIsPortrait(
+            window.innerHeight > window.innerWidth
+        );
+    };
+
+    updateOrientation();
+
+    window.addEventListener("resize", updateOrientation);
+    window.addEventListener("orientationchange", updateOrientation);
+
+    return () => {
+        window.removeEventListener("resize", updateOrientation);
+        window.removeEventListener("orientationchange", updateOrientation);
+    };
+}, []);
+
+const modelScale = isPortrait
+    ? PORTRAIT_MODEL_SCALE
+    : LANDSCAPE_MODEL_SCALE;
     const clonedScene = useMemo(
         () => SkeletonUtils.clone(scene),
         [scene],
@@ -1029,7 +1059,7 @@ useEffect(() => {
     // ========================================================
 
     return (
-        <group scale={MODEL_SCALE}>
+        <group scale={modelScale}>
             <primitive object={clonedScene} />
 
             <CharacterClothing root={clonedScene} />

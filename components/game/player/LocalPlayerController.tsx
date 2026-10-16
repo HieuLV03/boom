@@ -1080,14 +1080,15 @@ targetRotation.current = player.rotation.y;
 // AIM FROM ACTUAL CHARACTER HEAD
 // ================================================
 
-// ====================================================
-// CROSSHAIR: FIXED SCREEN POSITION
-// ====================================================
+const isPortrait =
+    typeof window !== "undefined" &&
+    window.innerHeight > window.innerWidth;
 
-// Giữ tâm ngắm ở vị trí cố định trên màn hình.
-// 0.5 = chính giữa; 0.65 = lệch phải 15% chiều rộng.
-const CROSSHAIR_X = 0.55;
-const CROSSHAIR_Y = 0.70;
+// Tọa độ tâm ngắm theo vùng game đã xoay.
+// Landscape giữ nguyên vị trí hiện tại.
+// Portrait cần xác định theo giao diện thực tế.
+const CROSSHAIR_X = isPortrait ? 0.36 : 0.55;
+const CROSSHAIR_Y = isPortrait ? 0.54 : 0.70;
 
 const crosshairStore = useCrosshairStore.getState();
 
@@ -1097,25 +1098,16 @@ crosshairStore.setPosition(
     !isDead,
 );
 
-// ====================================================
-// AIM RAY: CAMERA THROUGH CROSSHAIR
-// ====================================================
-
-// Chuyển tọa độ màn hình [0, 1] sang NDC [-1, 1].
-// Trục Y bị đảo vì tọa độ màn hình tăng từ trên xuống.
 const crosshairNdc = crosshairNdcRef.current.set(
     CROSSHAIR_X * 2 - 1,
     1 - CROSSHAIR_Y * 2,
 );
 
+
 const raycaster = raycasterRef.current;
 raycaster.setFromCamera(crosshairNdc, camera);
 
-// Hướng bắn đi qua đúng vị trí tâm ngắm.
-const shotOrigin = camera.getWorldPosition(
-    new Vector3(),
-);
-
+const shotOrigin = camera.getWorldPosition(new Vector3());
 const shotDirection = raycaster.ray.direction;
 
 useAimStore.getState().setAim(
@@ -1173,12 +1165,6 @@ let {
     x,
     y,
 } = useMovementStore.getState();
-
-// Chuyển input màn hình dọc về hệ tọa độ game.
-// Chỉ đổi trục khi màn hình vật lý đang ở portrait.
-const isPortrait =
-    typeof window !== "undefined" &&
-    window.innerHeight > window.innerWidth;
 
 if (isPortrait) {
     const screenX = x;
@@ -1798,10 +1784,7 @@ player.rotation.y +=
         lastSentMoving.current = nextMoving;
     }
 }
-
     });
-
-
     // ========================================================
     // PLAYER
     // ========================================================
@@ -1811,7 +1794,6 @@ return (
         <group visible={!firstPerson}>
             <Player
                 position={[0, 0, 0]}
-                name={playerName}
                 moving={isMoving}
                 running={running && isMoving && !isCrouching}
                 crouching={isCrouching}
@@ -1821,5 +1803,4 @@ return (
         </group>
     </group>
 );
-
 }
