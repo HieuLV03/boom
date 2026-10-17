@@ -1,6 +1,8 @@
+
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import FullscreenButton from "@/components/game/FullscreenButton";
+import GlobalLandscapeGuard from "@/components/game/LandscapeGuard/LandscapeGuard";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,9 +37,10 @@ export default function RootLayout({
             className={`${geistSans.variable} ${geistMono.variable}`}
         >
             <body>
-                {children}
+                <GlobalLandscapeGuard>
+                    {children}
                     <FullscreenButton />
-
+                </GlobalLandscapeGuard>
             </body>
         </html>
     );

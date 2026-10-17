@@ -1,55 +1,28 @@
 
 "use client";
 
-import {
-    Suspense,
-} from "react";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+
 import GameAssetPreloader from "@/components/game/GameAssetPreloader/GameAssetPreloader";
-
-import {
-    useSearchParams,
-} from "next/navigation";
-
 import MainGame from "@/components/game/MainGame/MainGame";
-
-import LandscapeGuard from "@/components/game/LandscapeGuard/LandscapeGuard";
 
 import "./game.css";
 
-
-// ============================================================
-// GAME PAGE CONTENT
-// ============================================================
-
 function GamePageContent() {
-
-    const searchParams =
-        useSearchParams();
-
-
-    const roomCode =
-        searchParams.get("code") || "";
-
+    const searchParams = useSearchParams();
+    const roomCode = searchParams.get("code") || "";
 
     return (
-        <LandscapeGuard>
-        <GameAssetPreloader />
+        <>
+            <GameAssetPreloader />
 
-            <MainGame
-                roomCode={roomCode}
-            />
-
-        </LandscapeGuard>
+            <MainGame roomCode={roomCode} />
+        </>
     );
 }
 
-
-// ============================================================
-// GAME PAGE
-// ============================================================
-
 export default function GamePage() {
-
     return (
         <Suspense
             fallback={
@@ -58,9 +31,7 @@ export default function GamePage() {
                 </div>
             }
         >
-
             <GamePageContent />
-
         </Suspense>
     );
 }
