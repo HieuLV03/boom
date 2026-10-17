@@ -69,8 +69,6 @@ const MAX_CAMERA_PITCH = 1.52;
 
     const [weaponType, setWeaponType] = useState("");
 
-    const [isPortrait, setIsPortrait] = useState(false);
-
     const [hp, setHp] = useState(100);
 
     const [nearbyWeapon, setNearbyWeapon] =
@@ -207,13 +205,6 @@ const handleFirePointerMove = (
 
     let deltaX = deltaScreenX;
     let deltaY = deltaScreenY;
-
-    // Giữ quy ước xoay camera dọc mà TouchCamera đang dùng.
-    if (window.innerHeight > window.innerWidth) {
-        deltaX = deltaScreenY;
-        deltaY = -deltaScreenX;
-    }
-
     const {
         yaw,
         pitch,
@@ -267,37 +258,6 @@ const handleCrouch = () => {
 const isCrouching = useCrouchStore(
     (state) => state.crouching,
 );
-    // ========================================================
-    // ORIENTATION
-    // ========================================================
-
-    useEffect(() => {
-        const checkOrientation = () => {
-            setIsPortrait(
-                window.innerHeight > window.innerWidth,
-            );
-        };
-
-        checkOrientation();
-
-        window.addEventListener("resize", checkOrientation);
-        window.addEventListener(
-            "orientationchange",
-            checkOrientation,
-        );
-
-        return () => {
-            window.removeEventListener(
-                "resize",
-                checkOrientation,
-            );
-
-            window.removeEventListener(
-                "orientationchange",
-                checkOrientation,
-            );
-        };
-    }, []);
 
     // ========================================================
     // CURRENT PLAYER WEAPON
@@ -320,19 +280,27 @@ const isCrouching = useCrouchStore(
         const bindPlayer = (player: any) => {
             unsubscribe?.();
 
-            const updateWeapon = () => {
-                const slot = Number(
-                    player.equippedSlot || 0,
-                );
+         
+const updateWeapon = () => {
+    const slot = Number(player.equippedSlot || 0);
 
-                setWeaponType(
-                    slot === 1
-                        ? String(player.weapon1 || "")
-                        : slot === 2
-                            ? String(player.weapon2 || "")
-                            : "",
-                );
-            };
+    const nextWeapon =
+        slot === 1
+            ? String(player.weapon1 || "")
+            : slot === 2
+                ? String(player.weapon2 || "")
+                : "";
+
+    console.log("[WEAPON STATE]", {
+        equippedSlot: player.equippedSlot,
+        weapon1: player.weapon1,
+        weapon2: player.weapon2,
+        nextWeapon,
+    });
+
+    setWeaponType(nextWeapon);
+};
+
 
             updateWeapon();
 
@@ -676,6 +644,11 @@ const removePickedUpListener = room.onMessage(
         weaponType?: string;
         slot?: number;
     }) => {
+        console.log("[PICKUP] Server phản hồi weaponPickedUp", {
+            message,
+            mySessionId: room.sessionId,
+        });
+
         if (
             !active ||
             message?.playerId !== room.sessionId
@@ -685,9 +658,8 @@ const removePickedUpListener = room.onMessage(
 
         const pickedType = String(
             message.weaponType ?? "",
-        ).toLowerCase();
+        ).trim().toLowerCase();
 
-        // Cập nhật nút hành động ngay khi server xác nhận nhặt súng.
         if (pickedType === "rifle") {
             setWeaponType("rifle");
         }
@@ -734,20 +706,32 @@ const removePickedUpListener = room.onMessage(
     // PICKUP WEAPON
     // ========================================================
 
-    const handlePickupWeapon = () => {
-        if (!room || !nearbyWeapon || isPicking) {
-            return;
-        }
 
-        setIsPicking(true);
-        setPickupMessage("");
+const handlePickupWeapon = () => {
+    if (!room || !nearbyWeapon || isPicking) {
+        console.log("[PICKUP] Không thể nhặt", {
+            hasRoom: Boolean(room),
+            nearbyWeapon,
+            isPicking,
+        });
+        return;
+    }
 
-        room.send("pickupWeapon");
+    console.log("[PICKUP] Gửi yêu cầu nhặt", {
+        pickupId: nearbyWeapon.id,
+        weaponType: nearbyWeapon.weaponType,
+        distance: nearbyWeapon.distance,
+    });
 
-        window.setTimeout(() => {
-            setIsPicking(false);
-        }, 1000);
-    };
+    setIsPicking(true);
+    setPickupMessage("");
+
+    room.send("pickupWeapon");
+
+    window.setTimeout(() => {
+        setIsPicking(false);
+    }, 1000);
+};
 
  
     // ========================================================
@@ -760,11 +744,7 @@ const removePickedUpListener = room.onMessage(
         <div className="game-hud">
             {/* HP BAR */}
             <div
-                className={`game-hud__hp ${
-                    isPortrait
-                        ? "game-hud__hp--portrait"
-                        : "game-hud__hp--landscape"
-                }`}
+                className="game-hud__hp"
             >
                 <div className="game-hud__hp-label">
                     HP {hp}
@@ -805,12 +785,7 @@ const removePickedUpListener = room.onMessage(
 
             {/* ATTACK BUTTON */}
             <div
-                className={`game-hud__attack-position ${
-                    isPortrait
-                        ? "game-hud__attack-position--portrait"
-                        : ""
-                }`}
-            >
+                className="game-hud__attack-position">
            <button
     type="button"
     onPointerDown={handleFirePointerDown}
@@ -843,15 +818,9 @@ const removePickedUpListener = room.onMessage(
 
 <button
     type="button"
-    className={`game-hud__run-button ${
-        isPortrait
-            ? "game-hud__run-button--portrait"
-            : ""
-    } ${
-        running
-            ? "game-hud__run-button--active"
-            : ""
-    }`}
+  className={`game-hud__run-button ${
+    running ? "game-hud__run-button--active" : ""
+}`}
     onPointerDown={handleToggleRun}
     aria-pressed={running}
     style={{
@@ -864,13 +833,7 @@ const removePickedUpListener = room.onMessage(
 </button>
 
 {/* JUMP & CROUCH BUTTONS */}
-<div
-    className={`game-hud__movement-actions ${
-        isPortrait
-            ? "game-hud__movement-actions--portrait"
-            : ""
-    }`}
->
+<div className="game-hud__movement-actions">
     <button
         type="button"
         className="game-hud__action-button game-hud__jump-button"
@@ -921,13 +884,7 @@ const removePickedUpListener = room.onMessage(
 
             {/* DOOR INTERACTION BUTTON */}
             {nearbyDoor && (
-                <div
-                    className={`game-hud__door-position ${
-                        isPortrait
-                            ? "game-hud__door-position--portrait"
-                            : ""
-                    }`}
-                >
+            <div className="game-hud__door-position">
                     <div className="game-hud__door-label">
                         {nearbyDoor.open
                             ? "CỬA ĐANG MỞ"
@@ -966,13 +923,7 @@ const removePickedUpListener = room.onMessage(
 
             {/* PICKUP WEAPON BUTTON */}
             {nearbyWeapon && (
-                <div
-                    className={`game-hud__pickup-position ${
-                        isPortrait
-                            ? "game-hud__pickup-position--portrait"
-                            : ""
-                    }`}
-                >
+           <div className="game-hud__pickup-position">
                     <div className="game-hud__weapon-label">
                         {nearbyWeapon.weaponType === "rifle"
                             ? "SÚNG TRƯỜNG"

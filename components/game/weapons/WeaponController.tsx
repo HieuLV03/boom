@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -27,14 +28,43 @@ type Props = {
     playerRef: RefObject<Group | null>;
 };
 
-export default function WeaponController({ playerRef }: Props) {
-    const room = useMultiplayerStore((state) => state.room);
+const WEAPON_MODELS: Record<string, string> = {
+    rifle: "/models/gun/rifle/ak47.glb",
+    shotgun: "/models/weapons/shotgun.glb",
+    pistol: "/models/weapons/pistol.glb",
+    smg: "/models/weapons/smg.glb",
+    sniper: "/models/weapons/sniper.glb",
+};
 
-    const pickupRequest = useWeaponStore((state) => state.pickupRequest);
-    const attackRequest = useWeaponStore((state) => state.attackRequest);
-    const attackAction = useWeaponStore((state) => state.attackAction);
-    const switchRequest = useWeaponStore((state) => state.switchRequest);
-    const requestedSlot = useWeaponStore((state) => state.requestedSlot);
+function getWeaponModelPath(weaponType: string) {
+    return (
+        WEAPON_MODELS[weaponType.toLowerCase()] ??
+        WEAPON_MODELS.rifle
+    );
+}
+
+export default function WeaponController({
+    playerRef,
+}: Props) {
+    const room = useMultiplayerStore(
+        (state) => state.room,
+    );
+
+    const pickupRequest = useWeaponStore(
+        (state) => state.pickupRequest,
+    );
+    const attackRequest = useWeaponStore(
+        (state) => state.attackRequest,
+    );
+    const attackAction = useWeaponStore(
+        (state) => state.attackAction,
+    );
+    const switchRequest = useWeaponStore(
+        (state) => state.switchRequest,
+    );
+    const requestedSlot = useWeaponStore(
+        (state) => state.requestedSlot,
+    );
 
     const setNearbyPickupId = useWeaponStore(
         (state) => state.setNearbyPickupId,
@@ -46,30 +76,40 @@ export default function WeaponController({ playerRef }: Props) {
     const [pickups, setPickups] = useState<Pickup[]>([]);
     const previousNearestRef = useRef<string | null>(null);
 
-    // Đồng bộ vật phẩm và vũ khí của người chơi từ Colyseus.
+    // ========================================================
+    // ĐỒNG BỘ PICKUP VÀ VŨ KHÍ NGƯỜI CHƠI
+    // ========================================================
+
     useEffect(() => {
         if (!room) {
             setPickups([]);
             setNearbyPickupId(null);
             setWeaponState("", "", 0);
+            previousNearestRef.current = null;
             return;
         }
 
         const state = room.state as any;
         const pickupMap = state.weaponPickups;
+        const playersMap = state.players;
 
         if (!pickupMap) {
             console.warn(
-                "[WEAPON] weaponPickups chưa có trên server. Hãy cập nhật BattleState và khởi động lại server.",
+                "[WEAPON] weaponPickups chưa có trên server.",
             );
             return;
         }
 
         const $ = getStateCallbacks(room);
 
-        const convert = (item: any): Pickup => ({
-            id: String(item.id),
-            weaponType: String(item.weaponType || "rifle"),
+        const convert = (
+            item: any,
+            key: string,
+        ): Pickup => ({
+            id: String(item.id || key),
+            weaponType: String(
+                item.weaponType || "rifle",
+            ).toLowerCase(),
             x: Number(item.x ?? 0),
             y: Number(item.y ?? 0),
             z: Number(item.z ?? 0),
@@ -78,31 +118,67 @@ export default function WeaponController({ playerRef }: Props) {
         const syncPickups = () => {
             const next: Pickup[] = [];
 
-            pickupMap.forEach((item: any) => {
-                if (item.available !== false) {
-                    next.push(convert(item));
-                }
-            });
+            pickupMap.forEach(
+                (item: any, key: string) => {
+                    if (
+                        item &&
+                        item.available !== false
+                    ) {
+                        next.push(
+                            convert(item, String(key)),
+                        );
+                    }
+                },
+            );
 
             setPickups(next);
         };
 
         syncPickups();
 
-        const removePickupAdd = $(pickupMap).onAdd(
-            (item: any) => {
-                const removeItemChange = $(item).onChange(syncPickups);
-                syncPickups();
+        // Theo dõi thêm/xóa/cập nhật pickup.
+        const itemCleanup = new Map<
+            string,
+            () => void
+        >();
 
-                // Listener của item sẽ được dọn khi room đóng.
-                void removeItemChange;
+        const bindPickup = (
+            item: any,
+            key: string,
+        ) => {
+            const id = String(item.id || key);
+
+            itemCleanup.get(id)?.();
+
+            const removeChange = $(item).onChange(
+                syncPickups,
+            );
+
+            itemCleanup.set(id, removeChange);
+        };
+
+        const removePickupAdd = $(pickupMap).onAdd(
+            (item: any, key: string) => {
+                bindPickup(item, String(key));
+                syncPickups();
             },
         );
 
-        const removePickupRemove = $(pickupMap).onRemove(syncPickups);
+        const removePickupRemove = $(pickupMap).onRemove(
+            (item: any, key: string) => {
+                const id = String(item?.id || key);
 
-        const playersMap = state.players;
-        let removeLocalChange: (() => void) | undefined;
+                itemCleanup.get(id)?.();
+                itemCleanup.delete(id);
+
+                syncPickups();
+            },
+        );
+
+        // Đọc vũ khí của người chơi hiện tại.
+        let removeLocalChange:
+            | (() => void)
+            | undefined;
 
         const bindLocalPlayer = (player: any) => {
             removeLocalChange?.();
@@ -116,18 +192,28 @@ export default function WeaponController({ playerRef }: Props) {
             };
 
             syncPlayerWeapons();
-            removeLocalChange = $(player).onChange(syncPlayerWeapons);
+
+            removeLocalChange = $(player).onChange(
+                syncPlayerWeapons,
+            );
         };
 
-        const localPlayer = playersMap?.get(room.sessionId);
-        if (localPlayer) bindLocalPlayer(localPlayer);
+        const localPlayer = playersMap?.get(
+            room.sessionId,
+        );
+
+        if (localPlayer) {
+            bindLocalPlayer(localPlayer);
+        }
 
         const removePlayerAdd = playersMap
-            ? $(playersMap).onAdd((player: any, sessionId: string) => {
-                if (sessionId === room.sessionId) {
-                    bindLocalPlayer(player);
-                }
-            })
+            ? $(playersMap).onAdd(
+                (player: any, sessionId: string) => {
+                    if (sessionId === room.sessionId) {
+                        bindLocalPlayer(player);
+                    }
+                },
+            )
             : undefined;
 
         return () => {
@@ -136,14 +222,22 @@ export default function WeaponController({ playerRef }: Props) {
             removePlayerAdd?.();
             removeLocalChange?.();
 
+            itemCleanup.forEach((cleanup) => cleanup());
+            itemCleanup.clear();
+
             setNearbyPickupId(null);
             setWeaponState("", "", 0);
+            previousNearestRef.current = null;
         };
     }, [room, setNearbyPickupId, setWeaponState]);
 
-    // Chỉ tìm khẩu súng gần nhất; server vẫn tự xác nhận khoảng cách khi nhặt.
+    // ========================================================
+    // TÌM SÚNG GẦN NHẤT
+    // ========================================================
+
     useFrame(() => {
         const player = playerRef.current;
+
         let nearestId: string | null = null;
         let nearestDistance = 2.0;
 
@@ -161,52 +255,98 @@ export default function WeaponController({ playerRef }: Props) {
             }
         }
 
-        if (nearestId !== previousNearestRef.current) {
+        if (
+            nearestId !== previousNearestRef.current
+        ) {
             previousNearestRef.current = nearestId;
             setNearbyPickupId(nearestId);
         }
     });
 
-    // Gửi yêu cầu nhặt.
+    // ========================================================
+    // NHẶT SÚNG
+    // ========================================================
+
     const lastPickupRequest = useRef(0);
 
     useEffect(() => {
-        if (!room || pickupRequest === lastPickupRequest.current) return;
+        if (
+            !room ||
+            pickupRequest === lastPickupRequest.current
+        ) {
+            return;
+        }
 
         lastPickupRequest.current = pickupRequest;
         room.send("pickupWeapon");
     }, [room, pickupRequest]);
 
-    // Gửi yêu cầu đấm hoặc bắn.
+    // ========================================================
+    // TẤN CÔNG
+    // ========================================================
+
     const lastAttackRequest = useRef(0);
 
     useEffect(() => {
-        if (!room || attackRequest === lastAttackRequest.current) return;
+        if (
+            !room ||
+            attackRequest === lastAttackRequest.current
+        ) {
+            return;
+        }
 
         lastAttackRequest.current = attackRequest;
-        room.send("attack", { action: attackAction });
+
+        room.send("attack", {
+            action: attackAction,
+        });
     }, [room, attackRequest, attackAction]);
 
-    // Gửi yêu cầu đổi ô vũ khí.
+    // ========================================================
+    // ĐỔI VŨ KHÍ
+    // ========================================================
+
     const lastSwitchRequest = useRef(0);
 
     useEffect(() => {
-        if (!room || switchRequest === lastSwitchRequest.current) return;
+        if (
+            !room ||
+            switchRequest === lastSwitchRequest.current
+        ) {
+            return;
+        }
 
         lastSwitchRequest.current = switchRequest;
-        room.send("switchWeapon", { slot: requestedSlot });
+
+        room.send("switchWeapon", {
+            slot: requestedSlot,
+        });
     }, [room, switchRequest, requestedSlot]);
+
+    // ========================================================
+    // HIỂN THỊ MODEL SÚNG TRÊN MẶT ĐẤT
+    // Chỉ render pickup tại file này.
+    // ========================================================
 
     return (
         <>
             {pickups.map((pickup) => (
                 <group
                     key={pickup.id}
-                    position={[pickup.x, pickup.y + 0.45, pickup.z]}
+                    position={[
+                        pickup.x,
+                        pickup.y + 0.45,
+                        pickup.z,
+                    ]}
                     rotation={[0, Math.PI / 4, 0]}
                     scale={0.24}
                 >
-                    <WeaponModel weaponType={pickup.weaponType} />
+                    <WeaponModel
+                        weaponType={pickup.weaponType}
+                        modelPath={getWeaponModelPath(
+                            pickup.weaponType,
+                        )}
+                    />
                 </group>
             ))}
         </>

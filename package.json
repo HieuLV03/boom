@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@boengli/capacitor-fullscreen": "^0.0.20",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
     "@colyseus/sdk": "^0.18.5",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",

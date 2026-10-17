@@ -4,6 +4,7 @@
 import { Box } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import {
+    Suspense,
     useEffect,
     useMemo,
     useRef,
@@ -11,7 +12,7 @@ import {
 } from "react";
 import { getStateCallbacks } from "@colyseus/sdk";
 import * as THREE from "three";
-
+import HospitalModel from "./HospitalModel";
 import zombieHouseData from "../../../../shared/maps/zombie-house.json";
 import { createGridMap } from "../../../../shared/maps/grid-map";
 import { ZOMBIE_HOUSE_DOORS } from "../../../../shared/maps/doors";
@@ -305,229 +306,51 @@ export default function ZombieHouse() {
     // RENDER
     // ========================================================
 
-    return (
-        <group>
-            {/* ================================================
-                FLOOR
-            ================================================ */}
+return (
+    <group>
+        {/* MẶT SÀN */}
+        <mesh
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[0, -0.1, 0]}
+            receiveShadow
+        >
+            <planeGeometry
+                args={[
+                    MAP_WIDTH * CELL_SIZE,
+                    MAP_HEIGHT * CELL_SIZE,
+                ]}
+            />
+            <meshStandardMaterial color="#77716a" />
+        </mesh>
 
-            <mesh
-                position={[0, -0.08, 0]}
+        {/* TƯỜNG — KHỚP VỚI COLLISION TRONG JSON */}
+        {walls.map((wall) => (
+            <Box
+                key={wall.key}
+                args={[
+                    CELL_SIZE,
+                    WALL_HEIGHT,
+                    CELL_SIZE,
+                ]}
+                position={[
+                    wall.x,
+                    WALL_HEIGHT / 2,
+                    wall.z,
+                ]}
+                castShadow
                 receiveShadow
             >
-                <boxGeometry
-                    args={[
-                        MAP_WIDTH * CELL_SIZE,
-                        0.16,
-                        MAP_HEIGHT * CELL_SIZE,
-                    ]}
-                />
+                <meshStandardMaterial color="#8a8178" />
+            </Box>
+        ))}
 
-                <meshStandardMaterial
-                    color="#77736b"
-                    roughness={0.95}
-                />
-            </mesh>
+        {/* MÁI NHÀ */}
+        <HouseRoof />
 
-            {/* ================================================
-                WALLS
-            ================================================ */}
-
-            {walls.map((wall) => (
-                <group
-                    key={wall.key}
-                    position={[
-                        wall.x,
-                        WALL_HEIGHT / 2,
-                        wall.z,
-                    ]}
-                >
-                    <Box
-                        args={[
-                            CELL_SIZE,
-                            WALL_HEIGHT,
-                            CELL_SIZE,
-                        ]}
-                        castShadow
-                        receiveShadow
-                    >
-                        <meshStandardMaterial
-                            color="#77716a"
-                            roughness={0.95}
-                        />
-                    </Box>
-                </group>
-            ))}
-
-            {/* ================================================
-                DOORS
-            ================================================ */}
-
-            {doors.map((door) => {
-                const x =
-                    (
-                        door.cellX -
-                        Math.floor(MAP_WIDTH / 2)
-                    ) * CELL_SIZE;
-
-                const z =
-                    (
-                        door.cellZ -
-                        Math.floor(MAP_HEIGHT / 2)
-                    ) * CELL_SIZE;
-
-                // Lối đi rộng 2 ô.
-                const doorWidth = CELL_SIZE * 2;
-                const thickness = 0.12;
-
-                return (
-                    <group
-                        key={door.id}
-                        position={[x, 0, z]}
-                    >
-                        {/* LEFT FRAME BAR */}
-
-                        <Box
-                            args={[
-                                DOOR_FRAME_THICKNESS,
-                                DOOR_HEIGHT,
-                                DOOR_FRAME_DEPTH,
-                            ]}
-                            position={[
-                                -doorWidth / 2,
-                                DOOR_HEIGHT / 2,
-                                0,
-                            ]}
-                        >
-                            <meshStandardMaterial
-                                color="#38251b"
-                                roughness={0.95}
-                            />
-                        </Box>
-
-                        {/* RIGHT FRAME BAR */}
-
-                        <Box
-                            args={[
-                                DOOR_FRAME_THICKNESS,
-                                DOOR_HEIGHT,
-                                DOOR_FRAME_DEPTH,
-                            ]}
-                            position={[
-                                doorWidth / 2,
-                                DOOR_HEIGHT / 2,
-                                0,
-                            ]}
-                        >
-                            <meshStandardMaterial
-                                color="#38251b"
-                                roughness={0.95}
-                            />
-                        </Box>
-
-                        {/* TOP FRAME BAR */}
-
-                        <Box
-                            args={[
-                                doorWidth +
-                                    DOOR_FRAME_THICKNESS * 2,
-                                DOOR_FRAME_THICKNESS,
-                                DOOR_FRAME_DEPTH,
-                            ]}
-                            position={[
-                                0,
-                                DOOR_HEIGHT +
-                                    DOOR_FRAME_THICKNESS / 2,
-                                0,
-                            ]}
-                        >
-                            <meshStandardMaterial
-                                color="#38251b"
-                                roughness={0.95}
-                            />
-                        </Box>
-
-                        {/* DOOR LEAF */}
-
-                        <group
-                            position={[
-                                -doorWidth / 2,
-                                0,
-                                0,
-                            ]}
-                            rotation={[
-                                0,
-                                door.open ? -Math.PI / 2 : 0,
-                                0,
-                            ]}
-                        >
-                            <Box
-                                args={[
-                                    doorWidth,
-                                    DOOR_HEIGHT,
-                                    thickness,
-                                ]}
-                                position={[
-                                    doorWidth / 2,
-                                    DOOR_HEIGHT / 2,
-                                    0,
-                                ]}
-                                castShadow
-                                receiveShadow
-                            >
-                                <meshStandardMaterial
-                                    color={
-                                        door.open
-                                            ? "#9a7955"
-                                            : "#65432d"
-                                    }
-                                    roughness={0.88}
-                                />
-                            </Box>
-
-                            {/* DOOR HANDLE */}
-
-                            <mesh
-                                position={[
-                                    doorWidth * 0.8,
-                                    DOOR_HEIGHT * 0.48,
-                                    0.09,
-                                ]}
-                            >
-                                <sphereGeometry
-                                    args={[0.07, 12, 12]}
-                                />
-
-                                <meshStandardMaterial
-                                    color="#d6b36b"
-                                    metalness={0.65}
-                                    roughness={0.3}
-                                />
-                            </mesh>
-                        </group>
-
-                        {/* DOOR MARKER */}
-
-                        <mesh
-                            position={[0, 0.12, 0.16]}
-                        >
-                            <boxGeometry
-                                args={[0.22, 0.08, 0.04]}
-                            />
-
-                            <meshStandardMaterial
-                                color="#d6b36b"
-                            />
-                        </mesh>
-                    </group>
-                );
-            })}
-
-            {/* ================================================
-                ROOF
-            ================================================ */}
-
-            <HouseRoof />
-        </group>
-    );
+        {/* MODEL BỆNH VIỆN */}
+        <Suspense fallback={null}>
+            <HospitalModel />
+        </Suspense>
+    </group>
+);
 }

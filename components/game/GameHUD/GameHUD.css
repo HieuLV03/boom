@@ -1,6 +1,6 @@
 
 /* ============================================================
-   GAME HUD - ROOT
+   GAME HUD
    ============================================================ */
 
 .game-hud {
@@ -18,19 +18,10 @@
 
 .game-hud__hp {
     position: absolute;
-    width: 180px;
-}
-
-.game-hud__hp--landscape {
     left: 50%;
     bottom: 30px;
+    width: 180px;
     transform: translateX(-50%);
-}
-
-.game-hud__hp--portrait {
-    left: -60px;
-    top: 50%;
-    transform: translateY(-50%) rotate(90deg);
 }
 
 .game-hud__hp-label {
@@ -124,7 +115,7 @@
 }
 
 /* ============================================================
-   ATTACK BUTTON
+   ATTACK: FIRE / PUNCH
    ============================================================ */
 
 .game-hud__attack-position {
@@ -132,15 +123,6 @@
     right: 28px;
     bottom: 180px;
     pointer-events: auto;
-}
-
-.game-hud__attack-position--portrait {
-    left: 81px;
-    bottom: 15px;
-    right: auto;
-    top: auto;
-    transform: rotate(90deg);
-    transform-origin: center center;
 }
 
 .game-hud__attack-button {
@@ -155,8 +137,9 @@
     color: white;
     font-size: 13px;
     font-weight: 800;
-    touch-action: manipulation;
     cursor: pointer;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .game-hud__attack-button--rifle {
@@ -165,6 +148,97 @@
 
 .game-hud__attack-button--punch {
     background: rgba(55, 65, 81, 0.92);
+}
+
+/* ============================================================
+   RUN
+   ============================================================ */
+
+.game-hud__run-button {
+    position: absolute;
+    left: 50px;
+    top: 54px;
+    z-index: 100;
+    min-width: 76px;
+    height: 52px;
+    padding: 0 14px;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: 14px;
+    background: rgba(30, 35, 45, 0.85);
+    color: white;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.game-hud__run-button:active {
+    transform: scale(0.96);
+}
+
+.game-hud__run-button--active {
+    background: rgba(30, 160, 90, 0.9);
+    border-color: #75ffad;
+    color: white;
+}
+
+/* ============================================================
+   JUMP / CROUCH
+   ============================================================ */
+
+.game-hud__movement-actions {
+    position: absolute;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.game-hud__action-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 68px;
+    height: 68px;
+    padding: 0;
+    border: 2px solid rgba(255, 255, 255, 0.65);
+    border-radius: 50%;
+    background: rgba(20, 25, 35, 0.78);
+    color: white;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.game-hud__action-icon {
+    font-size: 25px;
+    line-height: 1;
+    font-weight: 900;
+}
+
+.game-hud__crouch-button--active {
+    background: rgba(30, 160, 90, 0.92);
+    border-color: #75ffad;
+}
+
+.game-hud__action-button:active {
+    transform: scale(0.92);
 }
 
 /* ============================================================
@@ -180,12 +254,6 @@
     align-items: center;
     gap: 7px;
     pointer-events: auto;
-}
-
-.game-hud__pickup-position--portrait {
-    right: 12px;
-    bottom: 50%;
-    transform: translateY(50%) rotate(90deg);
 }
 
 .game-hud__weapon-label {
@@ -204,12 +272,13 @@
     border: 2px solid #86efac;
     border-radius: 12px;
     background: rgba(22, 163, 74, 0.95);
-    color: #fff;
+    color: white;
     font-size: 14px;
     font-weight: 800;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
     cursor: pointer;
-    touch-action: manipulation;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .game-hud__pickup-button:disabled {
@@ -218,388 +287,6 @@
     cursor: wait;
 }
 
-
-.game-hud__run-button {
-    position: absolute;
-    right: 150px;
-    bottom: 34px;
-    z-index: 30;
-
-    min-width: 76px;
-    height: 52px;
-    padding: 0 14px;
-
-    border: 2px solid rgba(255, 255, 255, 0.7);
-    border-radius: 14px;
-
-    background: rgba(30, 35, 45, 0.85);
-    color: white;
-
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 1px;
-
-    touch-action: none;
-    user-select: none;
-}
-
-.game-hud__run-button:active {
-    background: rgba(35, 160, 90, 0.95);
-    transform: scale(0.96);
-}
-
-.game-hud__run-button--portrait {
-    right: auto;
-    left: 110px;
-    bottom: 34px;
-}
-
-/* ============================================================
-   RUN BUTTON
-   ============================================================ */
-
-.game-hud__run-button {
-    position: absolute;
-    left: 50px;
-    right: auto;
-    bottom: 180px;
-    z-index: 100;
-    min-width: 76px;
-    height: 52px;
-    padding: 0 14px;
-
-    border: 2px solid rgba(255, 255, 255, 0.7);
-    border-radius: 14px;
-
-    background: rgba(30, 35, 45, 0.85);
-    color: white;
-
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 1px;
-
-    pointer-events: auto;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-
-    transform: rotate(0deg);
-    transform-origin: center center;
-}
-
-.game-hud__run-button:active {
-    background: rgba(35, 160, 90, 0.95);
-}
-
-/* Màn hình dọc: xoay nút 90 độ */
-.game-hud__run-button--portrait {
-    left: 179px;
-    right: auto;
-    top: 54px;
-
-    transform: rotate(90deg);
-    transform-origin: center center;
-}
-
-/* Nhóm nút nhảy và cúi ở bên phải màn hình */
-.game-hud__movement-actions {
-    position: absolute;
-    right: 24px;
-    top: 50%;
-    transform: translateY(-50%);
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-
-    z-index: 35;
-    pointer-events: none;
-}
-
-/* Nút hành động */
-.game-hud__action-button {
-    width: 68px;
-    height: 68px;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-
-    border: 2px solid rgba(255, 255, 255, 0.65);
-    border-radius: 50%;
-
-    background: rgba(20, 25, 35, 0.72);
-    color: #ffffff;
-
-    font-size: 11px;
-    font-weight: 800;
-
-    cursor: pointer;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-
-    pointer-events: auto;
-    -webkit-tap-highlight-color: transparent;
-}
-
-.game-hud__action-icon {
-    font-size: 25px;
-    line-height: 1;
-    font-weight: 900;
-}
-
-/* Nhấn nút cúi thì đổi màu để nhận biết trạng thái */
-.game-hud__crouch-button--active {
-    background: rgba(30, 160, 90, 0.9);
-    border-color: #75ffad;
-    color: #ffffff;
-}
-
-/* Hiệu ứng nhấn */
-.game-hud__action-button:active {
-    transform: scale(0.92);
-}
-
-/* Màn hình dọc */
-.game-hud__movement-actions--portrait {
-    right: 18px;
-    top: 48%;
-    gap: 12px;
-}
-
-.game-hud__movement-actions--portrait
-.game-hud__action-button {
-    width: 60px;
-    height: 60px;
-    font-size: 10px;
-}
-
-.game-hud__movement-actions--portrait
-.game-hud__action-icon {
-    font-size: 22px;
-}
-.game-hud__run-button--active {
-    background: rgba(30, 160, 90, 0.9);
-    border: 2px solid #75ffad;
-    color: #ffffff;
-}
-/* =========================================
-   JUMP & CROUCH - PORTRAIT
-========================================= */
-
-.game-hud__movement-actions--portrait {
-    position: fixed;
-    left: max(14px, env(safe-area-inset-right));
-    top: 50%;
-    transform: translateY(-50%);
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-
-    z-index: 100;
-    pointer-events: none;
-}
-
-/* Nút nhảy và cúi */
-.game-hud__movement-actions--portrait
-.game-hud__action-button {
-    width: 58px;
-    height: 58px;
-    padding: 0;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-
-    border: 2px solid rgba(255, 255, 255, 0.7);
-    border-radius: 50%;
-
-    background: rgba(20, 25, 35, 0.78);
-    color: #fff;
-
-    font-size: 10px;
-    font-weight: 800;
-
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
-
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-tap-highlight-color: transparent;
-
-    pointer-events: auto;
-}
-
-/* Biểu tượng mũi tên */
-.game-hud__movement-actions--portrait
-.game-hud__action-icon {
-    font-size: 22px;
-    line-height: 1;
-    font-weight: 900;
-}
-
-/* Nút cúi đang bật */
-.game-hud__movement-actions--portrait
-.game-hud__crouch-button--active {
-    background: rgba(30, 160, 90, 0.92);
-    border-color: #75ffad;
-}
-
-/* Hiệu ứng nhấn */
-.game-hud__movement-actions--portrait
-.game-hud__action-button:active {
-    transform: scale(0.92);
-}
-
-/* Điện thoại nhỏ */
-@media (max-width: 480px) {
-    .game-hud__movement-actions--portrait {
-        right: max(10px, env(safe-area-inset-right));
-        gap: 10px;
-    }
-
-    .game-hud__movement-actions--portrait
-    .game-hud__action-button {
-        width: 52px;
-        height: 52px;
-        font-size: 9px;
-    }
-
-    .game-hud__movement-actions--portrait
-    .game-hud__action-icon {
-        font-size: 20px;
-    }
-}
-/* RUN BUTTON */
-.game-hud__run-button {
-    position: absolute;
-    left: 50px;
-    top: 54px;
-    z-index: 100;
-
-    min-width: 76px;
-    height: 52px;
-    padding: 0 14px;
-
-    border: 2px solid rgba(255, 255, 255, 0.7);
-    border-radius: 14px;
-
-    background: rgba(30, 35, 45, 0.85);
-    color: white;
-
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 1px;
-
-    pointer-events: auto;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-
-    transform: none;
-    transform-origin: center;
-}
-
-/* Xoay khi màn hình dọc */
-.game-hud__run-button--portrait {
-    left: 179px;
-    right: auto;
-    top: 54px;
-    bottom: auto;
-
-    transform: rotate(90deg);
-}
-/* JUMP & CROUCH */
-.game-hud__movement-actions {
-    position: absolute;
-    right: 24px;
-    top: 50%;
-    transform: translateY(-50%);
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-
-    z-index: 100;
-    pointer-events: none;
-}
-
-.game-hud__action-button {
-    width: 68px;
-    height: 68px;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-
-    border: 2px solid rgba(255, 255, 255, 0.65);
-    border-radius: 50%;
-    background: rgba(20, 25, 35, 0.78);
-    color: white;
-
-    font-size: 11px;
-    font-weight: 800;
-
-    pointer-events: auto;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-tap-highlight-color: transparent;
-}
-
-.game-hud__action-icon {
-    font-size: 25px;
-    line-height: 1;
-    font-weight: 900;
-}
-
-.game-hud__crouch-button--active {
-    background: rgba(30, 160, 90, 0.92);
-    border-color: #75ffad;
-}
-
-/* Portrait: xoay cả nhóm nút */
-.game-hud__movement-actions--portrait {
-    position: fixed;
-    left: 79px;
-    right: auto;
-    top: 80%;
-
-    transform: translateY(-50%) rotate(90deg);
-    transform-origin: center center;
-
-    gap: 14px;
-}
-
-/* Giữ kích thước nút */
-.game-hud__movement-actions--portrait .game-hud__action-button {
-    width: 58px;
-    height: 58px;
-    font-size: 10px;
-}
-
-.game-hud__movement-actions--portrait .game-hud__action-icon {
-    font-size: 22px;
-}
-
-.game-hud__run-button--active {
-    background: rgba(30, 160, 90, 0.9);
-    border: 2px solid #75ffad;
-    color: white;
-}
-
-
 /* ============================================================
    DOOR INTERACTION
    ============================================================ */
@@ -609,96 +296,10 @@
     left: 50%;
     bottom: 120px;
     transform: translateX(-50%);
-
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
-
-    z-index: 200;
-    pointer-events: auto;
-}
-
-.game-hud__door-label {
-    padding: 6px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    border-radius: 8px;
-
-    background: rgba(0, 0, 0, 0.75);
-    color: #fff;
-
-    font-size: 12px;
-    font-weight: 700;
-    white-space: nowrap;
-}
-
-.game-hud__door-button {
-    min-width: 112px;
-    min-height: 54px;
-    padding: 8px 14px;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-
-    border: 2px solid #e7c49a;
-    border-radius: 14px;
-
-    background: rgba(85, 53, 35, 0.94);
-    color: #fff;
-
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 0.4px;
-
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-
-    cursor: pointer;
-    pointer-events: auto;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-tap-highlight-color: transparent;
-}
-
-.game-hud__door-icon {
-    font-size: 21px;
-    line-height: 1;
-}
-
-.game-hud__door-button:active {
-    transform: scale(0.94);
-    background: rgba(125, 77, 43, 0.98);
-}
-
-.game-hud__door-button:disabled {
-    opacity: 0.65;
-    cursor: wait;
-}
-
-.game-hud__door-position--portrait {
-    left: 50%;
-    bottom: max(20px, env(safe-area-inset-bottom));
-    transform: translateX(-50%) rotate(90deg);
-}
-
-/* ============================================================
-   DOOR INTERACTION
-   ============================================================ */
-
-.game-hud__door-position {
-    position: absolute;
-    left: 50%;
-    bottom: 120px;
-    transform: translateX(-50%);
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-
     z-index: 200;
     pointer-events: none;
 }
@@ -708,8 +309,7 @@
     border: 1px solid rgba(255, 255, 255, 0.35);
     border-radius: 8px;
     background: rgba(0, 0, 0, 0.78);
-
-    color: #fff;
+    color: white;
     font-size: 12px;
     font-weight: 700;
     white-space: nowrap;
@@ -719,21 +319,18 @@
     min-width: 112px;
     min-height: 54px;
     padding: 8px 14px;
-
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 4px;
-
     border: 2px solid #e7c49a;
     border-radius: 14px;
     background: rgba(85, 53, 35, 0.94);
-
-    color: #fff;
+    color: white;
     font-size: 12px;
     font-weight: 800;
-
+    cursor: pointer;
     pointer-events: auto;
     touch-action: none;
     user-select: none;
@@ -753,11 +350,4 @@
 .game-hud__door-button:disabled {
     opacity: 0.65;
     cursor: wait;
-}
-
-/* Màn hình dọc */
-.game-hud__door-position--portrait {
-    left: 50%;
-    bottom: max(24px, env(safe-area-inset-bottom));
-    transform: translateX(-50%) rotate(90deg);
 }

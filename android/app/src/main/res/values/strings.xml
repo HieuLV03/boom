@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Boom</string>
+    <string name="title_activity_main">Boom</string>
+    <string name="package_name">com.hieulv03.boom</string>
+    <string name="custom_url_scheme">com.hieulv03.boom</string>
+</resources>

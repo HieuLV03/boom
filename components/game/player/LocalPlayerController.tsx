@@ -1080,48 +1080,46 @@ targetRotation.current = player.rotation.y;
 // AIM FROM ACTUAL CHARACTER HEAD
 // ================================================
 
-const isPortrait =
-    typeof window !== "undefined" &&
-    window.innerHeight > window.innerWidth;
 
-// Tọa độ tâm ngắm theo vùng game đã xoay.
-// Landscape giữ nguyên vị trí hiện tại.
-// Portrait cần xác định theo giao diện thực tế.
-const CROSSHAIR_X = isPortrait ? 0.35 : 0.54;
-const CROSSHAIR_Y = isPortrait ? 0.52 : 0.70;
+        // ================================================
+        // AIM / CROSSHAIR — LANDSCAPE ONLY
+        // ================================================
 
-const crosshairStore = useCrosshairStore.getState();
+        const CROSSHAIR_X = 0.54;
+        const CROSSHAIR_Y = 0.70;
 
-crosshairStore.setPosition(
-    CROSSHAIR_X,
-    CROSSHAIR_Y,
-    !isDead,
-);
+        useCrosshairStore.getState().setPosition(
+            CROSSHAIR_X,
+            CROSSHAIR_Y,
+            !isDead,
+        );
 
-const crosshairNdc = crosshairNdcRef.current.set(
-    CROSSHAIR_X * 2 - 1,
-    1 - CROSSHAIR_Y * 2,
-);
+        const crosshairNdc = crosshairNdcRef.current.set(
+            CROSSHAIR_X * 2 - 1,
+            1 - CROSSHAIR_Y * 2,
+        );
 
+        const raycaster = raycasterRef.current;
+        raycaster.setFromCamera(crosshairNdc, camera);
 
-const raycaster = raycasterRef.current;
-raycaster.setFromCamera(crosshairNdc, camera);
+        const shotOrigin = camera.getWorldPosition(
+            new Vector3()
+        );
 
-const shotOrigin = camera.getWorldPosition(new Vector3());
-const shotDirection = raycaster.ray.direction;
+        const shotDirection = raycaster.ray.direction;
 
-useAimStore.getState().setAim(
-    {
-        x: shotOrigin.x,
-        y: shotOrigin.y,
-        z: shotOrigin.z,
-    },
-    {
-        x: shotDirection.x,
-        y: shotDirection.y,
-        z: shotDirection.z,
-    },
-);
+        useAimStore.getState().setAim(
+            {
+                x: shotOrigin.x,
+                y: shotOrigin.y,
+                z: shotOrigin.z,
+            },
+            {
+                x: shotDirection.x,
+                y: shotDirection.y,
+                z: shotDirection.z,
+            },
+        );
 
 
         // ====================================================
@@ -1161,19 +1159,7 @@ useAimStore.getState().setAim(
         // ====================================================
 
     
-let {
-    x,
-    y,
-} = useMovementStore.getState();
-
-if (isPortrait) {
-    const screenX = x;
-    const screenY = y;
-
-    x = screenY;
-    y = -screenX;
-}
-
+let { x, y } = useMovementStore.getState();
 // Bấm CHẠY: tự tiến về phía trước nếu không đẩy joystick.
 const DEAD_ZONE = 0.08;
 
@@ -1184,12 +1170,9 @@ if (running && joystickMagnitude <= DEAD_ZONE) {
     y = -1;
 }
         // ====================================================
-        // PORTRAIT INPUT
         // ====================================================
         //
-        // LandscapeGuard xoay toàn bộ game 90° khi portrait.
         //
-        // Vì vậy input vật lý trên màn hình portrait cần
         // chuyển về hệ tọa độ game trước khi đưa vào
         // camera-relative movement.
         //
@@ -1197,7 +1180,7 @@ if (running && joystickMagnitude <= DEAD_ZONE) {
 
 
         // ====================================================
-        // JOYSTICK MAGNITUDE
+        // JOYSTICK MAGNITUDEai
         // ====================================================
 
         const inputMagnitude =

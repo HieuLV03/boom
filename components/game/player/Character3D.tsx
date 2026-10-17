@@ -3,14 +3,12 @@
 
 import {
     useEffect,
-    useLayoutEffect,
     useMemo,
     useRef,
-    useState,
-
 } from "react";
 
 import {
+    createPortal,
     useFrame,
 } from "@react-three/fiber";
 
@@ -19,13 +17,10 @@ import {
     useGLTF,
 } from "@react-three/drei";
 
-import {
-    SkeletonUtils,
-} from "three-stdlib";
+import { SkeletonUtils } from "three-stdlib";
 
 import {
     Box3,
-    Group,
     CapsuleGeometry,
     Color,
     LoopOnce,
@@ -50,9 +45,8 @@ import WeaponModel from "../weapons/WeaponModel";
 
 const MODEL_PATH = "/models/character/character.glb";
 
-const LANDSCAPE_MODEL_SCALE = 1.5;
-const PORTRAIT_MODEL_SCALE = 1.65;
-const WEAPON_SCALE = 8;
+const MODEL_SCALE = 1.5;
+const WEAPON_SCALE = 1;
 
 const WEAPON_POSITION: [number, number, number] = [
     0,
@@ -318,7 +312,7 @@ function ClothingAccessory({
 }
 
 // ============================================================
-// CLOTHING
+// CHARACTER CLOTHING
 // ============================================================
 
 function CharacterClothing({
@@ -337,7 +331,6 @@ function CharacterClothing({
         const height = Math.max(size.y, 1);
 
         return {
-            height,
             torsoRadius: height * 0.075,
             armRadius: height * 0.027,
             thighRadius: height * 0.04,
@@ -425,13 +418,7 @@ function CharacterClothing({
     }, [bones, dimensions, materials]);
 
     const d = dimensions;
-const isPortrait =
-    typeof window !== "undefined" &&
-    window.innerHeight > window.innerWidth;
 
-const modelScale = isPortrait
-    ? PORTRAIT_MODEL_SCALE
-    : LANDSCAPE_MODEL_SCALE;
     return (
         <group>
             <ClothingSegment
@@ -568,6 +555,7 @@ const modelScale = isPortrait
 // HELD WEAPON
 // ============================================================
 
+
 function HeldWeapon({
     root,
     weaponType,
@@ -575,69 +563,66 @@ function HeldWeapon({
     root: Object3D;
     weaponType: string;
 }) {
-    const mountRef = useRef<Group>(null);
-
-    const normalizedWeaponType = weaponType
+    const normalizedWeaponType = String(weaponType ?? "")
         .trim()
-        .toLowerCase();
+        .toLowerCase()
+        .replace(/[\s-]+/g, "_");
+
+    const isRifle =
+        normalizedWeaponType === "rifle" ||
+        normalizedWeaponType === "assault_rifle";
 
     const hand = useMemo(
-        () => findBone(root, [
-            "RightHand",
-            "mixamorig:RightHand",
-            "mixamorigRightHand",
-        ]),
+        () =>
+            findBone(root, [
+                "mixamorigRightHand",
+                "mixamorig:RightHand",
+                "RightHand",
+            ]),
         [root],
     );
 
-    useLayoutEffect(() => {
-        const mount = mountRef.current;
+    useEffect(() => {
+        if (!isRifle) return;
 
-        if (!mount || !hand) {
-            if (normalizedWeaponType === "rifle") {
-                console.warn(
-                    "[HELD WEAPON] Cannot mount weapon",
-                    {
-                        hand: hand?.name ?? "NOT FOUND",
-                        weaponType: normalizedWeaponType,
-                    },
-                );
-            }
+        root.updateMatrixWorld(true);
 
-            return;
-        }
-
-        hand.add(mount);
-
-        mount.position.set(...WEAPON_POSITION);
-        mount.rotation.set(...WEAPON_ROTATION);
-        mount.scale.setScalar(WEAPON_SCALE);
-
-        mount.updateMatrix();
-        hand.updateMatrixWorld(true);
-
-        console.log("[HELD WEAPON] Mounted", {
-            hand: hand.name,
-            weaponType: normalizedWeaponType,
+        console.log("[HELD WEAPON DEBUG]", {
+            weaponType,
+            isRifle,
+            handName: hand?.name ?? "NOT FOUND",
+            handPosition: hand
+                ? {
+                    x: hand.position.x,
+                    y: hand.position.y,
+                    z: hand.position.z,
+                }
+                : null,
+            weaponScale: WEAPON_SCALE,
+            weaponPosition: WEAPON_POSITION,
+            weaponRotation: WEAPON_ROTATION,
         });
+    }, [root, weaponType, isRifle, hand]);
 
-        return () => {
-            if (mount.parent === hand) {
-                hand.remove(mount);
-            }
-        };
-    }, [hand, normalizedWeaponType]);
+    if (!isRifle || !hand) return null;
 
-    if (normalizedWeaponType !== "rifle" || !hand) {
-        return null;
-    }
-
-    return (
-        <group ref={mountRef}>
-            <WeaponModel weaponType={normalizedWeaponType} />
-        </group>
+    return createPortal(
+        <group
+            name="HeldRifleMount"
+            position={WEAPON_POSITION}
+            rotation={WEAPON_ROTATION}
+            scale={WEAPON_SCALE}
+        >
+            <WeaponModel
+                weaponType="rifle"
+                modelPath="/models/gun/rifle/ak47.glb"
+                scale={10}
+            />
+        </group>,
+        hand,
     );
 }
+
 
 // ============================================================
 // CHARACTER
@@ -652,29 +637,7 @@ export default function Character3D({
     weaponType = "",
 }: Props) {
     const { scene, animations } = useGLTF(MODEL_PATH);
-const [isPortrait, setIsPortrait] = useState(false);
 
-useEffect(() => {
-    const updateOrientation = () => {
-        setIsPortrait(
-            window.innerHeight > window.innerWidth
-        );
-    };
-
-    updateOrientation();
-
-    window.addEventListener("resize", updateOrientation);
-    window.addEventListener("orientationchange", updateOrientation);
-
-    return () => {
-        window.removeEventListener("resize", updateOrientation);
-        window.removeEventListener("orientationchange", updateOrientation);
-    };
-}, []);
-
-const modelScale = isPortrait
-    ? PORTRAIT_MODEL_SCALE
-    : LANDSCAPE_MODEL_SCALE;
     const clonedScene = useMemo(
         () => SkeletonUtils.clone(scene),
         [scene],
@@ -685,15 +648,18 @@ const modelScale = isPortrait
         clonedScene,
     );
 
-    const activeActionRef = useRef<AnimationAction | null>(null);
-    const locomotionActionRef = useRef<AnimationAction | null>(null);
+    const activeActionRef =
+        useRef<AnimationAction | null>(null);
+
+    const locomotionActionRef =
+        useRef<AnimationAction | null>(null);
 
     const punchingRef = useRef(false);
     const jumpingRef = useRef(false);
 
     const lastPunchTriggerRef = useRef(punchTrigger);
     const lastJumpTriggerRef = useRef(jumpTrigger);
-    
+
     // ========================================================
     // MODEL DEBUG
     // ========================================================
@@ -734,11 +700,7 @@ const modelScale = isPortrait
     }, [clonedScene, animations]);
 
     // ========================================================
-    // FIND ANIMATION ACTIONS
-    // ========================================================
-
-    // ========================================================
-    // FIND ANIMATION ACTIONS
+    // FIND ANIMATION ACTION
     // ========================================================
 
     const findAction = (
@@ -752,61 +714,109 @@ const modelScale = isPortrait
         return entry?.[1] ?? null;
     };
 
-    const getLocomotionAction = () => {
-        const idleAction = findAction(/^male_idle$/i)
-            ?? findAction(/idle/i);
+    // ========================================================
+    // CHOOSE LOCOMOTION
+    // ========================================================
 
-        const walkingAction = findAction(/^male_walking$/i)
-            ?? findAction(/crouch.*walk|walk.*crouch/i)
-            ?? findAction(/walking|walk/i);
+    const getLocomotionAction = (): AnimationAction | null => {
+        const normalizedWeaponType = (weaponType ?? "")
+            .trim()
+            .toLowerCase()
+            .replace(/[\s-]+/g, "_");
 
-        const runAction = findAction(/^male_run$/i)
-            ?? findAction(/running|run/i);
+        const hasRifle =
+            normalizedWeaponType === "rifle" ||
+            normalizedWeaponType === "assault_rifle";
+
+        const rifleIdleAction = hasRifle
+            ? findAction(/^male_rifle_idle$/i)
+            : null;
+
+        const idleAction =
+            rifleIdleAction ??
+            findAction(/^male_idle$/i) ??
+            findAction(/^idle$/i) ??
+            findAction(/idle/i);
+
+        const walkingAction =
+            findAction(/^male_walking$/i) ??
+            findAction(/crouch.*walk|walk.*crouch/i) ??
+            findAction(/walking|walk/i);
+
+        const runAction =
+            findAction(/^male_run$/i) ??
+            findAction(/running|run/i);
 
         const crouchIdleAction =
-            findAction(/^male_crouch_idle$/i)
-            ?? findAction(/crouch.*idle|idle.*crouch/i);
+            findAction(/^male_crouch_idle$/i) ??
+            findAction(/crouch.*idle|idle.*crouch/i);
 
         const crouchWalkingAction =
-            findAction(/^male_crouch_walking$/i)
-            ?? findAction(/crouch.*walk|walk.*crouch/i);
+            findAction(/^male_crouch_walking$/i) ??
+            findAction(/crouch.*walk|walk.*crouch/i);
 
-        // Ngồi thấp: ưu tiên animation ngồi thấp.
         if (crouching) {
             if (moving) {
-                return crouchWalkingAction
-                    ?? walkingAction
-                    ?? crouchIdleAction
-                    ?? idleAction;
+                return (
+                    crouchWalkingAction ??
+                    walkingAction ??
+                    idleAction
+                );
             }
 
-            return crouchIdleAction
-                ?? idleAction
-                ?? crouchWalkingAction;
+            return crouchIdleAction ?? idleAction;
         }
 
-        // Chạy.
         if (running && moving) {
-            return runAction
-                ?? walkingAction
-                ?? idleAction;
+            return runAction ?? walkingAction ?? idleAction;
         }
 
-        // Đi bộ.
         if (moving) {
-            return walkingAction
-                ?? runAction
-                ?? idleAction;
+            return walkingAction ?? runAction ?? idleAction;
         }
 
-        // Đứng yên.
-        return idleAction
-            ?? walkingAction
-            ?? runAction;
+        return idleAction ?? walkingAction ?? runAction;
     };
 
     // ========================================================
-    // ANIMATION: IDLE / WALKING / RUN
+    // DEBUG RIFLE ANIMATION
+    // ========================================================
+
+    useEffect(() => {
+        const normalizedWeaponType = (weaponType ?? "")
+            .trim()
+            .toLowerCase()
+            .replace(/[\s-]+/g, "_");
+
+        const hasRifle =
+            normalizedWeaponType === "rifle" ||
+            normalizedWeaponType === "assault_rifle";
+
+        const rifleIdleAction = findAction(
+            /^male_rifle_idle$/i,
+        );
+
+        const selectedAction = getLocomotionAction();
+
+        console.log("[RIFLE IDLE DEBUG]", {
+            weaponType,
+            normalizedWeaponType,
+            hasRifle,
+            rifleIdleFound: Boolean(rifleIdleAction),
+            selectedClip:
+                selectedAction?.getClip().name ?? "NOT FOUND",
+        });
+    }, [
+        weaponType,
+        moving,
+        running,
+        crouching,
+        actions,
+        animations,
+    ]);
+
+    // ========================================================
+    // ANIMATION: IDLE / WALK / RUN
     // ========================================================
 
     useEffect(() => {
@@ -814,7 +824,11 @@ const modelScale = isPortrait
 
         locomotionActionRef.current = nextAction;
 
-        if (!nextAction || punchingRef.current) {
+        if (
+            !nextAction ||
+            punchingRef.current ||
+            jumpingRef.current
+        ) {
             return;
         }
 
@@ -827,133 +841,138 @@ const modelScale = isPortrait
             return;
         }
 
-        nextAction.enabled = true;
-        nextAction.setLoop(LoopRepeat, Infinity);
-        nextAction.clampWhenFinished = false;
-        nextAction.setEffectiveWeight(1);
-        nextAction.setEffectiveTimeScale(1);
-
-        if (
-            previousAction &&
-            previousAction !== nextAction
-        ) {
-            previousAction.crossFadeTo(
-                nextAction,
-                0.2,
-                false,
-            );
+        // Fade out other actions to avoid conflicting poses.
+        for (const action of Object.values(actions)) {
+            if (action && action !== nextAction) {
+                action.fadeOut(0.12);
+            }
         }
-
-        nextAction.reset().play();
-
-        activeActionRef.current = nextAction;
-
-        console.log("[ANIMATION] Locomotion:", {
-            state: running
-                ? "run"
-                : moving
-                    ? "walking"
-                    : "idle",
-            clip: nextAction.getClip().name,
-        });
-    }, [actions, moving, running,crouching]);
-
-// ========================================================
-// ANIMATION: JUMP FINISHED
-// ========================================================
-
-useEffect(() => {
-    const jumpAction =
-        actions["male_jump"] ??
-        findAction(/^jump$/i) ??
-        findAction(/jump/i);
-
-    if (!jumpAction) {
-        console.warn(
-            "[ANIMATION] Không tìm thấy animation Jump.",
-        );
-        return;
-    }
-
-    const handleFinished = (
-        event: { action?: AnimationAction },
-    ) => {
-        if (event.action !== jumpAction) return;
-
-        jumpingRef.current = false;
-
-        const nextAction = locomotionActionRef.current;
-
-        if (!nextAction || punchingRef.current) return;
-
-        jumpAction.fadeOut(0.1);
 
         nextAction.enabled = true;
         nextAction.reset();
         nextAction.setLoop(LoopRepeat, Infinity);
+        nextAction.clampWhenFinished = false;
         nextAction.setEffectiveWeight(1);
+        nextAction.setEffectiveTimeScale(1);
         nextAction.fadeIn(0.15).play();
 
         activeActionRef.current = nextAction;
-    };
 
-    mixer.addEventListener("finished", handleFinished);
+        console.log("[ANIMATION] Locomotion:", {
+            weaponType,
+            moving,
+            running,
+            crouching,
+            clip: nextAction.getClip().name,
+        });
+    }, [
+        actions,
+        moving,
+        running,
+        crouching,
+        weaponType,
+    ]);
 
-    return () => {
-        mixer.removeEventListener("finished", handleFinished);
-    };
-}, [actions, mixer]);
+    // ========================================================
+    // ANIMATION: JUMP FINISHED
+    // ========================================================
 
-// ========================================================
-// ANIMATION: JUMP TRIGGER
-// ========================================================
+    useEffect(() => {
+        const jumpAction =
+            actions["male_jump"] ??
+            findAction(/^jump$/i) ??
+            findAction(/jump/i);
 
-useEffect(() => {
-    if (jumpTrigger === lastJumpTriggerRef.current) {
-        return;
-    }
-
-    lastJumpTriggerRef.current = jumpTrigger;
-
-    if (punchingRef.current || jumpingRef.current) {
-        return;
-    }
-
-    const jumpAction =
-        actions["male_jump"] ??
-        findAction(/^jump$/i) ??
-        findAction(/jump/i);
-
-    if (!jumpAction) {
-        console.warn(
-            "[ANIMATION] Không tìm thấy clip Jump trong GLB.",
-        );
-        return;
-    }
-
-    jumpingRef.current = true;
-
-    for (const action of Object.values(actions)) {
-        if (action && action !== jumpAction) {
-            action.fadeOut(0.1);
+        if (!jumpAction) {
+            console.warn(
+                "[ANIMATION] Không tìm thấy animation Jump.",
+            );
+            return;
         }
-    }
 
-    jumpAction.enabled = true;
-    jumpAction.reset();
-    jumpAction.setLoop(LoopOnce, 1);
-    jumpAction.clampWhenFinished = true;
-    jumpAction.setEffectiveWeight(1);
-    jumpAction.setEffectiveTimeScale(1);
-    jumpAction.fadeIn(0.1).play();
+        const handleFinished = (
+            event: { action?: AnimationAction },
+        ) => {
+            if (event.action !== jumpAction) return;
 
-    activeActionRef.current = jumpAction;
+            jumpingRef.current = false;
 
-    console.log("[ANIMATION] Jump started:", {
-        clip: jumpAction.getClip().name,
-        duration: jumpAction.getClip().duration,
-    });
-}, [actions, jumpTrigger]);
+            const nextAction = locomotionActionRef.current;
+
+            if (!nextAction || punchingRef.current) return;
+
+            jumpAction.fadeOut(0.1);
+
+            nextAction.enabled = true;
+            nextAction.reset();
+            nextAction.setLoop(LoopRepeat, Infinity);
+            nextAction.clampWhenFinished = false;
+            nextAction.setEffectiveWeight(1);
+            nextAction.fadeIn(0.15).play();
+
+            activeActionRef.current = nextAction;
+        };
+
+        mixer.addEventListener("finished", handleFinished);
+
+        return () => {
+            mixer.removeEventListener(
+                "finished",
+                handleFinished,
+            );
+        };
+    }, [actions, mixer]);
+
+    // ========================================================
+    // ANIMATION: JUMP TRIGGER
+    // ========================================================
+
+    useEffect(() => {
+        if (jumpTrigger === lastJumpTriggerRef.current) {
+            return;
+        }
+
+        lastJumpTriggerRef.current = jumpTrigger;
+
+        if (punchingRef.current || jumpingRef.current) {
+            return;
+        }
+
+        const jumpAction =
+            actions["male_jump"] ??
+            findAction(/^jump$/i) ??
+            findAction(/jump/i);
+
+        if (!jumpAction) {
+            console.warn(
+                "[ANIMATION] Không tìm thấy clip Jump trong GLB.",
+            );
+            return;
+        }
+
+        jumpingRef.current = true;
+
+        for (const action of Object.values(actions)) {
+            if (action && action !== jumpAction) {
+                action.fadeOut(0.1);
+            }
+        }
+
+        jumpAction.enabled = true;
+        jumpAction.reset();
+        jumpAction.setLoop(LoopOnce, 1);
+        jumpAction.clampWhenFinished = true;
+        jumpAction.setEffectiveWeight(1);
+        jumpAction.setEffectiveTimeScale(1);
+        jumpAction.fadeIn(0.1).play();
+
+        activeActionRef.current = jumpAction;
+
+        console.log("[ANIMATION] Jump started:", {
+            clip: jumpAction.getClip().name,
+            duration: jumpAction.getClip().duration,
+        });
+    }, [actions, jumpTrigger]);
 
     // ========================================================
     // ANIMATION: PUNCH FINISHED
@@ -980,7 +999,7 @@ useEffect(() => {
 
             const nextAction = locomotionActionRef.current;
 
-            if (!nextAction) return;
+            if (!nextAction || jumpingRef.current) return;
 
             punchAction.fadeOut(0.1);
 
@@ -1002,7 +1021,10 @@ useEffect(() => {
         mixer.addEventListener("finished", handleFinished);
 
         return () => {
-            mixer.removeEventListener("finished", handleFinished);
+            mixer.removeEventListener(
+                "finished",
+                handleFinished,
+            );
         };
     }, [actions, mixer]);
 
@@ -1011,13 +1033,13 @@ useEffect(() => {
     // ========================================================
 
     useEffect(() => {
-        if (
-            punchTrigger === lastPunchTriggerRef.current
-        ) {
+        if (punchTrigger === lastPunchTriggerRef.current) {
             return;
         }
 
         lastPunchTriggerRef.current = punchTrigger;
+
+        if (jumpingRef.current) return;
 
         const punchAction = findAction(
             /punch|attack|melee/i,
@@ -1058,8 +1080,8 @@ useEffect(() => {
     // RENDER
     // ========================================================
 
-    return (
-        <group scale={modelScale}>
+return (
+    <group scale={MODEL_SCALE}>
             <primitive object={clonedScene} />
 
             <CharacterClothing root={clonedScene} />
