@@ -26,12 +26,8 @@ export default function MultiplayerPage() {
     const [roomCode, setRoomCode] = useState("");
     const [selectedMap, setSelectedMap] =
         useState<MapId>("tropical-village");
-    const [status, setStatus] = useState("Chưa kết nối");
+    const [status, setStatus] = useState("Sẵn sàng chơi");
     const [loading, setLoading] = useState(false);
-
-    // ========================================================
-    // CREATE ROOM
-    // ========================================================
 
     async function createRoom() {
         if (loading) return;
@@ -50,13 +46,6 @@ export default function MultiplayerPage() {
 
             setRoom(room);
 
-            console.log("[CREATE] Room created", {
-                roomId: room.roomId,
-                sessionId: room.sessionId,
-                roomCode: code,
-                mapId: selectedMap,
-            });
-
             router.push(
                 `/game?room=${encodeURIComponent(room.roomId)}` +
                 `&session=${encodeURIComponent(room.sessionId)}` +
@@ -70,17 +59,13 @@ export default function MultiplayerPage() {
         }
     }
 
-    // ========================================================
-    // JOIN ROOM
-    // ========================================================
-
     async function joinRoom() {
         if (loading) return;
 
         const code = roomCode.trim();
 
         if (!/^\d{6}$/.test(code)) {
-            setStatus("Mã phòng phải gồm 6 chữ số");
+            setStatus("Mã phòng phải gồm 6 chữ số.");
             return;
         }
 
@@ -94,13 +79,6 @@ export default function MultiplayerPage() {
             });
 
             setRoom(room);
-
-            console.log("[JOIN] Room joined", {
-                roomId: room.roomId,
-                sessionId: room.sessionId,
-                roomCode: code,
-                mapId: room.state.mapId,
-            });
 
             router.push(
                 `/game?room=${encodeURIComponent(room.roomId)}` +
@@ -117,131 +95,207 @@ export default function MultiplayerPage() {
 
     return (
         <main className="multiplayer-page">
-            <div className="multiplayer-card">
-                <h1 className="multiplayer-title">BOOM</h1>
-
-                <p className="multiplayer-subtitle">
-                    Multiplayer
-                </p>
-
-                <input
-                    className="multiplayer-input"
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    placeholder="Tên người chơi"
-                    maxLength={20}
-                />
-
-                {/* MAP SELECTION */}
-                <section className="map-selection">
-                    <h2 className="map-selection-title">
-                        Chọn bản đồ
-                    </h2>
-
-                    <div className="map-selection-list">
-                        <button
-                            type="button"
-                            className={`map-option map-option-village ${
-                                selectedMap === "tropical-village"
-                                    ? "map-option-selected"
-                                    : ""
-                            }`}
-                            aria-pressed={selectedMap === "tropical-village"}
-                            onClick={() => setSelectedMap("tropical-village")}
-                        >
-                            <span className="map-option-icon">🌴</span>
-
-                            <span className="map-option-name">
-                                Tropical Village
-                            </span>
-
-                            <span className="map-option-description">
-                                Làng nhiệt đới
-                            </span>
-
-                            {selectedMap === "tropical-village" && (
-                                <span className="map-option-check">
-                                    ✓ Đã chọn
-                                </span>
-                            )}
-                        </button>
-
-                        <button
-                            type="button"
-                            className={`map-option map-option-zombie ${
-                                selectedMap === "zombie-house"
-                                    ? "map-option-selected"
-                                    : ""
-                            }`}
-                            aria-pressed={selectedMap === "zombie-house"}
-                            onClick={() => setSelectedMap("zombie-house")}
-                        >
-                            <span className="map-option-icon">🧟</span>
-
-                            <span className="map-option-name">
-                                Zombie House
-                            </span>
-
-                            <span className="map-option-description">
-                                Ngôi nhà kinh dị
-                            </span>
-
-                            {selectedMap === "zombie-house" && (
-                                <span className="map-option-check">
-                                    ✓ Đã chọn
-                                </span>
-                            )}
-                        </button>
+            <section className="multiplayer-panel">
+                <header className="multiplayer-header">
+                    <div className="multiplayer-brand">
+                        <h1>BOOM</h1>
+                        <p>CHƠI CÙNG BẠN BÈ</p>
                     </div>
 
-                    <p className="map-selection-hint">
-                        Chủ phòng chọn bản đồ cho toàn bộ trận đấu.
-                    </p>
-                </section>
+                    <div className="multiplayer-heading">
+                        <span className="multiplayer-eyebrow">
+                            MULTIPLAYER
+                        </span>
+                        <h2>Sẵn sàng chiến đấu?</h2>
+                        <p>Tạo phòng mới hoặc nhập mã để tham gia.</p>
+                    </div>
+                </header>
 
-                {/* CREATE ROOM */}
-                <button
-                    type="button"
-                    className="multiplayer-button multiplayer-button-create"
-                    onClick={createRoom}
-                    disabled={loading}
-                >
-                    {loading ? "Đang xử lý..." : "Tạo phòng"}
-                </button>
+                <div className="multiplayer-content">
+                    {/* LEFT: PLAYER + MAP */}
+                    <section className="multiplayer-setup">
+                        <label
+                            className="multiplayer-label"
+                            htmlFor="player-name"
+                        >
+                            TÊN NGƯỜI CHƠI
+                        </label>
 
-                <div className="multiplayer-divider">
-                    <div className="multiplayer-divider-line" />
-                    <span>HOẶC</span>
-                    <div className="multiplayer-divider-line" />
+                        <input
+                            id="player-name"
+                            className="multiplayer-input"
+                            value={name}
+                            onChange={(event) =>
+                                setName(event.target.value)
+                            }
+                            placeholder="Nhập tên của bạn"
+                            maxLength={20}
+                            autoComplete="nickname"
+                        />
+
+                        <div className="map-selection">
+                            <div className="section-heading">
+                                <span className="section-number">01</span>
+                                <h3>Chọn bản đồ</h3>
+                            </div>
+
+                            <div className="map-selection-list">
+                                <button
+                                    type="button"
+                                    className={`map-option map-option-village ${
+                                        selectedMap === "tropical-village"
+                                            ? "map-option-selected"
+                                            : ""
+                                    }`}
+                                    aria-pressed={
+                                        selectedMap === "tropical-village"
+                                    }
+                                    onClick={() =>
+                                        setSelectedMap("tropical-village")
+                                    }
+                                    disabled={loading}
+                                >
+                                    <span className="map-option-icon">
+                                        🌴
+                                    </span>
+
+                                    <span className="map-option-info">
+                                        <span className="map-option-name">
+                                            Tropical Village
+                                        </span>
+                                        <span className="map-option-description">
+                                            Làng nhiệt đới
+                                        </span>
+                                    </span>
+
+                                    <span className="map-option-radio">
+                                        {selectedMap === "tropical-village"
+                                            ? "✓"
+                                            : ""}
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className={`map-option map-option-zombie ${
+                                        selectedMap === "zombie-house"
+                                            ? "map-option-selected"
+                                            : ""
+                                    }`}
+                                    aria-pressed={
+                                        selectedMap === "zombie-house"
+                                    }
+                                    onClick={() =>
+                                        setSelectedMap("zombie-house")
+                                    }
+                                    disabled={loading}
+                                >
+                                    <span className="map-option-icon">
+                                        🧟
+                                    </span>
+
+                                    <span className="map-option-info">
+                                        <span className="map-option-name">
+                                            Zombie House
+                                        </span>
+                                        <span className="map-option-description">
+                                            Ngôi nhà kinh dị
+                                        </span>
+                                    </span>
+
+                                    <span className="map-option-radio">
+                                        {selectedMap === "zombie-house"
+                                            ? "✓"
+                                            : ""}
+                                    </span>
+                                </button>
+                            </div>
+
+                            <p className="map-selection-hint">
+                                Bản đồ do chủ phòng lựa chọn.
+                            </p>
+                        </div>
+                    </section>
+
+                    {/* RIGHT: CREATE / JOIN */}
+                    <section className="multiplayer-actions">
+                        <div className="action-block">
+                            <div className="section-heading">
+                                <span className="section-number">02</span>
+                                <h3>Tạo trận đấu</h3>
+                            </div>
+
+                            <p className="action-description">
+                                Tạo phòng mới và mời bạn bè tham gia bằng mã phòng.
+                            </p>
+
+                            <button
+                                type="button"
+                                className="multiplayer-button multiplayer-button-create"
+                                onClick={createRoom}
+                                disabled={loading}
+                            >
+                                <span className="button-icon">＋</span>
+                                {loading ? "Đang xử lý..." : "Tạo phòng mới"}
+                            </button>
+                        </div>
+
+                        <div className="join-divider">
+                            <span />
+                            <b>HOẶC</b>
+                            <span />
+                        </div>
+
+                        <div className="action-block">
+                            <div className="section-heading">
+                                <span className="section-number">03</span>
+                                <h3>Tham gia phòng</h3>
+                            </div>
+
+                            <form
+                                className="join-form"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    void joinRoom();
+                                }}
+                            >
+                                <input
+                                    className="multiplayer-input room-code-input"
+                                    value={roomCode}
+                                    onChange={(event) =>
+                                        setRoomCode(
+                                            event.target.value
+                                                .replace(/\D/g, "")
+                                                .slice(0, 6)
+                                        )
+                                    }
+                                    placeholder="Mã phòng 6 chữ số"
+                                    inputMode="numeric"
+                                    autoComplete="one-time-code"
+                                    maxLength={6}
+                                    aria-label="Mã phòng"
+                                    disabled={loading}
+                                />
+
+                                <button
+                                    type="submit"
+                                    className="multiplayer-button multiplayer-button-join"
+                                    disabled={loading}
+                                >
+                                    {loading ? "Đang xử lý..." : "Vào phòng"}
+                                    <span aria-hidden="true">→</span>
+                                </button>
+                            </form>
+                        </div>
+                    </section>
                 </div>
 
-                {/* JOIN ROOM */}
-                <input
-                    className="multiplayer-input multiplayer-room-code"
-                    value={roomCode}
-                    onChange={(event) => {
-                        setRoomCode(
-                            event.target.value.replace(/\D/g, "").slice(0, 6)
-                        );
-                    }}
-                    placeholder="Nhập mã phòng 6 số"
-                    inputMode="numeric"
-                    maxLength={6}
-                />
-
-                <button
-                    type="button"
-                    className="multiplayer-button multiplayer-button-join"
-                    onClick={joinRoom}
-                    disabled={loading}
-                >
-                    {loading ? "Đang xử lý..." : "Vào phòng"}
-                </button>
-
-                <p className="multiplayer-status" aria-live="polite">
-                    {status}
-                </p>
-            </div>
+                <footer className="multiplayer-footer">
+                    <span className="status-indicator" />
+                    <p aria-live="polite">{status}</p>
+                    <span className="footer-version">BOOM MULTIPLAYER</span>
+                </footer>
+            </section>
         </main>
     );
 }
