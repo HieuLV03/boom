@@ -1,12 +1,25 @@
 
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import {
+    useEffect,
+    useState,
+    type ReactNode,
+} from "react";
+
 import "./LandscapeGuard.css";
 
 type Props = {
     children: ReactNode;
 };
+
+function checkIsLandscape(): boolean {
+    if (typeof window === "undefined") {
+        return false;
+    }
+
+    return window.innerWidth > window.innerHeight;
+}
 
 export default function LandscapeGuard({ children }: Props) {
     const [isLandscape, setIsLandscape] = useState<boolean | null>(
@@ -14,36 +27,55 @@ export default function LandscapeGuard({ children }: Props) {
     );
 
     useEffect(() => {
-        const mediaQuery = window.matchMedia(
-            "(orientation: landscape)"
-        );
+        let frameId = 0;
 
         function checkOrientation() {
-            setIsLandscape(mediaQuery.matches);
+            cancelAnimationFrame(frameId);
+
+            // Đợi viewport cập nhật sau khi xoay điện thoại.
+            frameId = requestAnimationFrame(() => {
+                setIsLandscape(checkIsLandscape());
+            });
         }
 
         checkOrientation();
 
-        mediaQuery.addEventListener("change", checkOrientation);
         window.addEventListener("resize", checkOrientation);
-        window.addEventListener("orientationchange", checkOrientation);
+        window.addEventListener(
+            "orientationchange",
+            checkOrientation
+        );
+
+        // Hỗ trợ trình duyệt có Visual Viewport API.
+        window.visualViewport?.addEventListener(
+            "resize",
+            checkOrientation
+        );
 
         return () => {
-            mediaQuery.removeEventListener("change", checkOrientation);
-            window.removeEventListener("resize", checkOrientation);
+            cancelAnimationFrame(frameId);
+
+            window.removeEventListener(
+                "resize",
+                checkOrientation
+            );
+
             window.removeEventListener(
                 "orientationchange",
+                checkOrientation
+            );
+
+            window.visualViewport?.removeEventListener(
+                "resize",
                 checkOrientation
             );
         };
     }, []);
 
-    // Chờ xác định hướng màn hình trước khi render game.
     if (isLandscape === null) {
         return <div className="landscape-checking" />;
     }
 
-    // Màn hình dọc: chỉ hiện thông báo, không render game.
     if (!isLandscape) {
         return (
             <div className="portrait-warning">
@@ -68,18 +100,21 @@ export default function LandscapeGuard({ children }: Props) {
                             stroke="currentColor"
                             strokeWidth="4"
                         />
+
                         <path
                             d="M43 70H57"
                             stroke="currentColor"
                             strokeWidth="3"
                             strokeLinecap="round"
                         />
+
                         <path
                             d="M15 37C18 20 33 7 51 7"
                             stroke="#FACC15"
                             strokeWidth="4"
                             strokeLinecap="round"
                         />
+
                         <path
                             d="M43 1L53 7L45 16"
                             stroke="#FACC15"
@@ -105,6 +140,9 @@ export default function LandscapeGuard({ children }: Props) {
         );
     }
 
-    // Màn hình ngang: mới render preloader và game.
-    return <div className="boom-screen">{children}</div>;
+    return (
+        <div className="boom-screen">
+            {children}
+        </div>
+    );
 }
