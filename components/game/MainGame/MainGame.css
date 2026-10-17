@@ -1,221 +1,46 @@
 
-/* ============================================================
-   FULL SCREEN RESET
-============================================================ */
-
+/* Không để trang game tạo thanh cuộn */
 html,
 body {
     width: 100%;
+    min-width: 0;
     height: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
 }
 
 body {
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+/* Khung game phủ kín viewport */
+.boom-game {
     position: fixed;
     inset: 0;
-}
 
-/* ============================================================
-   BOOM GAME
-============================================================ */
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
 
-.boom-game {
-    position: absolute;
-    inset: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-sizing: border-box;
+
     overflow: hidden;
     background: #87ceeb;
+    overscroll-behavior: none;
 }
 
+/* Canvas 3D phủ kín khung game */
 .boom-game canvas {
+    position: absolute !important;
+    inset: 0;
+
     display: block;
     width: 100% !important;
     height: 100% !important;
-    touch-action: none;
-}
-
-/* ============================================================
-   OUT BUTTON
-============================================================ */
-
-.boom-game__out {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    z-index: 999999;
-
-    width: 50px;
-    height: 34px;
-    padding: 0;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    background: rgba(25, 25, 30, 0.82);
-
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-
-    color: #fff;
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.8px;
-
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-
-    touch-action: manipulation;
-    pointer-events: auto;
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-tap-highlight-color: transparent;
-
-    transition:
-        transform 0.12s ease,
-        background 0.12s ease,
-        border-color 0.12s ease,
-        box-shadow 0.12s ease;
-}
-
-.boom-game__out:hover {
-    background: rgba(45, 45, 52, 0.95);
-    border-color: rgba(255, 255, 255, 0.4);
-    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.4);
-}
-
-.boom-game__out:active {
-    transform: scale(0.92);
-    background: rgba(10, 10, 14, 0.95);
-}
-
-/* ============================================================
-   ROOM CODE
-============================================================ */
-
-.boom-game__room-code {
-    position: absolute;
-    top: 1px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 9990;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 6px 8px;
-    white-space: nowrap;
-
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 9px;
-    background: rgba(0, 0, 0, 0.58);
-
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-
-    color: #fff;
-    font-size: 11px;
-    font-weight: 300;
-    text-align: center;
-    pointer-events: none;
-
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
-}
-
-.boom-game__room-code-number {
-    margin-left: 6px;
-    font-size: 15px;
-    font-weight: 800;
-    letter-spacing: 2.5px;
-}
-
-/* ============================================================
-   BOMB BUTTON
-============================================================ */
-
-.boom-game .boom-game__bomb-button {
-    position: absolute;
-    right: max(18px, env(safe-area-inset-right));
-    bottom: max(24px, env(safe-area-inset-bottom));
-    z-index: 100000;
-
-    width: 54px;
-    height: 54px;
-    padding: 0;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.65);
-
-    color: #fff;
-    font-size: 26px;
-
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 
     touch-action: none;
-    pointer-events: auto;
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-tap-highlight-color: transparent;
-}
-
-.boom-game .boom-game__bomb-button:active {
-    transform: scale(0.9);
-    background: rgba(0, 0, 0, 0.85);
-}
-
-/* ============================================================
-   MOBILE LANDSCAPE
-============================================================ */
-
-@media (max-width: 600px) {
-    .boom-game__out {
-        top: 10px;
-        left: 10px;
-        font-size: 10px;
-    }
-
-    .boom-game__room-code {
-        padding: 5px;
-        font-size: 10px;
-    }
-
-    .boom-game__room-code-number {
-        font-size: 14px;
-        letter-spacing: 2px;
-    }
-
-    .boom-game .boom-game__bomb-button {
-        width: 50px;
-        height: 50px;
-        font-size: 24px;
-    }
-}
-
-@media (max-width: 380px) {
-    .boom-game__actions {
-        right: 12px;
-        bottom: 64px;
-    }
-
-    .boom-game__action {
-        width: 50px;
-        height: 50px;
-    }
-
-    .boom-game .boom-game__bomb-button {
-        width: 46px;
-        height: 46px;
-        font-size: 22px;
-    }
 }

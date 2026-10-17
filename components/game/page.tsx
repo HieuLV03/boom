@@ -7,18 +7,20 @@ import { useSearchParams } from "next/navigation";
 import GameAssetPreloader from "@/components/game/GameAssetPreloader/GameAssetPreloader";
 import MainGame from "@/components/game/MainGame/MainGame";
 
-import "./game.css";
+import "./page.css";
 
 function GamePageContent() {
     const searchParams = useSearchParams();
     const roomCode = searchParams.get("code") || "";
 
     return (
-        <>
+        <main className="game-page-root">
             <GameAssetPreloader />
 
-            <MainGame roomCode={roomCode} />
-        </>
+            <div className="game-main-container">
+                <MainGame roomCode={roomCode} />
+            </div>
+        </main>
     );
 }
 
@@ -26,9 +28,11 @@ export default function GamePage() {
     return (
         <Suspense
             fallback={
-                <div className="game-loading">
-                    Đang tải game...
-                </div>
+                <main className="game-page-root">
+                    <div className="game-loading">
+                        Đang tải game...
+                    </div>
+                </main>
             }
         >
             <GamePageContent />
