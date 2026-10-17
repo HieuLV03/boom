@@ -13,6 +13,10 @@ type Props = {
     children: ReactNode;
 };
 
+type ScreenOrientationWithLock = ScreenOrientation & {
+    lock?: (orientation: string) => Promise<void>;
+};
+
 export default function LandscapeGuard({
     children,
 }: Props) {
@@ -29,8 +33,6 @@ export default function LandscapeGuard({
 
         async function requestLandscape() {
             try {
-                // Thử chuyển sang chế độ toàn màn hình.
-                // Một số trình duyệt yêu cầu thao tác người dùng.
                 if (
                     document.fullscreenEnabled &&
                     !document.fullscreenElement
@@ -45,13 +47,15 @@ export default function LandscapeGuard({
             }
 
             try {
-                // Yêu cầu khóa hướng ngang.
-                if (screen.orientation?.lock) {
-                    await screen.orientation.lock("landscape");
+                const orientation =
+                    screen.orientation as ScreenOrientationWithLock;
+
+                if (typeof orientation.lock === "function") {
+                    await orientation.lock("landscape");
                 }
             } catch (error) {
                 console.warn(
-                    "[LANDSCAPE] Trình duyệt không cho khóa ngang:",
+                    "[LANDSCAPE] Không thể khóa màn hình ngang:",
                     error
                 );
             }
