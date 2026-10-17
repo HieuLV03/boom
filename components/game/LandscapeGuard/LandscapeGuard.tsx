@@ -19,13 +19,50 @@ export default function LandscapeGuard({
     const [isPortrait, setIsPortrait] = useState(true);
 
     useEffect(() => {
+        let mounted = true;
+
         function checkOrientation() {
             setIsPortrait(
                 window.innerHeight > window.innerWidth
             );
         }
 
+        async function requestLandscape() {
+            try {
+                // Thử chuyển sang chế độ toàn màn hình.
+                // Một số trình duyệt yêu cầu thao tác người dùng.
+                if (
+                    document.fullscreenEnabled &&
+                    !document.fullscreenElement
+                ) {
+                    await document.documentElement.requestFullscreen();
+                }
+            } catch (error) {
+                console.warn(
+                    "[LANDSCAPE] Không thể bật toàn màn hình:",
+                    error
+                );
+            }
+
+            try {
+                // Yêu cầu khóa hướng ngang.
+                if (screen.orientation?.lock) {
+                    await screen.orientation.lock("landscape");
+                }
+            } catch (error) {
+                console.warn(
+                    "[LANDSCAPE] Trình duyệt không cho khóa ngang:",
+                    error
+                );
+            }
+
+            if (mounted) {
+                checkOrientation();
+            }
+        }
+
         checkOrientation();
+        void requestLandscape();
 
         window.addEventListener("resize", checkOrientation);
         window.addEventListener(
@@ -34,6 +71,8 @@ export default function LandscapeGuard({
         );
 
         return () => {
+            mounted = false;
+
             window.removeEventListener(
                 "resize",
                 checkOrientation
@@ -99,8 +138,8 @@ export default function LandscapeGuard({
                     <h2>Hãy xoay ngang màn hình!</h2>
 
                     <p>
-                        Boom chỉ có thể chơi ở chế độ màn hình ngang.
-                        Hãy xoay điện thoại sang ngang để tham gia
+                        Boom chỉ hỗ trợ chơi ở chế độ màn hình ngang.
+                        Hãy xoay điện thoại sang ngang để bắt đầu
                         trận chiến nhé!
                     </p>
 

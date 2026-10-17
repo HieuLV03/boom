@@ -14,9 +14,6 @@ import {
 import MainGame
     from "@/components/game/MainGame/MainGame";
 
-import LandscapeGuard
-    from "@/components/game/LandscapeGuard/LandscapeGuard";
-
 import {
     useMultiplayerStore,
 } from "@/stores/multiplayer.store";
@@ -111,9 +108,7 @@ function GamePageContent() {
     // ========================================================
 
     return (
-        <LandscapeGuard>
             <MainGame roomCode={roomCode} />
-        </LandscapeGuard>
     );
 }
 
