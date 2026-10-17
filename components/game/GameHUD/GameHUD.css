@@ -119,27 +119,52 @@
    ============================================================ */
 
 .game-hud__attack-position {
-    position: absolute;
-    right: 28px;
-    bottom: 180px;
-    pointer-events: auto;
-}
+    position: fixed;
 
-.game-hud__attack-button {
+    right: max(123px, env(safe-area-inset-right));
+    bottom: max(102px, env(safe-area-inset-bottom));
+
+    z-index: 1000;
+
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 76px;
-    height: 76px;
+
+    margin: 0;
     padding: 0;
-    border: 2px solid white;
-    border-radius: 50%;
-    color: white;
-    font-size: 13px;
-    font-weight: 800;
-    cursor: pointer;
+
+    pointer-events: none;
+}
+
+.game-hud__attack-button {
+    /* Giữ vị trí và thao tác cảm ứng */
+    pointer-events: auto;
     touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
+
+    /* Tạo nút hình tròn */
+    width: 88px;
+    height: 88px;
+    min-width: 88px;
+    min-height: 88px;
+    padding: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 3px solid rgba(255, 255, 255, 0.85);
+    border-radius: 50%;
+
+    color: white;
+    font-size: 15px;
+    font-weight: 800;
+
+    box-shadow:
+        0 0 0 4px rgba(255, 255, 255, 0.12),
+        0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .game-hud__attack-button--rifle {
@@ -190,16 +215,25 @@
    JUMP / CROUCH
    ============================================================ */
 
+/* ============================================================
+   JUMP / CROUCH — GÓC DƯỚI BÊN PHẢI
+   ============================================================ */
+
 .game-hud__movement-actions {
-    position: absolute;
-    right: 24px;
-    top: 50%;
-    transform: translateY(-50%);
+    position: fixed;
+
+    right: max(39px, env(safe-area-inset-right));
+    bottom: max(45px, env(safe-area-inset-bottom));
+
+    top: auto;
+    transform: none;
+
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 14px;
-    z-index: 100;
+    gap: 54px;
+
+    z-index: 1000;
     pointer-events: none;
 }
 
@@ -209,15 +243,19 @@
     align-items: center;
     justify-content: center;
     gap: 3px;
+
     width: 68px;
     height: 68px;
     padding: 0;
+
     border: 2px solid rgba(255, 255, 255, 0.65);
     border-radius: 50%;
     background: rgba(20, 25, 35, 0.78);
+
     color: white;
     font-size: 11px;
     font-weight: 800;
+
     cursor: pointer;
     pointer-events: auto;
     touch-action: none;
@@ -240,7 +278,6 @@
 .game-hud__action-button:active {
     transform: scale(0.92);
 }
-
 /* ============================================================
    PICKUP WEAPON
    ============================================================ */
@@ -350,4 +387,11 @@
 .game-hud__door-button:disabled {
     opacity: 0.65;
     cursor: wait;
+}
+
+@media (max-width: 900px) {
+    .game-hud__attack-position {
+        right: max(16px, env(safe-area-inset-right));
+        bottom: max(20px, env(safe-area-inset-bottom));
+    }
 }
