@@ -16,7 +16,7 @@ type Props = {
 export default function LandscapeGuard({
     children,
 }: Props) {
-    const [isPortrait, setIsPortrait] = useState(false);
+    const [isPortrait, setIsPortrait] = useState(true);
 
     useEffect(() => {
         function checkOrientation() {
@@ -49,7 +49,7 @@ export default function LandscapeGuard({
     if (isPortrait) {
         return (
             <div
-                className="boom-screen boom-portrait-warning"
+                className="boom-portrait-warning"
                 role="status"
             >
                 <div className="boom-rotate-content">
@@ -71,18 +71,21 @@ export default function LandscapeGuard({
                                 stroke="currentColor"
                                 strokeWidth="4"
                             />
+
                             <path
                                 d="M43 70H57"
                                 stroke="currentColor"
                                 strokeWidth="3"
                                 strokeLinecap="round"
                             />
+
                             <path
                                 d="M15 37C18 20 33 7 51 7"
                                 stroke="#FACC15"
                                 strokeWidth="4"
                                 strokeLinecap="round"
                             />
+
                             <path
                                 d="M43 1L53 7L45 16"
                                 stroke="#FACC15"
@@ -93,16 +96,17 @@ export default function LandscapeGuard({
                         </svg>
                     </div>
 
-                    <h2>Vui lòng xoay ngang điện thoại</h2>
+                    <h2>Hãy xoay ngang màn hình!</h2>
 
                     <p>
-                        Boom cần màn hình ngang để mang lại
-                        trải nghiệm chơi game tốt nhất.
+                        Boom chỉ có thể chơi ở chế độ màn hình ngang.
+                        Hãy xoay điện thoại sang ngang để tham gia
+                        trận chiến nhé!
                     </p>
 
                     <div className="boom-rotate-hint">
                         <span aria-hidden="true">↔</span>
-                        Xoay thiết bị sang chế độ ngang để tiếp tục
+                        Xoay điện thoại để tiếp tục chơi
                     </div>
                 </div>
             </div>

@@ -5,6 +5,7 @@ import {
     Suspense,
     useEffect,
 } from "react";
+
 import {
     useRouter,
     useSearchParams,
@@ -12,6 +13,9 @@ import {
 
 import MainGame
     from "@/components/game/MainGame/MainGame";
+
+import LandscapeGuard
+    from "@/components/game/LandscapeGuard/LandscapeGuard";
 
 import {
     useMultiplayerStore,
@@ -25,70 +29,38 @@ import "./page.css";
 // ============================================================
 
 function GamePageContent() {
+    const router = useRouter();
 
-    const router =
-        useRouter();
-
-
-    const searchParams =
-        useSearchParams();
-
+    const searchParams = useSearchParams();
 
     // ========================================================
     // ROOM CODE
     // ========================================================
 
-    const roomCode =
-        searchParams.get("code") || "";
-
+    const roomCode = searchParams.get("code") || "";
 
     // ========================================================
     // ROOM
     // ========================================================
 
-    const room =
-        useMultiplayerStore(
-            (state) =>
-                state.room
-        );
-
+    const room = useMultiplayerStore(
+        (state) => state.room
+    );
 
     // ========================================================
     // ROOM CHECK
     // ========================================================
-    //
-    // GamePage KHÔNG xử lý:
-
-    // - room.leave()
-    // - room.onLeave()
-    // - clearRoom()
-    //
-    //
-    // GamePage chỉ kiểm tra:
-    //
-    // Có room → chơi
-    // Không có room → về multiplayer
-    //
-    // ========================================================
 
     useEffect(() => {
-
         if (!room) {
-
             console.log(
                 "[GAME PAGE] ❌ No active room"
             );
 
-
-            router.replace(
-                "/multiplayer"
-            );
-
+            router.replace("/multiplayer");
 
             return;
-
         }
-
 
         console.log(
             "========================================"
@@ -116,41 +88,33 @@ function GamePageContent() {
         console.log(
             "========================================"
         );
-
     }, [
         room,
         roomCode,
         router,
     ]);
 
-
     // ========================================================
     // NO ROOM
     // ========================================================
 
     if (!room) {
-
         return (
             <div className="game-loading">
-
                 Đang quay về phòng...
-
             </div>
         );
-
     }
 
-
     // ========================================================
-    // GAME
+    // GAME + LANDSCAPE GUARD
     // ========================================================
 
     return (
-        <MainGame
-            roomCode={roomCode}
-        />
+        <LandscapeGuard>
+            <MainGame roomCode={roomCode} />
+        </LandscapeGuard>
     );
-
 }
 
 
@@ -159,23 +123,15 @@ function GamePageContent() {
 // ============================================================
 
 export default function GamePage() {
-
     return (
-
         <Suspense
             fallback={
                 <div className="game-loading">
-
                     Đang tải game...
-
                 </div>
             }
         >
-
             <GamePageContent />
-
         </Suspense>
-
     );
-
 }
