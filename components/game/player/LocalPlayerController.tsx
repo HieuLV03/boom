@@ -25,12 +25,7 @@ import { useJumpStore } from "@/stores/jump.store";
 import {
     getStateCallbacks,
 } from "@colyseus/sdk";
-import {
-    doorCellKey,
-} from "../../../shared/maps/doors";
-import {
-    getMapConfig,
-} from "../../../shared/maps/map-registry";
+
 import Player from "./Player";
 import { useCrosshairStore } from "@/stores/crosshair.store";
 import {
@@ -41,9 +36,6 @@ import {
     useMultiplayerStore,
 } from "@/stores/multiplayer.store";
 
-import {
-    moveWithWallCollision,
-} from "../../../shared/maps/grid-map";
 // ============================================================
 // CAMERA DIRECTION CACHE
 // ============================================================
@@ -169,28 +161,7 @@ const targetRotation = useRef(0);
     const isCrouching = useCrouchStore(
     (state) => state.crouching,
 );
-const getClosedDoorCells = (): Set<string> => {
-    const blocked = new Set<string>();
 
-    const doors = room?.state?.doors;
-
-    if (!doors) {
-        return blocked;
-    }
-
-    doors.forEach((door: any) => {
-        if (!door.open) {
-            blocked.add(
-                doorCellKey(
-                    Number(door.cellX),
-                    Number(door.cellZ),
-                ),
-            );
-        }
-    });
-
-    return blocked;
-};
 const jumpTrigger = useJumpStore(
     (state) => state.jumpTrigger,
 );
@@ -1631,9 +1602,9 @@ const targetSpeed = MAX_SPEED * strength;
 
             };
 
-   
+
         // ====================================================
-        // COLLISION + WALL SLIDING
+        // MOVEMENT - NO GRID COLLISION
         // ====================================================
 
         if (currentSpeed > 0.00000000000001) {
@@ -1643,48 +1614,8 @@ const targetSpeed = MAX_SPEED * strength;
             const dx = velocityX.current * delta;
             const dz = velocityZ.current * delta;
 
-            const targetX = currentX + dx;
-            const targetZ = currentZ + dz;
-const activeMap = getMapConfig(mapId);
-const blockedDoorCells = getClosedDoorCells();
-
-            // Chỉ xử lý va chạm một lần.
-            // Hàm này tự thử di chuyển chéo và trượt dọc tường.
-            const result = moveWithWallCollision(
-                    activeMap,
-                currentX,
-                currentZ,
-                targetX,
-                targetZ,
-                0.4,
-                blockedDoorCells,
-
-            );
-
-            player.position.x = result.x;
-            player.position.z = result.z;
-
-            const movedX =
-                Math.abs(result.x - currentX) > 0.00001;
-
-            const movedZ =
-                Math.abs(result.z - currentZ) > 0.00001;
-
-            // Nếu bị chặn hoàn toàn theo một trục,
-            // xóa vận tốc ở trục đó nhưng giữ vận tốc trượt.
-            if (
-                !movedX &&
-                Math.abs(dx) > 0.00001
-            ) {
-                velocityX.current = 0;
-            }
-
-            if (
-                !movedZ &&
-                Math.abs(dz) > 0.00001
-            ) {
-                velocityZ.current = 0;
-            }
+            player.position.x = currentX + dx;
+            player.position.z = currentZ + dz;
         }
 
 
