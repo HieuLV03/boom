@@ -22,7 +22,6 @@ export default function HospitalModel() {
 
         model.updateMatrixWorld(true);
 
-        // Đo kích thước model sau khi tải.
         const bounds = new THREE.Box3().setFromObject(model);
         const size = new THREE.Vector3();
         const center = new THREE.Vector3();
@@ -30,9 +29,9 @@ export default function HospitalModel() {
         bounds.getSize(size);
         bounds.getCenter(center);
 
+        console.log("[HospitalModel] Loaded:", MODEL_PATH);
         console.log("[HospitalModel] Size:", size);
         console.log("[HospitalModel] Center:", center);
-        console.log("[HospitalModel] Bounds:", bounds);
     }, [model]);
 
     return (

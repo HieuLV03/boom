@@ -4,21 +4,18 @@
 import TropicalVillage from "./tropical-village/TropicalVillage";
 import ZombieHouse from "./zombie-house/ZombieHouse";
 
-export type MapId =
-    | "tropical-village"
-    | "zombie-house";
+export type MapId = "tropical-village" | "zombie-house";
 
-type Props = {
+interface MapRendererProps {
     mapId: MapId;
-};
+}
 
-export default function MapRenderer({ mapId }: Props) {
-    switch (mapId) {
-        case "zombie-house":
-            return <ZombieHouse />;
-
-        case "tropical-village":
-        default:
-            return <TropicalVillage />;
+export default function MapRenderer({
+    mapId,
+}: MapRendererProps) {
+    if (mapId === "zombie-house") {
+        return <ZombieHouse />;
     }
+
+    return <TropicalVillage />;
 }

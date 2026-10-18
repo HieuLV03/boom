@@ -6,7 +6,7 @@ import HospitalModel from "./HospitalModel";
 
 export default function ZombieHouse() {
     return (
-        <group>
+        <group name="hospital-map">
             <Suspense fallback={null}>
                 <HospitalModel />
             </Suspense>
