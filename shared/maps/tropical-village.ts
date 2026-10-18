@@ -1,8 +1,12 @@
-import mapData from "./tropical-village.json";
+
+import mapData from "./tropical-village.json" with {
+    type: "json",
+};
+
 import {
     createGridMap,
     moveWithWallCollision as moveWithWallCollisionForMap,
-} from "./grid-map";
+} from "./grid-map.js";
 
 const tropicalVillage = createGridMap(mapData);
 
