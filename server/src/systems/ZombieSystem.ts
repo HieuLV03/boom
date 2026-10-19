@@ -5,7 +5,7 @@ import {
     ZombieState,
 } from "../schema/BattleState.js";
 
-import type { HospitalCollision } from "../maps/hospital-collision.js";
+import type { HospitalCollision } from "../../../shared/maps/hospital-collision.js";
 
 // ============================================================
 // CONFIG

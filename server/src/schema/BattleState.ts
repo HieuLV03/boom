@@ -108,10 +108,12 @@ export class WeaponPickupState extends Schema {
     @type("boolean")
     available: boolean = true;
 }
+
 export class DoorState extends Schema {
     @type("string")
     id: string = "";
 
+    // Giữ lại cho các map cũ dùng grid.
     @type("number")
     cellX: number = 0;
 
@@ -121,9 +123,24 @@ export class DoorState extends Schema {
     @type("string")
     axis: string = "x";
 
+    // Tọa độ cửa trên bệnh viện dựng bằng code.
+    @type("number")
+    x: number = 0;
+
+    @type("number")
+    y: number = 0;
+
+    @type("number")
+    z: number = 0;
+
+    @type("number")
+    floor: number = 0;
+
+    // false = đóng, true = mở.
     @type("boolean")
     open: boolean = false;
 }
+
 // ============================================================
 // ZOMBIE NPC
 // ============================================================

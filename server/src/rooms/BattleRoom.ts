@@ -3,9 +3,14 @@ import {
     Room,
     type RoomOptions,
 } from "colyseus";
-
-import { HospitalCollision } from "../maps/hospital-collision.js";
-
+import {
+    HOSPITAL_CONFIG as C,
+    HOSPITAL_DOOR_POSITIONS,
+} from "../../../shared/maps/hospital.config.js";
+import {
+    HospitalCollision,
+    hospitalDoorId,
+} from "../../../shared/maps/hospital-collision.js";
 import {
     BattleState,
     PlayerState,
@@ -197,6 +202,10 @@ this.onMessage("pickupWeapon", (client) => {
 
     let nearest: WeaponPickupState | null = null;
     let nearestDistance = Infinity;
+// ========================================================
+// INTERACT WITH HOSPITAL DOOR
+// ========================================================
+
 
     this.state.weaponPickups.forEach((pickup) => {
         if (!pickup.available) return;
@@ -255,7 +264,79 @@ this.onMessage("pickupWeapon", (client) => {
     );
 });
 
+this.onMessage("interactDoor", (client) => {
+    if (this.state.gameOver || !this.hospitalCollision) {
+        return;
+    }
 
+    const player = this.state.players.get(client.sessionId);
+
+    if (!player || !player.alive) {
+        return;
+    }
+
+    // Xác định tầng người chơi đang đứng.
+    const floor = Math.round(player.y / C.floorHeight);
+
+    if (floor < 0 || floor >= C.floors) {
+        return;
+    }
+
+    const doorRange = 2.2;
+    let nearestDoorId: string | null = null;
+    let nearestDistance = Infinity;
+
+    for (const side of [-1, 1]) {
+        const doorX = side * (C.corridorWidth / 2);
+
+        for (const doorZ of HOSPITAL_DOOR_POSITIONS) {
+            const distance = distanceXZ(
+                player.x,
+                player.z,
+                doorX,
+                doorZ,
+            );
+
+            if (
+                distance <= doorRange &&
+                distance < nearestDistance
+            ) {
+                nearestDistance = distance;
+                nearestDoorId = hospitalDoorId(
+                    floor,
+                    side,
+                    doorZ,
+                );
+            }
+        }
+    }
+
+    if (!nearestDoorId) {
+        client.send("doorInteractionFailed", {
+            reason: "too_far",
+        });
+        return;
+    }
+
+    const open = !this.hospitalCollision.isDoorOpen(
+        nearestDoorId,
+    );
+
+    this.hospitalCollision.setDoorOpen(
+        nearestDoorId,
+        open,
+    );
+
+    // Gửi trạng thái chính thức đến tất cả người chơi.
+    this.broadcast("doorStateChanged", {
+        doorId: nearestDoorId,
+        open,
+    });
+
+    console.log(
+        `[DOOR] ${player.name} ${open ? "opened" : "closed"} ${nearestDoorId}`,
+    );
+});
 
 this.onMessage("switchWeapon", (client, message) => {
     if (this.state.gameOver) return;
