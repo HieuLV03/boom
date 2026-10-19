@@ -21,7 +21,6 @@
     },
 
     "include": [
-        "src/**/*.ts",
-        "../shared/maps/grid-map.ts"
+        "src/**/*.ts"
     ]
 }

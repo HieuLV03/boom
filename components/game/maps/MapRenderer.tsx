@@ -1,21 +1,20 @@
 
 "use client";
 
-import TropicalVillage from "./tropical-village/TropicalVillage";
-import ZombieHouse from "./zombie-house/ZombieHouse";
+import HospitalModel from "./zombie-house/HospitalModel";
 
-export type MapId = "tropical-village" | "zombie-house";
+export type MapId = "hospital";
 
 interface MapRendererProps {
-    mapId: MapId;
+    mapId?: MapId;
 }
 
 export default function MapRenderer({
-    mapId,
+    mapId = "hospital",
 }: MapRendererProps) {
-    if (mapId === "zombie-house") {
-        return <ZombieHouse />;
+    if (mapId === "hospital") {
+        return <HospitalModel />;
     }
 
-    return <TropicalVillage />;
+    return null;
 }

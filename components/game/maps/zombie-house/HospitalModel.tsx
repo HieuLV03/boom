@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useMemo } from "react";
@@ -10,7 +9,14 @@ const MODEL_PATH = "/models/houses/test/test.glb";
 export default function HospitalModel() {
     const { scene } = useGLTF(MODEL_PATH);
 
-    const model = useMemo(() => scene.clone(true), [scene]);
+    const model = useMemo(() => {
+        const clone = scene.clone(true);
+
+        // Đánh dấu model để LocalPlayerController tìm thấy.
+        clone.userData.isHospitalModel = true;
+
+        return clone;
+    }, [scene]);
 
     useEffect(() => {
         model.traverse((object) => {
@@ -32,6 +38,10 @@ export default function HospitalModel() {
         console.log("[HospitalModel] Loaded:", MODEL_PATH);
         console.log("[HospitalModel] Size:", size);
         console.log("[HospitalModel] Center:", center);
+        console.log(
+            "[HospitalModel] Collision marker:",
+            model.userData.isHospitalModel,
+        );
     }, [model]);
 
     return (

@@ -12,6 +12,8 @@ import {
     useThree,
 } from "@react-three/fiber";
 import { useRunStore } from "@/stores/run.store";
+
+import * as THREE from "three";
 import {
     Vector2,
     Vector3,
@@ -78,10 +80,10 @@ export default function LocalPlayerController({
     playerRef,
 }: Props) {
 
-    const {
-        camera,
-    } = useThree();
+const { camera, scene } = useThree();
 
+const collisionRaycasterRef = useRef(new Raycaster());
+const hospitalModelRef = useRef<Object3D | null>(null);
 const running = useRunStore((state) => state.running);
 
     // ========================================================
@@ -1033,7 +1035,93 @@ targetRotation.current = player.rotation.y;
         playerRef,
     ]);
 
+useEffect(() => {
+    let hospital: Object3D | null = null;
 
+    scene.traverse((object) => {
+        if (object.userData.isHospitalModel === true) {
+            hospital = object;
+        }
+    });
+
+    hospitalModelRef.current = hospital;
+
+    console.log(
+        "[Collision] Hospital found:",
+        hospitalModelRef.current !== null,
+    );
+
+    return () => {
+        hospitalModelRef.current = null;
+    };
+}, [scene]);
+
+const canMoveAgainstHospital = (
+    targetX: number,
+    targetZ: number,
+    feetY: number,
+    radius = 0.4,
+): boolean => {
+    const hospital = hospitalModelRef.current;
+    const player = playerRef.current;
+
+    if (!hospital || !player) return true;
+
+    hospital.updateMatrixWorld(true);
+
+    const dx = targetX - player.position.x;
+    const dz = targetZ - player.position.z;
+    const distance = Math.hypot(dx, dz);
+
+    if (distance < 0.0001) return true;
+
+    const direction = new Vector3(
+        dx / distance,
+        0,
+        dz / distance,
+    );
+
+    const perpendicular = new Vector3(
+        -direction.z,
+        0,
+        direction.x,
+    );
+
+    const raycaster = collisionRaycasterRef.current;
+    const sideOffsets = [-radius, 0, radius];
+    const heights = [0.35, 0.9, 1.45];
+
+    for (const side of sideOffsets) {
+        for (const height of heights) {
+            const origin = new Vector3(
+                player.position.x + perpendicular.x * side,
+                feetY + height,
+                player.position.z + perpendicular.z * side,
+            );
+
+            raycaster.set(origin, direction);
+            raycaster.near = 0.01;
+            raycaster.far = distance + radius;
+
+            const hits = raycaster.intersectObject(hospital, true);
+
+            // Bỏ qua các mesh nằm dưới chân nhân vật.
+            const wallHit = hits.some((hit) => {
+                const object = hit.object;
+
+                if (!(object instanceof THREE.Mesh)) {
+                    return false;
+                }
+
+                return Math.abs(hit.point.y - (feetY + height)) < 0.8;
+            });
+
+            if (wallHit) return false;
+        }
+    }
+
+    return true;
+};
     // ========================================================
     // MOVEMENT
     // ========================================================
@@ -1602,23 +1690,50 @@ const targetSpeed = MAX_SPEED * strength;
 
             };
 
+// ====================================================
+// MOVEMENT - CHECK SERVER COLLISION BOXES
+// ====================================================
 
-        // ====================================================
-        // MOVEMENT - NO GRID COLLISION
-        // ====================================================
+// ====================================================
+// MOVEMENT - HOSPITAL COLLISION
+// ====================================================
 
-        if (currentSpeed > 0.00000000000001) {
-            const currentX = player.position.x;
-            const currentZ = player.position.z;
+const currentX = player.position.x;
+const currentZ = player.position.z;
 
-            const dx = velocityX.current * delta;
-            const dz = velocityZ.current * delta;
+const dx = velocityX.current * delta;
+const dz = velocityZ.current * delta;
 
-            player.position.x = currentX + dx;
-            player.position.z = currentZ + dz;
-        }
+const targetX = currentX + dx;
+const targetZ = currentZ + dz;
 
+// Kiểm tra X riêng để nhân vật có thể trượt dọc tường.
+if (
+    Math.abs(dx) > 0.0001 &&
+    canMoveAgainstHospital(
+        targetX,
+        currentZ,
+        player.position.y,
+        PLAYER_RADIUS,
+    ) &&
+    canMoveAroundBombs(targetX, currentZ)
+) {
+    player.position.x = targetX;
+}
 
+// Kiểm tra Z sau khi xử lý X.
+if (
+    Math.abs(dz) > 0.0001 &&
+    canMoveAgainstHospital(
+        player.position.x,
+        targetZ,
+        player.position.y,
+        PLAYER_RADIUS,
+    ) &&
+    canMoveAroundBombs(player.position.x, targetZ)
+) {
+    player.position.z = targetZ;
+}
 
    // ====================================================
 // MOVEMENT ANIMATION

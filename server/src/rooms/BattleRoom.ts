@@ -4,20 +4,22 @@ import {
     type RoomOptions,
 } from "colyseus";
 
+import { HospitalCollision } from "../maps/hospital-collision.js";
+
 import {
     BattleState,
     PlayerState,
     BombState,
-        WeaponPickupState,
+    WeaponPickupState,
     ZombieState,
-
 } from "../schema/BattleState.js";
+
 import { ZombieSystem } from "../systems/ZombieSystem.js";
+
 import {
-    getMapConfig,
+    isMapId,
     type MapId,
 } from "../maps/map.config.js";
-
 
 // ============================================================
 // TYPES
@@ -111,15 +113,14 @@ export class BattleRoom extends Room<{
     private hostSessionId:
         string | null = null;
 
-private zombieSystem!: ZombieSystem;
-    // ========================================================
-    // MAP
-    // ========================================================
+private zombieSystem: ZombieSystem | null = null;
 
+private mapId: MapId = "zombie-house";
 
-    private mapId: MapId =
-        "tropical-village";
+private hospitalCollision: HospitalCollision | null = null;
+
 private lastAttackAt = new Map<string, number>();
+
 // ============================================================
 // JUMPSCARE OBJECT
 // ============================================================
@@ -139,9 +140,36 @@ private readonly scareObjectRadius = 1.05;
     // CREATE
     // ========================================================
 
-    onCreate(
-        options: BattleRoomOptions
-    ) {
+async onCreate(
+    options: BattleRoomOptions
+) {
+    
+this.mapId = isMapId(options?.mapId)
+    ? options.mapId
+    : "zombie-house";
+
+this.hospitalCollision = await HospitalCollision.load();
+
+const spawnPoints = this.hospitalCollision.getSpawnPoints();
+
+if (spawnPoints.length === 0) {
+    throw new Error(
+        "[ROOM] Bệnh viện GLB chưa có spawn marker SPAWN_.",
+    );
+}
+
+console.log(
+    `[ROOM] Hospital collision ready: ${
+        this.hospitalCollision.getCollisionBoxes().length
+    } boxes`,
+);
+
+console.log(
+    `[ROOM] Hospital spawn points: ${spawnPoints.length}`,
+);
+
+console.log(`[ROOM] Map: ${this.mapId}`);
+
 
         console.log("");
 
@@ -698,67 +726,28 @@ this.broadcast("attackPerformed", {
 });
 });
         // ====================================================
-        // MAP
+    
         // ====================================================
-
-        const requestedMapId =
-            options?.mapId ??
-            "tropical-village";
-
-
-        const map =
-            getMapConfig(
-                requestedMapId
-            );
-
-
-        if (!map) {
-
-            console.error(
-                `[ROOM] ❌ Invalid map: ${requestedMapId}`
-            );
-
-            this.mapId =
-                "tropical-village";
-
-        }
-        else {
-
-            this.mapId =
-                requestedMapId;
-
-        }
-
-
-        // ====================================================
-        // SAVE MAP TO STATE
-        // ====================================================
-
-        this.state.mapId =
-            this.mapId;
-// ====================================================
-// INITIALIZE DOORS
+// HOSPITAL GLB: ZOMBIE SYSTEM
 // ====================================================
 
-// ====================================================
-// ZOMBIE SYSTEM
-// Phải khởi tạo sau khi đã xác định mapId.
-// ====================================================
+if (!this.hospitalCollision) {
+    throw new Error(
+        "[ROOM] HospitalCollision chưa được khởi tạo.",
+    );
+}
 
 this.zombieSystem = new ZombieSystem({
     state: this.state,
-    mapId: this.mapId,
+    hospitalCollision: this.hospitalCollision,
 
-getClosedDoorCells: () => new Set<string>(),
+    respawnPlayer: (sessionId) => {
+        this.respawnPlayer(sessionId);
+    },
 
-    getRandomWalkablePosition: () =>
-        this.getRandomWalkablePosition(),
-
-    respawnPlayer: (sessionId) =>
-        this.respawnPlayer(sessionId),
-
-    broadcast: (type, message) =>
-        this.broadcast(type, message),
+    broadcast: (type, message) => {
+        this.broadcast(type, message);
+    },
 
     setTimeout: (callback, ms) => {
         this.clock.setTimeout(callback, ms);
@@ -768,26 +757,13 @@ getClosedDoorCells: () => new Set<string>(),
 this.zombieSystem.initialize();
 
 this.clock.setInterval(() => {
-    this.zombieSystem.update(this.state.gameOver);
+    this.zombieSystem?.update(this.state.gameOver);
 }, 100);
 
-console.log(`[ROOM] Zombie system ready for map: ${this.mapId}`);
+console.log(
+    `[ROOM] GLB zombie system ready: ${this.mapId}`,
+);
 
-
-
-for (let i = 0; i < 3; i++) {
-    const position = this.getRandomWalkablePosition();
-    const pickup = new WeaponPickupState();
-
-    pickup.id = `rifle-${i + 1}`;
-    pickup.weaponType = "rifle";
-    pickup.x = position.x;
-    pickup.y = 0;
-    pickup.z = position.z;
-    pickup.available = true;
-
-    this.state.weaponPickups.set(pickup.id, pickup);
-}
 // ====================================================
 // ZOMBIE AI
 // ====================================================
@@ -968,15 +944,6 @@ this.onMessage(
                 : player.rotation;
 
 
-        // ==================================================
-        // MAP
-        // ==================================================
-
-        const map =
-            getMapConfig(
-                this.mapId
-            );
-
 
         // ==================================================
         // SERVER-SIDE MOVEMENT
@@ -999,11 +966,27 @@ let finalZ = player.z;
 const startX = player.x;
 const startZ = player.z;
 
-const blockedDoorCells = new Set<string>();
+const canMoveTo = (
+    x: number,
+    z: number,
+): boolean => {
+    if (!this.hospitalCollision) {
+        return false;
+    }
+
+    return this.hospitalCollision.canMoveTo(
+        x,
+        z,
+        0.4,
+        player.y,
+        1.8,
+    );
+};
+
 let deltaX = requestedX - startX;
 let deltaZ = requestedZ - startZ;
 
-// Giới hạn quãng đường mỗi message để tránh dịch chuyển bất thường.
+// Giới hạn quãng đường mỗi message.
 const maxMovePerMessage = 1.0;
 const distance = Math.hypot(deltaX, deltaZ);
 
@@ -1013,11 +996,14 @@ if (distance > maxMovePerMessage) {
     deltaZ *= scale;
 }
 
-// Chia nhỏ bước di chuyển để tránh vượt qua cửa đóng.
+// Chia nhỏ bước để kiểm tra va chạm.
 const maxStep = 0.1;
+
 const steps = Math.max(
     1,
-    Math.ceil(Math.hypot(deltaX, deltaZ) / maxStep),
+    Math.ceil(
+        Math.hypot(deltaX, deltaZ) / maxStep,
+    ),
 );
 
 const stepX = deltaX / steps;
@@ -1026,15 +1012,33 @@ const stepZ = deltaZ / steps;
 for (let i = 0; i < steps; i++) {
     const nextX = finalX + stepX;
 
-    if (map.canMoveTo(nextX, finalZ, 0.4, blockedDoorCells)) {
+    if (canMoveTo(nextX, finalZ)) {
         finalX = nextX;
     }
 
     const nextZ = finalZ + stepZ;
 
-    if (map.canMoveTo(finalX, nextZ, 0.4, blockedDoorCells)) {
+    if (canMoveTo(finalX, nextZ)) {
         finalZ = nextZ;
     }
+}
+
+const movedX = finalX - startX;
+const movedZ = finalZ - startZ;
+
+player.moving =
+    Math.abs(movedX) > 0.001 ||
+    Math.abs(movedZ) > 0.001;
+
+player.x = finalX;
+player.y = requestedY;
+player.z = finalZ;
+player.rotation = requestedRotation;
+
+const nextZ = finalZ + stepZ;
+
+if (canMoveTo(finalX, nextZ)) {
+    finalZ = nextZ;
 }
 
 const dx = finalX - startX;
@@ -1353,267 +1357,79 @@ player.rotation = requestedRotation;
 
     }
 
-private getRandomWalkablePosition() {
-    const map = getMapConfig(this.mapId);
-
-    const {
-        CELL_SIZE,
-        MAP_WIDTH,
-        MAP_HEIGHT,
-    } = map;
-
-    const centerX = Math.floor(MAP_WIDTH / 2);
-    const centerZ = Math.floor(MAP_HEIGHT / 2);
-
-    const candidates: { x: number; y: number; z: number }[] = [];
-
-    for (let cellZ = 0; cellZ < MAP_HEIGHT; cellZ++) {
-        for (let cellX = 0; cellX < MAP_WIDTH; cellX++) {
-            const x = (cellX - centerX) * CELL_SIZE;
-            const z = (cellZ - centerZ) * CELL_SIZE;
-
-            if (!map.canMoveTo(x, z)) continue;
-
-            // Tránh đặt súng quá gần nhau.
-            let tooClose = false;
-
-            this.state.weaponPickups.forEach((pickup) => {
-                if (distanceXZ(x, z, pickup.x, pickup.z) < 4) {
-                    tooClose = true;
-                }
-            });
-
-            if (!tooClose) {
-                candidates.push({ x, y: 0, z });
-            }
-        }
-    }
-
-    if (candidates.length === 0) {
-        return { x: 0, y: 0, z: 0 };
-    }
-
-    return candidates[
-        Math.floor(Math.random() * candidates.length)
-    ];
-}
 
 
     // ========================================================
     // GET RANDOM SPAWN POSITION
     // ========================================================
 
-    private getRandomSpawnPosition() {
-
-        const map =
-            getMapConfig(
-                this.mapId
-            );
-
-
-        const {
-            CELL_SIZE,
-            MAP_WIDTH,
-            MAP_HEIGHT,
-            MAZE_MAP,
-        } = map;
-
-
-        const mapCenterX =
-            Math.floor(
-                MAP_WIDTH / 2
-            );
-
-
-        const mapCenterZ =
-            Math.floor(
-                MAP_HEIGHT / 2
-            );
-
-
-        const spawnPoints: {
-            x: number;
-            y: number;
-            z: number;
-        }[] = [];
-
-
-        // ====================================================
-        // FIND ALL P CELLS
-        // ====================================================
-
-        for (
-            let cellZ = 0;
-            cellZ < MAZE_MAP.length;
-            cellZ++
-        ) {
-
-            const row =
-                MAZE_MAP[cellZ];
-
-
-            for (
-                let cellX = 0;
-                cellX < row.length;
-                cellX++
-            ) {
-
-                if (
-                    row[cellX] !== "P"
-                ) {
-                    continue;
-                }
-
-
-                const x =
-                    (
-                        cellX -
-                        mapCenterX
-                    ) *
-                    CELL_SIZE;
-
-
-                const z =
-                    (
-                        cellZ -
-                        mapCenterZ
-                    ) *
-                    CELL_SIZE;
-
-
-                spawnPoints.push({
-                    x,
-                    y: 0,
-                    z,
-                });
-
-            }
-
-        }
-
-
-        // ====================================================
-        // NO SPAWN
-        // ====================================================
-
-        if (
-            spawnPoints.length === 0
-        ) {
-
-            console.error(
-                `[SPAWN] ❌ No P spawn points in map: ${this.mapId}`
-            );
-
-
-            return {
-                x: 0,
-                y: 0,
-                z: 0,
-            };
-
-        }
-
-
-        // ====================================================
-        // AVOID PLAYERS
-        // ====================================================
-
-        const MIN_DISTANCE =
-            4;
-
-
-        const safeSpawnPoints =
-            spawnPoints.filter(
-                (
-                    spawn
-                ) => {
-
-                    for (
-                        const player
-                        of this.state.players.values()
-                    ) {
-
-                        if (
-                            !player.alive
-                        ) {
-                            continue;
-                        }
-
-
-                        const distance =
-                            distanceXZ(
-                                spawn.x,
-                                spawn.z,
-                                player.x,
-                                player.z
-                            );
-
-
-                        if (
-                            distance <
-                            MIN_DISTANCE
-                        ) {
-
-                            return false;
-
-                        }
-
-                    }
-
-
-                    return true;
-
-                }
-            );
-
-
-        const candidates =
-            safeSpawnPoints.length > 0
-                ? safeSpawnPoints
-                : spawnPoints;
-
-
-        const index =
-            Math.floor(
-                Math.random() *
-                candidates.length
-            );
-
-
-        const spawn =
-            candidates[index];
-
-
-        console.log(
-            "[SPAWN] Selected:",
-            {
-                map:
-                    this.mapId,
-
-                x:
-                    spawn.x,
-
-                y:
-                    spawn.y,
-
-                z:
-                    spawn.z,
-
-                safe:
-                    safeSpawnPoints.length > 0,
-
-                total:
-                    spawnPoints.length,
-
-                safeCount:
-                    safeSpawnPoints.length,
-            }
+  private getRandomSpawnPosition(): {
+    x: number;
+    y: number;
+    z: number;
+} {
+    if (!this.hospitalCollision) {
+        throw new Error(
+            "[SPAWN] HospitalCollision chưa được khởi tạo.",
         );
-
-
-        return spawn;
-
     }
+
+    const spawnPoints =
+        this.hospitalCollision.getSpawnPoints();
+
+    if (spawnPoints.length === 0) {
+        throw new Error(
+            "[SPAWN] Hospital GLB chưa có marker SPAWN_.",
+        );
+    }
+
+    const safeSpawnPoints = spawnPoints.filter(
+        (spawn) => {
+            for (const player of this.state.players.values()) {
+                if (!player.alive) continue;
+
+                const distance = distanceXZ(
+                    spawn.position.x,
+                    spawn.position.z,
+                    player.x,
+                    player.z,
+                );
+
+                if (distance < 4) {
+                    return false;
+                }
+            }
+
+            return true;
+        },
+    );
+
+    const candidates =
+        safeSpawnPoints.length > 0
+            ? safeSpawnPoints
+            : spawnPoints;
+
+    const selected =
+        candidates[
+            Math.floor(
+                Math.random() * candidates.length,
+            )
+        ];
+
+    const position = {
+        ...selected.position,
+    };
+
+    console.log("[SPAWN] Hospital GLB:", {
+        x: position.x,
+        y: position.y,
+        z: position.z,
+        safe: safeSpawnPoints.length > 0,
+        total: spawnPoints.length,
+    });
+
+    return position;
+}
 
 
     // ========================================================
