@@ -1,8 +1,5 @@
-import tropicalVillageData from "../../../shared/maps/tropical-village.json" with {
-    type: "json",
-};
 
-import zombieHouseData from "../../../shared/maps/zombie-house.json" with {
+import tropicalVillageData from "../../../shared/maps/tropical-village.json" with {
     type: "json",
 };
 
@@ -10,7 +7,6 @@ import { createGridMap } from "../../../shared/maps/grid-map.js";
 
 export const MAPS = {
     "tropical-village": createGridMap(tropicalVillageData),
-    "zombie-house": createGridMap(zombieHouseData),
 } as const;
 
 export type MapId = keyof typeof MAPS;

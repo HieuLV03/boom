@@ -12,8 +12,6 @@ import {
     type MapId,
 } from "../maps/map.config.js";
 
-import { doorCellKey } from "../../../shared/maps/doors.js";
-
 // ============================================================
 // CONFIG
 // ============================================================
@@ -572,17 +570,7 @@ export class ZombieSystem {
                 }
 
                 // Không đi xuyên cửa đang đóng.
-                if (
-                    blockedDoors.has(
-                        doorCellKey(
-                            nextX,
-                            nextZ,
-                        ),
-                    )
-                ) {
-                    continue;
-                }
-
+              
                 const nextKey = cellKey(
                     nextX,
                     nextZ,

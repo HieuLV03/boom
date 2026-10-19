@@ -3,15 +3,13 @@ import {
     Room,
     type RoomOptions,
 } from "colyseus";
-import { doorCellKey,    ZOMBIE_HOUSE_DOORS,
- } from "../../../shared/maps/doors.js";
+
 import {
     BattleState,
     PlayerState,
     BombState,
         WeaponPickupState,
-DoorState,
-ZombieState,
+    ZombieState,
 
 } from "../schema/BattleState.js";
 import { ZombieSystem } from "../systems/ZombieSystem.js";
@@ -118,33 +116,6 @@ private zombieSystem!: ZombieSystem;
     // MAP
     // ========================================================
 
-private initializeDoors(): void {
-    // Xóa dữ liệu cửa cũ trước khi khởi tạo.
-    this.state.doors.clear();
-
-    // Chỉ tạo cửa cho map nhà zombie.
-    // Nếu map.config.ts sử dụng ID khác, đổi "zombie-house"
-    // thành đúng ID của map đó.
-    if (String(this.mapId) !== "zombie-house") {
-        return;
-    }
-
-    for (const config of ZOMBIE_HOUSE_DOORS) {
-        const door = new DoorState();
-
-        door.id = config.id;
-        door.cellX = config.cellX;
-        door.cellZ = config.cellZ;
-        door.axis = config.axis;
-        door.open = false;
-
-        this.state.doors.set(door.id, door);
-    }
-
-    console.log(
-        `[DOOR] Initialized ${this.state.doors.size} doors for map ${this.mapId}`,
-    );
-}
 
     private mapId: MapId =
         "tropical-village";
@@ -161,23 +132,6 @@ private readonly scareObjectPosition = {
     y: 1.2,
     z: 0,
 };
-
-private getClosedDoorCells(): Set<string> {
-    const blocked = new Set<string>();
-
-    this.state.doors.forEach((door) => {
-        if (!door.open) {
-            blocked.add(
-                doorCellKey(
-                    door.cellX,
-                    door.cellZ,
-                ),
-            );
-        }
-    });
-
-    return blocked;
-}
 
 
 private readonly scareObjectRadius = 1.05;
@@ -786,8 +740,6 @@ this.broadcast("attackPerformed", {
 // INITIALIZE DOORS
 // ====================================================
 
-this.initializeDoors();
-
 // ====================================================
 // ZOMBIE SYSTEM
 // Phải khởi tạo sau khi đã xác định mapId.
@@ -797,8 +749,7 @@ this.zombieSystem = new ZombieSystem({
     state: this.state,
     mapId: this.mapId,
 
-    getClosedDoorCells: () =>
-        this.getClosedDoorCells(),
+getClosedDoorCells: () => new Set<string>(),
 
     getRandomWalkablePosition: () =>
         this.getRandomWalkablePosition(),
@@ -822,89 +773,7 @@ this.clock.setInterval(() => {
 
 console.log(`[ROOM] Zombie system ready for map: ${this.mapId}`);
 
-const interactDoor = (client: Client) => {
-    if (this.state.gameOver) return;
 
-    const player = this.state.players.get(client.sessionId);
-
-    if (!player || !player.alive) return;
-
-    if (this.state.doors.size === 0) {
-        client.send("doorInteractionResult", {
-            success: false,
-            reason: "no-doors",
-        });
-        return;
-    }
-
-    const map = getMapConfig(this.mapId);
-
-    let nearestDoor: DoorState | null = null;
-    let nearestDistance = Infinity;
-
-    this.state.doors.forEach((door) => {
-        const position = map.cellToWorld(
-            door.cellX,
-            door.cellZ,
-        );
-
-        const distance = distanceXZ(
-            player.x,
-            player.z,
-            position.x,
-            position.z,
-        );
-
-        if (distance < nearestDistance) {
-            nearestDistance = distance;
-            nearestDoor = door;
-        }
-    });
-
-    const INTERACTION_DISTANCE = 2.2;
-
-    if (
-        !nearestDoor ||
-        nearestDistance > INTERACTION_DISTANCE
-    ) {
-        client.send("doorInteractionResult", {
-            success: false,
-            reason: "too-far",
-        });
-        return;
-    }
-
-    const door = nearestDoor as DoorState;
-
-    // Đổi trạng thái cửa. Schema sẽ đồng bộ trạng thái mới
-    // đến tất cả client đang ở trong room.
-    door.open = !door.open;
-
-    this.broadcast("doorUpdated", {
-        id: door.id,
-        open: door.open,
-    });
-
-    client.send("doorInteractionResult", {
-        success: true,
-        id: door.id,
-        open: door.open,
-    });
-
-    console.log(
-        `[DOOR] ${player.name} ${door.open ? "opened" : "closed"} ${door.id}`,
-    );
-};
-
-// Tên message mà nút tương tác phía client sẽ gửi.
-this.onMessage("interactDoor", (client) => {
-    interactDoor(client);
-});
-
-// Hỗ trợ thêm tên message này nếu client hiện tại đang dùng openDoor.
-this.onMessage("openDoor", (client) => {
-    interactDoor(client);
-});
 
 for (let i = 0; i < 3; i++) {
     const position = this.getRandomWalkablePosition();
@@ -1130,8 +999,7 @@ let finalZ = player.z;
 const startX = player.x;
 const startZ = player.z;
 
-const blockedDoorCells = this.getClosedDoorCells();
-
+const blockedDoorCells = new Set<string>();
 let deltaX = requestedX - startX;
 let deltaZ = requestedZ - startZ;
 
