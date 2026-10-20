@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -9,7 +8,7 @@ import { useMultiplayerStore } from "@/stores/multiplayer.store";
 
 import "./page.css";
 
-type MapId = "tropical-village" | "zombie-house";
+type MapId = "hospital";
 
 function generateRoomCode(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -24,8 +23,7 @@ export default function MultiplayerPage() {
 
     const [name, setName] = useState("");
     const [roomCode, setRoomCode] = useState("");
-    const [selectedMap, setSelectedMap] =
-        useState<MapId>("tropical-village");
+    const [selectedMap] = useState<MapId>("hospital");
     const [status, setStatus] = useState("Sẵn sàng chơi");
     const [loading, setLoading] = useState(false);
 
@@ -112,7 +110,6 @@ export default function MultiplayerPage() {
                 </header>
 
                 <div className="multiplayer-content">
-                    {/* LEFT: PLAYER + MAP */}
                     <section className="multiplayer-setup">
                         <label
                             className="multiplayer-label"
@@ -136,88 +133,39 @@ export default function MultiplayerPage() {
                         <div className="map-selection">
                             <div className="section-heading">
                                 <span className="section-number">01</span>
-                                <h3>Chọn bản đồ</h3>
+                                <h3>Bản đồ trận đấu</h3>
                             </div>
 
                             <div className="map-selection-list">
-                                <button
-                                    type="button"
-                                    className={`map-option map-option-village ${
-                                        selectedMap === "tropical-village"
-                                            ? "map-option-selected"
-                                            : ""
-                                    }`}
-                                    aria-pressed={
-                                        selectedMap === "tropical-village"
-                                    }
-                                    onClick={() =>
-                                        setSelectedMap("tropical-village")
-                                    }
-                                    disabled={loading}
+                                <div
+                                    className="map-option map-option-zombie map-option-selected"
+                                    aria-current="true"
                                 >
                                     <span className="map-option-icon">
-                                        🌴
+                                        🏥
                                     </span>
 
                                     <span className="map-option-info">
                                         <span className="map-option-name">
-                                            Tropical Village
+                                            Haunted Hospital
                                         </span>
                                         <span className="map-option-description">
-                                            Làng nhiệt đới
+                                            Bệnh viện ma ám · GLB 3D
                                         </span>
                                     </span>
 
                                     <span className="map-option-radio">
-                                        {selectedMap === "tropical-village"
-                                            ? "✓"
-                                            : ""}
+                                        ✓
                                     </span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className={`map-option map-option-zombie ${
-                                        selectedMap === "zombie-house"
-                                            ? "map-option-selected"
-                                            : ""
-                                    }`}
-                                    aria-pressed={
-                                        selectedMap === "zombie-house"
-                                    }
-                                    onClick={() =>
-                                        setSelectedMap("zombie-house")
-                                    }
-                                    disabled={loading}
-                                >
-                                    <span className="map-option-icon">
-                                        🧟
-                                    </span>
-
-                                    <span className="map-option-info">
-                                        <span className="map-option-name">
-                                            Zombie House
-                                        </span>
-                                        <span className="map-option-description">
-                                            Ngôi nhà kinh dị
-                                        </span>
-                                    </span>
-
-                                    <span className="map-option-radio">
-                                        {selectedMap === "zombie-house"
-                                            ? "✓"
-                                            : ""}
-                                    </span>
-                                </button>
+                                </div>
                             </div>
 
                             <p className="map-selection-hint">
-                                Bản đồ do chủ phòng lựa chọn.
+                                Tất cả người chơi sẽ vào bản đồ bệnh viện.
                             </p>
                         </div>
                     </section>
 
-                    {/* RIGHT: CREATE / JOIN */}
                     <section className="multiplayer-actions">
                         <div className="action-block">
                             <div className="section-heading">
@@ -251,6 +199,10 @@ export default function MultiplayerPage() {
                                 <span className="section-number">03</span>
                                 <h3>Tham gia phòng</h3>
                             </div>
+
+                            <p className="action-description">
+                                Nhập mã phòng của bạn bè để tiếp tục.
+                            </p>
 
                             <form
                                 className="join-form"

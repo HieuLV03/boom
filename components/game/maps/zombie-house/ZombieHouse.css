@@ -1,9 +1,0 @@
-/* Phong cách riêng cho khu vực nhà zombie.
-   Phần hình học 3D được dựng trong ZombieHouse.tsx. */
-
-.zombie-house {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-}

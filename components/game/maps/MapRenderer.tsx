@@ -1,7 +1,7 @@
 
 "use client";
 
-import HospitalModel from "./zombie-house/HospitalModel";
+import HospitalModel from "./HospitalModel";
 
 export type MapId = "hospital";
 
