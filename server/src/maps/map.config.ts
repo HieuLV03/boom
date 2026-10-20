@@ -1,6 +1,6 @@
 
-export type MapId = "zombie-house";
+export type MapId = "hospital";
 
 export function isMapId(value: unknown): value is MapId {
-    return value === "zombie-house";
+    return value === "hospital";
 }

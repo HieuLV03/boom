@@ -3,13 +3,9 @@ import {
     Room,
     type RoomOptions,
 } from "colyseus";
-import {
-    HOSPITAL_CONFIG as C,
-    HOSPITAL_DOOR_POSITIONS,
-} from "../../../shared/maps/hospital.config.js";
+import { HOSPITAL_CONFIG as C } from "../../../shared/maps/hospital.config.js";
 import {
     HospitalCollision,
-    hospitalDoorId,
 } from "../../../shared/maps/hospital-collision.js";
 import {
     BattleState,
@@ -120,8 +116,7 @@ export class BattleRoom extends Room<{
 
 private zombieSystem: ZombieSystem | null = null;
 
-private mapId: MapId = "zombie-house";
-
+private mapId: MapId = "hospital";
 private hospitalCollision: HospitalCollision | null = null;
 
 private lastAttackAt = new Map<string, number>();
@@ -151,7 +146,7 @@ async onCreate(
     
 this.mapId = isMapId(options?.mapId)
     ? options.mapId
-    : "zombie-house";
+    : "hospital";
 
 this.hospitalCollision = await HospitalCollision.load();
 
@@ -261,80 +256,6 @@ this.onMessage("pickupWeapon", (client) => {
 
     console.log(
         `[WEAPON] ${player.name} picked up ${pickup.weaponType} in slot ${slot}`,
-    );
-});
-
-this.onMessage("interactDoor", (client) => {
-    if (this.state.gameOver || !this.hospitalCollision) {
-        return;
-    }
-
-    const player = this.state.players.get(client.sessionId);
-
-    if (!player || !player.alive) {
-        return;
-    }
-
-    // Xác định tầng người chơi đang đứng.
-    const floor = Math.round(player.y / C.floorHeight);
-
-    if (floor < 0 || floor >= C.floors) {
-        return;
-    }
-
-    const doorRange = 2.2;
-    let nearestDoorId: string | null = null;
-    let nearestDistance = Infinity;
-
-    for (const side of [-1, 1]) {
-        const doorX = side * (C.corridorWidth / 2);
-
-        for (const doorZ of HOSPITAL_DOOR_POSITIONS) {
-            const distance = distanceXZ(
-                player.x,
-                player.z,
-                doorX,
-                doorZ,
-            );
-
-            if (
-                distance <= doorRange &&
-                distance < nearestDistance
-            ) {
-                nearestDistance = distance;
-                nearestDoorId = hospitalDoorId(
-                    floor,
-                    side,
-                    doorZ,
-                );
-            }
-        }
-    }
-
-    if (!nearestDoorId) {
-        client.send("doorInteractionFailed", {
-            reason: "too_far",
-        });
-        return;
-    }
-
-    const open = !this.hospitalCollision.isDoorOpen(
-        nearestDoorId,
-    );
-
-    this.hospitalCollision.setDoorOpen(
-        nearestDoorId,
-        open,
-    );
-
-    // Gửi trạng thái chính thức đến tất cả người chơi.
-    this.broadcast("doorStateChanged", {
-        doorId: nearestDoorId,
-        open,
-    });
-
-    console.log(
-        `[DOOR] ${player.name} ${open ? "opened" : "closed"} ${nearestDoorId}`,
     );
 });
 
@@ -963,178 +884,101 @@ console.log(
 // MOVE
 // ====================================================
 
-this.onMessage(
-    "move",
-    (
-        client,
-        message
-    ) => {
 
-        if (
-            this.state.gameOver
-        ) {
-            return;
-        }
+this.onMessage("move", (client, message) => {
+    if (this.state.gameOver) return;
 
+    const player = this.state.players.get(client.sessionId);
+    if (!player || !player.alive) return;
 
-        const player =
-            this.state.players.get(
-                client.sessionId
-            );
+    const requestedX =
+        typeof message?.x === "number" &&
+        Number.isFinite(message.x)
+            ? message.x
+            : player.x;
 
+    const requestedZ =
+        typeof message?.z === "number" &&
+        Number.isFinite(message.z)
+            ? message.z
+            : player.z;
 
-        if (!player) {
-            return;
-        }
+    const requestedRotation =
+        typeof message?.rotation === "number" &&
+        Number.isFinite(message.rotation)
+            ? message.rotation
+            : player.rotation;
 
+    const collision = this.hospitalCollision;
+    if (!collision) return;
 
-        if (!player.alive) {
-            return;
-        }
+    let deltaX = requestedX - player.x;
+    let deltaZ = requestedZ - player.z;
 
+    // Giới hạn quãng đường cho mỗi message.
+    const maxMovePerMessage = 1.0;
+    const distance = Math.hypot(deltaX, deltaZ);
 
-        // ==================================================
-        // READ MESSAGE
-        // ==================================================
-
-        const requestedX =
-            typeof message?.x === "number" &&
-            Number.isFinite(message.x)
-                ? message.x
-                : player.x;
-
-
-        const requestedY =
-            typeof message?.y === "number" &&
-            Number.isFinite(message.y)
-                ? message.y
-                : player.y;
-
-
-        const requestedZ =
-            typeof message?.z === "number" &&
-            Number.isFinite(message.z)
-                ? message.z
-                : player.z;
-
-
-        const requestedRotation =
-            typeof message?.rotation === "number" &&
-            Number.isFinite(message.rotation)
-                ? message.rotation
-                : player.rotation;
-
-
-
-        // ==================================================
-        // SERVER-SIDE MOVEMENT
-        //
-        // QUAN TRỌNG:
-        //
-        // Không kiểm tra:
-        //
-        //     canMoveTo(nextX, nextZ)
-        //
-        // vì client đang xử lý X và Z riêng.
-        //
-        // Server cũng phải xử lý X trước,
-        // sau đó Z.
-        // ==================================================
-
-let finalX = player.x;
-let finalZ = player.z;
-
-const startX = player.x;
-const startZ = player.z;
-
-const canMoveTo = (
-    x: number,
-    z: number,
-): boolean => {
-    if (!this.hospitalCollision) {
-        return false;
+    if (distance > maxMovePerMessage) {
+        const scale = maxMovePerMessage / distance;
+        deltaX *= scale;
+        deltaZ *= scale;
     }
 
-    return this.hospitalCollision.canMoveTo(
-        x,
-        z,
-        0.4,
-        player.y,
-        1.8,
+    const startX = player.x;
+    const startZ = player.z;
+
+    let finalX = startX;
+    let finalZ = startZ;
+
+    const canMoveTo = (x: number, z: number) =>
+        collision.canMoveTo(
+            x,
+            z,
+            0.4,
+            player.y,
+            1.8,
+        );
+
+    const maxStep = 0.1;
+    const steps = Math.max(
+        1,
+        Math.ceil(
+            Math.hypot(deltaX, deltaZ) / maxStep,
+        ),
     );
-};
 
-let deltaX = requestedX - startX;
-let deltaZ = requestedZ - startZ;
+    const stepX = deltaX / steps;
+    const stepZ = deltaZ / steps;
 
-// Giới hạn quãng đường mỗi message.
-const maxMovePerMessage = 1.0;
-const distance = Math.hypot(deltaX, deltaZ);
+    for (let i = 0; i < steps; i++) {
+        const nextX = finalX + stepX;
 
-if (distance > maxMovePerMessage) {
-    const scale = maxMovePerMessage / distance;
-    deltaX *= scale;
-    deltaZ *= scale;
-}
+        if (canMoveTo(nextX, finalZ)) {
+            finalX = nextX;
+        }
 
-// Chia nhỏ bước để kiểm tra va chạm.
-const maxStep = 0.1;
+        const nextZ = finalZ + stepZ;
 
-const steps = Math.max(
-    1,
-    Math.ceil(
-        Math.hypot(deltaX, deltaZ) / maxStep,
-    ),
-);
-
-const stepX = deltaX / steps;
-const stepZ = deltaZ / steps;
-
-for (let i = 0; i < steps; i++) {
-    const nextX = finalX + stepX;
-
-    if (canMoveTo(nextX, finalZ)) {
-        finalX = nextX;
+        if (canMoveTo(finalX, nextZ)) {
+            finalZ = nextZ;
+        }
     }
 
-    const nextZ = finalZ + stepZ;
+    player.x = finalX;
+    player.z = finalZ;
+    player.rotation = requestedRotation;
 
-    if (canMoveTo(finalX, nextZ)) {
-        finalZ = nextZ;
-    }
-}
+    player.moving =
+        Math.abs(finalX - startX) > 0.001 ||
+        Math.abs(finalZ - startZ) > 0.001;
 
-const movedX = finalX - startX;
-const movedZ = finalZ - startZ;
+    // Chưa chấp nhận Y từ client một cách tùy ý.
+    // Để nguyên player.y cho tới khi có xử lý độ cao,
+    // cầu thang và mặt sàn từ GLB.
+});
 
-player.moving =
-    Math.abs(movedX) > 0.001 ||
-    Math.abs(movedZ) > 0.001;
 
-player.x = finalX;
-player.y = requestedY;
-player.z = finalZ;
-player.rotation = requestedRotation;
-
-const nextZ = finalZ + stepZ;
-
-if (canMoveTo(finalX, nextZ)) {
-    finalZ = nextZ;
-}
-
-const dx = finalX - startX;
-const dz = finalZ - startZ;
-
-player.moving =
-    Math.abs(dx) > 0.001 ||
-    Math.abs(dz) > 0.001;
-
-player.x = finalX;
-player.y = requestedY;
-player.z = finalZ;
-player.rotation = requestedRotation;
-    }
-);
         // ====================================================
         // PLANT BOMB
         // ====================================================

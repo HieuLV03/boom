@@ -6,7 +6,6 @@ import {
 } from "../schema/BattleState.js";
 
 import type { HospitalCollision } from "../../../shared/maps/hospital-collision.js";
-
 // ============================================================
 // CONFIG
 // ============================================================
