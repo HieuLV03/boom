@@ -27,39 +27,59 @@ export default function WeaponModel({
 }: Props) {
     const { scene } = useGLTF(modelPath);
 
-    const weapon = useMemo(() => {
-        const clone = SkeletonUtils.clone(scene) as Group;
+const weapon = useMemo(() => {
+    const clone = SkeletonUtils.clone(scene) as Group;
 
-        // Tính kích thước model.
-        clone.updateMatrixWorld(true);
+    clone.updateMatrixWorld(true);
 
-        const bounds = new Box3().setFromObject(clone);
-        const size = new Vector3();
-        const center = new Vector3();
+    const bounds = new Box3().setFromObject(clone);
+    const size = new Vector3();
+    const center = new Vector3();
 
-        bounds.getSize(size);
-        bounds.getCenter(center);
+    bounds.getSize(size);
+    bounds.getCenter(center);
 
-        console.log("[WeaponModel] GLB:", {
+    if (bounds.isEmpty()) {
+        console.error(
+            "[WeaponModel] Model không có hình học:",
             modelPath,
-            size: {
-                x: size.x,
-                y: size.y,
-                z: size.z,
-            },
-            center: {
-                x: center.x,
-                y: center.y,
-                z: center.z,
-            },
-        });
-
-        // Đưa tâm hình học về gần gốc tọa độ.
-        clone.position.sub(center);
+        );
 
         return clone;
-    }, [scene, modelPath]);
+    }
 
+    // Căn giữa ngang, nhưng đặt đáy model tại Y = 0.
+    clone.position.x -= center.x;
+    clone.position.y -= bounds.min.y;
+    clone.position.z -= center.z;
+
+    clone.traverse((object) => {
+        const mesh = object as any;
+
+        if (mesh.isMesh) {
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+        }
+    });
+
+    console.log("[WeaponModel] Đã căn chỉnh model:", {
+        weaponType,
+        modelPath,
+        size: {
+            x: size.x,
+            y: size.y,
+            z: size.z,
+        },
+        originalBottomY: bounds.min.y,
+        originalCenter: {
+            x: center.x,
+            y: center.y,
+            z: center.z,
+        },
+    });
+
+    return clone;
+}, [scene, modelPath, weaponType]);
     return (
         <group
             name={`Weapon_${weaponType}`}

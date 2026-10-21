@@ -102,7 +102,7 @@ const firstPerson = useCameraViewStore(
     // ========================================================
     // PLAYER NAME
     // ========================================================
-const mapId = room?.state?.mapId ?? "tropical-village";
+const mapId = room?.state?.mapId ?? "hospital";
     const [
         playerName,
         setPlayerName,
@@ -144,6 +144,7 @@ const weaponType =
 
     const velocityZ =
         useRef(0);
+        const serverYRef = useRef(0);
 const targetRotation = useRef(0);
 
     // ========================================================
@@ -259,7 +260,7 @@ const lastSentMoving = useRef<boolean | null>(null);
             z
         );
 
-
+serverYRef.current = y;
         // ====================================================
         // RESET ROTATION
         // ====================================================
@@ -584,6 +585,13 @@ setEquippedSlot(
 setWeapon1(serverPlayer.weapon1 || "");
 setWeapon2(serverPlayer.weapon2 || "");
 setEquippedSlot(Number(serverPlayer.equippedSlot || 0));
+
+// Độ cao chân nhân vật do server quản lý.
+const serverY = Number(serverPlayer.y);
+
+if (Number.isFinite(serverY)) {
+    serverYRef.current = serverY;
+}
                             // ====================================
                             // ALIVE
                             // ====================================
@@ -1135,6 +1143,20 @@ const canMoveAgainstHospital = (
         if (!player) {
             return;
         }
+
+        // Đồng bộ độ cao theo server.
+// X/Z vẫn dùng hệ thống di chuyển hiện tại.
+const targetY = serverYRef.current;
+
+if (Number.isFinite(targetY)) {
+    player.position.y = THREE.MathUtils.damp(
+        player.position.y,
+        targetY,
+        18,
+        Math.min(delta, 0.05),
+    );
+}
+
 // ================================================
 // AIM FROM ACTUAL CHARACTER HEAD
 // ================================================

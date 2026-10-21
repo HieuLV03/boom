@@ -30,13 +30,15 @@ type Props = {
 
 const WEAPON_MODELS: Record<string, string> = {
     rifle: "/models/gun/rifle/ak47.glb",
-    shotgun: "/models/weapons/shotgun.glb",
-    pistol: "/models/weapons/pistol.glb",
-    smg: "/models/weapons/smg.glb",
-    sniper: "/models/weapons/sniper.glb",
 };
 
-function getWeaponModelPath(weaponType: string) {
+const PICKUP_DISTANCE = 2.0;
+
+// Nâng model lên khỏi tọa độ pickup một chút.
+// Có thể đổi thành 0 nếu server đã lưu đúng tọa độ tâm model.
+const PICKUP_VISUAL_OFFSET = 0;
+
+function getWeaponModelPath(weaponType: string): string {
     return (
         WEAPON_MODELS[weaponType.toLowerCase()] ??
         WEAPON_MODELS.rifle
@@ -74,6 +76,7 @@ export default function WeaponController({
     );
 
     const [pickups, setPickups] = useState<Pickup[]>([]);
+
     const previousNearestRef = useRef<string | null>(null);
 
     // ========================================================
@@ -94,9 +97,11 @@ export default function WeaponController({
         const playersMap = state.players;
 
         if (!pickupMap) {
-            console.warn(
-                "[WEAPON] weaponPickups chưa có trên server.",
+            console.error(
+                "[WEAPON] Server không có weaponPickups trong state.",
             );
+
+            setPickups([]);
             return;
         }
 
@@ -120,23 +125,39 @@ export default function WeaponController({
 
             pickupMap.forEach(
                 (item: any, key: string) => {
-                    if (
-                        item &&
-                        item.available !== false
-                    ) {
-                        next.push(
-                            convert(item, String(key)),
-                        );
+                    if (!item || item.available === false) {
+                        return;
                     }
+
+                    const pickup = convert(
+                        item,
+                        String(key),
+                    );
+
+                    if (
+                        !Number.isFinite(pickup.x) ||
+                        !Number.isFinite(pickup.y) ||
+                        !Number.isFinite(pickup.z)
+                    ) {
+                        console.warn(
+                            "[WEAPON] Pickup có tọa độ không hợp lệ:",
+                            pickup,
+                        );
+                        return;
+                    }
+
+                    next.push(pickup);
                 },
             );
 
             setPickups(next);
+
+            console.log(
+                "[WEAPON] Pickup đã đồng bộ:",
+                next,
+            );
         };
 
-        syncPickups();
-
-        // Theo dõi thêm/xóa/cập nhật pickup.
         const itemCleanup = new Map<
             string,
             () => void
@@ -157,6 +178,7 @@ export default function WeaponController({
             itemCleanup.set(id, removeChange);
         };
 
+        // Đăng ký listener trước khi đồng bộ lần đầu.
         const removePickupAdd = $(pickupMap).onAdd(
             (item: any, key: string) => {
                 bindPickup(item, String(key));
@@ -175,7 +197,15 @@ export default function WeaponController({
             },
         );
 
-        // Đọc vũ khí của người chơi hiện tại.
+        pickupMap.forEach(
+            (item: any, key: string) => {
+                bindPickup(item, String(key));
+            },
+        );
+
+        syncPickups();
+
+        // Theo dõi vũ khí của người chơi hiện tại.
         let removeLocalChange:
             | (() => void)
             | undefined;
@@ -232,14 +262,14 @@ export default function WeaponController({
     }, [room, setNearbyPickupId, setWeaponState]);
 
     // ========================================================
-    // TÌM SÚNG GẦN NHẤT
+    // TÌM PICKUP GẦN NHẤT
     // ========================================================
 
     useFrame(() => {
         const player = playerRef.current;
 
         let nearestId: string | null = null;
-        let nearestDistance = 2.0;
+        let nearestDistance = PICKUP_DISTANCE;
 
         if (player) {
             for (const pickup of pickups) {
@@ -255,9 +285,7 @@ export default function WeaponController({
             }
         }
 
-        if (
-            nearestId !== previousNearestRef.current
-        ) {
+        if (nearestId !== previousNearestRef.current) {
             previousNearestRef.current = nearestId;
             setNearbyPickupId(nearestId);
         }
@@ -270,8 +298,12 @@ export default function WeaponController({
     const lastPickupRequest = useRef(0);
 
     useEffect(() => {
+        if (!room) {
+            lastPickupRequest.current = pickupRequest;
+            return;
+        }
+
         if (
-            !room ||
             pickupRequest === lastPickupRequest.current
         ) {
             return;
@@ -288,8 +320,12 @@ export default function WeaponController({
     const lastAttackRequest = useRef(0);
 
     useEffect(() => {
+        if (!room) {
+            lastAttackRequest.current = attackRequest;
+            return;
+        }
+
         if (
-            !room ||
             attackRequest === lastAttackRequest.current
         ) {
             return;
@@ -309,8 +345,12 @@ export default function WeaponController({
     const lastSwitchRequest = useRef(0);
 
     useEffect(() => {
+        if (!room) {
+            lastSwitchRequest.current = switchRequest;
+            return;
+        }
+
         if (
-            !room ||
             switchRequest === lastSwitchRequest.current
         ) {
             return;
@@ -324,8 +364,7 @@ export default function WeaponController({
     }, [room, switchRequest, requestedSlot]);
 
     // ========================================================
-    // HIỂN THỊ MODEL SÚNG TRÊN MẶT ĐẤT
-    // Chỉ render pickup tại file này.
+    // RENDER PICKUP TRÊN MAP
     // ========================================================
 
     return (
@@ -333,19 +372,20 @@ export default function WeaponController({
             {pickups.map((pickup) => (
                 <group
                     key={pickup.id}
+                    name={`Pickup_${pickup.id}`}
                     position={[
                         pickup.x,
-                        pickup.y + 0.45,
+                        pickup.y + PICKUP_VISUAL_OFFSET,
                         pickup.z,
                     ]}
                     rotation={[0, Math.PI / 4, 0]}
-                    scale={0.24}
                 >
                     <WeaponModel
                         weaponType={pickup.weaponType}
                         modelPath={getWeaponModelPath(
                             pickup.weaponType,
                         )}
+                        scale={0.24}
                     />
                 </group>
             ))}

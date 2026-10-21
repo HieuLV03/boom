@@ -7,16 +7,16 @@ import {
 // ============================================================
 // PLAYER
 // ============================================================
-
 export class PlayerState extends Schema {
-
     @type("string")
     id: string = "";
 
     @type("string")
     name: string = "";
-@type("boolean")
-moving: boolean = false;
+
+    @type("boolean")
+    moving: boolean = false;
+
     @type("number")
     x: number = 0;
 
@@ -36,18 +36,17 @@ moving: boolean = false;
     alive: boolean = true;
 
     @type("string")
-weapon1: string = "";
+    weapon1: string = "";
 
-@type("string")
-weapon2: string = "";
+    @type("string")
+    weapon2: string = "";
 
-@type("number")
-equippedSlot: number = 0;
+    @type("number")
+    equippedSlot: number = 0;
 
-@type("number")
-ammo: number = 0;
+    @type("number")
+    ammo: number = 0;
 }
-
 
 // ============================================================
 // BOMB
@@ -178,85 +177,30 @@ export class ZombieState extends Schema {
 // ============================================================
 
 export class BattleState extends Schema {
-
-    // ========================================================
-    // ROOM
-    // ========================================================
-
     @type("string")
     roomCode: string = "";
 
-@type({ map: WeaponPickupState })
-weaponPickups = new MapSchema<WeaponPickupState>();
-    // ========================================================
-    // MAP
-    // ========================================================
-
-    @type({ map: DoorState })
-doors = new MapSchema<DoorState>();
-@type({ map: ZombieState })
-zombies = new MapSchema<ZombieState>();
-    /*
-     * ID của map hiện tại.
-     *
-     * Server quyết định map khi tạo room.
-     *
-     * Client đọc:
-     *
-     * room.state.mapId
-     *
-     * Ví dụ:
-     * "tropical-village"
-     */
-
     @type("string")
-    mapId: string = "tropical-village";
-
-
-    // ========================================================
-    // GAME TIMER
-    // ========================================================
-
-    /*
-     * Thời gian còn lại của trận đấu.
-     *
-     * 180 = 3 phút.
-     *
-     * Server giảm mỗi giây.
-     */
+    mapId: string = "hospital";
 
     @type("number")
     timeRemaining: number = 180;
 
-
-    // ========================================================
-    // GAME OVER
-    // ========================================================
-
-    /*
-     * false = game đang chơi
-     * true  = trận đã kết thúc
-     */
-
     @type("boolean")
     gameOver: boolean = false;
 
-
-    // ========================================================
-    // PLAYERS
-    // ========================================================
-
     @type({ map: PlayerState })
-    players =
-        new MapSchema<PlayerState>();
-
-
-    // ========================================================
-    // BOMBS
-    // ========================================================
+    players = new MapSchema<PlayerState>();
 
     @type({ map: BombState })
-    bombs =
-        new MapSchema<BombState>();
+    bombs = new MapSchema<BombState>();
 
+    @type({ map: WeaponPickupState })
+    weaponPickups = new MapSchema<WeaponPickupState>();
+
+    @type({ map: DoorState })
+    doors = new MapSchema<DoorState>();
+
+    @type({ map: ZombieState })
+    zombies = new MapSchema<ZombieState>();
 }

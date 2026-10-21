@@ -611,7 +611,43 @@ export class HospitalCollision {
             position: { ...spawn.position },
         }));
     }
+getSpawnGroundPosition(
+    spawn: HospitalSpawnPoint,
+    maxDrop = 8,
+): Vec3 | null {
+    const { x, y, z } = spawn.position;
 
+    const groundY = this.getGroundY(
+        x,
+        z,
+        y + 0.01,
+        maxDrop,
+    );
+
+    if (groundY === null) {
+        console.warn(
+            `[HospitalCollision] Không tìm thấy mặt đất cho ${spawn.name}`,
+            spawn.position,
+        );
+        return null;
+    }
+
+    // Không spawn nếu thân nhân vật bị tường hoặc vật thể
+    // gần thẳng đứng chặn tại vị trí này.
+    if (!this.canMoveTo(x, z, 0.35, groundY, 1.8)) {
+        console.warn(
+            `[HospitalCollision] Spawn bị cản: ${spawn.name}`,
+            { x, y: groundY, z },
+        );
+        return null;
+    }
+
+    return {
+        x,
+        y: groundY,
+        z,
+    };
+}
     getTriangleCount(): number {
         return this.triangles.length;
     }
@@ -623,78 +659,291 @@ export class HospitalCollision {
     getCollisionBoxes(): CollisionTriangle[] {
         return this.triangles;
     }
+/**
+ * Tìm mặt sàn gần nhất bên dưới chân nhân vật.
+ * Sử dụng trực tiếp các tam giác trích xuất từ hospital.glb.
+ */
+getGroundY(
+    x: number,
+    z: number,
+    maxY: number,
+    maxDrop = 8,
+    minSupportedSamples = 5,
+): number | null {
+    const EPSILON = 0.02;
+    const HEIGHT_TOLERANCE = 0.12;
 
-    canMoveTo(
-        x: number,
-        z: number,
+    // Tìm độ cao bề mặt ngang tại một điểm X/Z.
+    const findSurfaceAt = (
+        px: number,
+        pz: number,
+    ): number | null => {
+        let bestY: number | null = null;
+
+        for (const triangle of this.triangles) {
+            const { a, b, c } = triangle;
+
+            const normal = triangleNormal(a, b, c);
+            const normalLength = Math.hypot(
+                normal.x,
+                normal.y,
+                normal.z,
+            );
+
+            if (normalLength < 1e-8) continue;
+
+            // Chỉ xét bề mặt gần nằm ngang.
+            if (Math.abs(normal.y) / normalLength < 0.95) {
+                continue;
+            }
+
+            const denominator =
+                (b.z - c.z) * (a.x - c.x) +
+                (c.x - b.x) * (a.z - c.z);
+
+            if (Math.abs(denominator) < 1e-8) continue;
+
+            const u =
+                ((b.z - c.z) * (px - c.x) +
+                    (c.x - b.x) * (pz - c.z)) /
+                denominator;
+
+            const v =
+                ((c.z - a.z) * (px - c.x) +
+                    (a.x - c.x) * (pz - c.z)) /
+                denominator;
+
+            const w = 1 - u - v;
+
+            if (
+                u < -1e-5 ||
+                v < -1e-5 ||
+                w < -1e-5
+            ) {
+                continue;
+            }
+
+            const y =
+                u * a.y +
+                v * b.y +
+                w * c.y;
+
+            if (y > maxY + EPSILON) continue;
+            if (y < maxY - maxDrop) continue;
+
+            if (bestY === null || y > bestY) {
+                bestY = y;
+            }
+        }
+
+        return bestY;
+    };
+
+    // Tìm bề mặt cao nhất ngay dưới vị trí cần kiểm tra.
+    const centerY = findSurfaceAt(x, z);
+
+    if (centerY === null) {
+        return null;
+    }
+
+    // Kiểm tra xem độ cao đó có tiếp tục tồn tại xung quanh
+    // hay chỉ là mặt của một vật thể nhỏ.
+    const sampleOffsets = [
+        [-0.45, -0.45],
+        [0, -0.45],
+        [0.45, -0.45],
+        [-0.45, 0],
+        [0.45, 0],
+        [-0.45, 0.45],
+        [0, 0.45],
+        [0.45, 0.45],
+    ] as const;
+
+    let supportedSamples = 0;
+
+    for (const [dx, dz] of sampleOffsets) {
+        const sampleY = findSurfaceAt(x + dx, z + dz);
+
+        if (
+            sampleY !== null &&
+            Math.abs(sampleY - centerY) <= HEIGHT_TOLERANCE
+        ) {
+            supportedSamples++;
+        }
+    }
+
+    // Không coi một mặt nhỏ, thiếu hỗ trợ xung quanh,
+    // là sàn đứng ổn định.
+ if (supportedSamples < minSupportedSamples) {
+    return null;
+}
+
+    return centerY;
+}
+
+    /**
+     * Kiểm tra đường di chuyển từ vị trí hiện tại đến vị trí đích.
+     * Giảm nguy cơ vượt xuyên tường khi di chuyển nhanh.
+     */
+    canMoveBetween(
+        from: Vec3,
+        to: Vec3,
         radius = 0.35,
-        y = 0,
         height = 1.8,
     ): boolean {
-        if (
-            !Number.isFinite(x) ||
-            !Number.isFinite(y) ||
-            !Number.isFinite(z) ||
-            !Number.isFinite(radius) ||
-            !Number.isFinite(height) ||
-            radius <= 0 ||
-            height <= 0
-        ) {
-            return false;
-        }
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const dz = to.z - from.z;
 
-        const minX = x - radius;
-        const maxX = x + radius;
-        const minY = y - radius;
-        const maxY = y + height + radius;
-        const minZ = z - radius;
-        const maxZ = z + radius;
+        const distance = Math.hypot(dx, dy, dz);
 
-        // Broadphase đơn giản: chỉ lấy tam giác có AABB giao với
-        // vùng thân nhân vật. Không tạo grid hay collider thủ công.
-        const nearbyTriangles = this.triangles.filter((triangle) => {
-            const xs = [
-                triangle.a.x,
-                triangle.b.x,
-                triangle.c.x,
-            ];
-            const ys = [
-                triangle.a.y,
-                triangle.b.y,
-                triangle.c.y,
-            ];
-            const zs = [
-                triangle.a.z,
-                triangle.b.z,
-                triangle.c.z,
-            ];
-
-            return (
-                Math.max(...xs) >= minX &&
-                Math.min(...xs) <= maxX &&
-                Math.max(...ys) >= minY &&
-                Math.min(...ys) <= maxY &&
-                Math.max(...zs) >= minZ &&
-                Math.min(...zs) <= maxZ
-            );
-        });
-
-        if (nearbyTriangles.length === 0) {
-            return true;
-        }
-
-        const result = resolveHospitalPlayerCollision(
-            { x, y, z },
-            nearbyTriangles,
-            radius,
-            height,
+        // Kiểm tra đủ dày theo bán kính nhân vật.
+        const maxStep = Math.max(radius * 0.25, 0.05);
+        const steps = Math.max(
+            1,
+            Math.ceil(distance / maxStep),
         );
 
-        const horizontalCorrection = Math.hypot(
-            result.position.x - x,
-            result.position.z - z,
-        );
+        for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
 
-        return horizontalCorrection < 0.05;
+            const x = from.x + dx * t;
+            const y = from.y + dy * t;
+            const z = from.z + dz * t;
+
+            if (!this.canMoveTo(
+                x,
+                z,
+                radius,
+                y,
+                height,
+            )) {
+                return false;
+            }
+        }
+
+        return true;
     }
+
+
+canMoveTo(
+    x: number,
+    z: number,
+    radius = 0.35,
+    y = 0,
+    height = 1.8,
+): boolean {
+    if (
+        !Number.isFinite(x) ||
+        !Number.isFinite(y) ||
+        !Number.isFinite(z) ||
+        !Number.isFinite(radius) ||
+        !Number.isFinite(height) ||
+        radius <= 0 ||
+        height <= 0
+    ) {
+        return false;
+    }
+
+    // Thể tích va chạm của nhân vật, tính từ chân lên đầu.
+    const minX = x - radius;
+    const maxX = x + radius;
+    const minY = y;
+    const maxY = y + height;
+    const minZ = z - radius;
+    const maxZ = z + radius;
+
+    // Chỉ lấy các tam giác GLB có bounding box giao với nhân vật.
+    const nearbyTriangles: CollisionTriangle[] = [];
+
+    for (const triangle of this.triangles) {
+        const { a, b, c } = triangle;
+
+        if (
+            Math.max(a.x, b.x, c.x) < minX ||
+            Math.min(a.x, b.x, c.x) > maxX ||
+            Math.max(a.y, b.y, c.y) < minY ||
+            Math.min(a.y, b.y, c.y) > maxY ||
+            Math.max(a.z, b.z, c.z) < minZ ||
+            Math.min(a.z, b.z, c.z) > maxZ
+        ) {
+            continue;
+        }
+
+        nearbyTriangles.push(triangle);
+    }
+
+    // Các tâm hình cầu dọc theo thân nhân vật.
+    // Ba hình cầu chồng lấn để xấp xỉ một capsule đứng.
+    const offsets = [
+        Math.min(radius, height / 2),
+        height / 2,
+        Math.max(height - radius, height / 2),
+    ];
+
+    const centers = [...new Set(offsets)].map((offset) => ({
+        x,
+        y: y + offset,
+        z,
+    }));
+
+    // Chừa một khoảng nhỏ để tránh báo va chạm do sai số số thực
+    // khi nhân vật đứng chính xác trên mặt sàn.
+    const collisionRadius = Math.max(0.01, radius - 0.02);
+    const collisionRadiusSquared =
+        collisionRadius * collisionRadius;
+
+    for (const triangle of nearbyTriangles) {
+        const { a, b, c } = triangle;
+
+        const normal = triangleNormal(a, b, c);
+        const normalLength = Math.hypot(
+            normal.x,
+            normal.y,
+            normal.z,
+        );
+
+        if (normalLength < 1e-8) {
+            continue;
+        }
+
+        // Bỏ qua mặt sàn, trần và các bề mặt gần nằm ngang.
+        // getGroundY() vẫn chịu trách nhiệm xác định mặt sàn.
+        const verticalRatio =
+            Math.abs(normal.y) / normalLength;
+
+        if (verticalRatio > 0.65) {
+            continue;
+        }
+
+        // Kiểm tra khoảng cách thực tế từ thân nhân vật đến
+        // tam giác. Không phụ thuộc hướng của normal.
+        for (const center of centers) {
+            const closest = closestPointOnTriangle(
+                center,
+                a,
+                b,
+                c,
+            );
+
+            const dx = center.x - closest.x;
+            const dy = center.y - closest.y;
+            const dz = center.z - closest.z;
+
+            const distanceSquared =
+                dx * dx + dy * dy + dz * dz;
+
+            if (
+                distanceSquared <
+                collisionRadiusSquared
+            ) {
+                // Có giao nhau với mặt tường hoặc bề mặt đứng.
+                // Từ chối vị trí đích để BattleRoom giữ vị trí cũ.
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
 }
