@@ -26,12 +26,12 @@ type Props = {
     crouching?: boolean;
     jumpTrigger?: number;
     weaponType?: string;
+    punchTrigger?: number; // Thêm dòng này
 };
 
 // ============================================================
 // PLAYER
 // ============================================================
-
 export default function Player({
     position = [0, 0, 0],
     rotation = 0,
@@ -43,17 +43,18 @@ export default function Player({
     jumpTrigger = 0,
     weaponType = "",
     aiming = false,
+    punchTrigger: remotePunchTrigger,
 }: Props) {
-    const punchTrigger = usePunchStore(
+    const localPunchTrigger = usePunchStore(
         (state) => state.punchTrigger,
     );
 
+    const punchTrigger =
+        remotePunchTrigger ?? localPunchTrigger;
+
     return (
         <group position={position}>
-            <group
-                position={[0, 0, 0]}
-                rotation={[0, rotation, 0]}
-            >
+            <group rotation={[0, rotation, 0]}>
                 <Character3D
                     moving={moving}
                     movingBackward={movingBackward}

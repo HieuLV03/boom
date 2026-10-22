@@ -34,7 +34,15 @@ type RemotePlayerData = {
     id: string;
     player: any;
 };
+function getEquippedWeapon(player: any): string {
+    const slot = Number(player?.equippedSlot ?? 0);
 
+    return String(
+        slot === 1
+            ? player?.weapon2 ?? ""
+            : player?.weapon1 ?? ""
+    );
+}
 
 // ============================================================
 // REMOTE PLAYER
@@ -61,10 +69,15 @@ const [movingBackward, setMovingBackward] = useState(
 );
 const [running, setRunning] = useState(Boolean(player?.running));
 const [crouching, setCrouching] = useState(Boolean(player?.crouching));
+
 const [aiming, setAiming] = useState(Boolean(player?.aiming));
+
 const [weaponType, setWeaponType] = useState(
-    String(player?.weaponType ?? "")
+    getEquippedWeapon(player)
 );
+
+// Mỗi nhân vật từ xa có bộ đếm đấm riêng.
+const [punchTrigger, setPunchTrigger] = useState(0);
 
 useEffect(() => {
     if (!room || !player) return;
@@ -75,14 +88,14 @@ useEffect(() => {
         setRunning(Boolean(player.running));
         setCrouching(Boolean(player.crouching));
         setAiming(Boolean(player.aiming));
-        setWeaponType(String(player.weaponType ?? ""));
-        setPlayerName(player.name || "Player");
+     setWeaponType(getEquippedWeapon(player));
+setPlayerName(player.name || "Player");
     };
 
     const $ = getStateCallbacks(room);
 
     syncPlayer();
-
+const [punchTrigger, setPunchTrigger] = useState(0);
     const unsubscribe = $(player).onChange(syncPlayer);
 
     return () => {
@@ -93,30 +106,28 @@ useEffect(() => {
 const [playerName, setPlayerName] = useState(
     player?.name || "Player"
 );
-
 useEffect(() => {
-    if (!room || !player) {
-        setMoving(false);
-        setPlayerName("Player");
-        return;
-    }
+    if (!room) return;
 
-    const $ = getStateCallbacks(room);
-
-    // Đồng bộ giá trị ban đầu.
-    setMoving(Boolean(player.moving));
-    setPlayerName(player.name || "Player");
-
-    // Theo dõi thay đổi từ Colyseus.
-    const unsubscribe = $(player).onChange(() => {
-        setMoving(Boolean(player.moving));
-        setPlayerName(player.name || "Player");
-    });
+    const unsubscribe = room.onMessage(
+        "attackPerformed",
+        (message: {
+            playerId?: string;
+            action?: string;
+        }) => {
+            if (
+                message.playerId === id &&
+                message.action === "punch"
+            ) {
+                setPunchTrigger((value) => value + 1);
+            }
+        },
+    );
 
     return () => {
-        unsubscribe?.();
+        unsubscribe();
     };
-}, [room, player]);
+}, [room, id]);
 
     // ========================================================
     // LOG
@@ -228,8 +239,8 @@ useEffect(() => {
     crouching={crouching}
     aiming={aiming}
     weaponType={weaponType}
+    punchTrigger={punchTrigger}
 />
-
         </group>
 
     );
