@@ -54,9 +54,41 @@ const room = useMultiplayerStore(
     (state) => state.room
 );
 const lastSentMoving = useRef<boolean | null>(null);
-const [moving, setMoving] = useState(
-    Boolean(player?.moving)
+
+const [moving, setMoving] = useState(Boolean(player?.moving));
+const [movingBackward, setMovingBackward] = useState(
+    Boolean(player?.movingBackward)
 );
+const [running, setRunning] = useState(Boolean(player?.running));
+const [crouching, setCrouching] = useState(Boolean(player?.crouching));
+const [aiming, setAiming] = useState(Boolean(player?.aiming));
+const [weaponType, setWeaponType] = useState(
+    String(player?.weaponType ?? "")
+);
+
+useEffect(() => {
+    if (!room || !player) return;
+
+    const syncPlayer = () => {
+        setMoving(Boolean(player.moving));
+        setMovingBackward(Boolean(player.movingBackward));
+        setRunning(Boolean(player.running));
+        setCrouching(Boolean(player.crouching));
+        setAiming(Boolean(player.aiming));
+        setWeaponType(String(player.weaponType ?? ""));
+        setPlayerName(player.name || "Player");
+    };
+
+    const $ = getStateCallbacks(room);
+
+    syncPlayer();
+
+    const unsubscribe = $(player).onChange(syncPlayer);
+
+    return () => {
+        unsubscribe?.();
+    };
+}, [room, player]);
 
 const [playerName, setPlayerName] = useState(
     player?.name || "Player"
@@ -188,9 +220,14 @@ useEffect(() => {
             ref={groupRef}
         >
 
-     <Player
+<Player
     position={[0, 0, 0]}
     moving={moving}
+    movingBackward={movingBackward}
+    running={running}
+    crouching={crouching}
+    aiming={aiming}
+    weaponType={weaponType}
 />
 
         </group>
