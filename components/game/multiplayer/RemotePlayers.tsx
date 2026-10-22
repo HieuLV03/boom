@@ -36,12 +36,15 @@ type RemotePlayerData = {
 };
 function getEquippedWeapon(player: any): string {
     const slot = Number(player?.equippedSlot ?? 0);
+    const weapon1 = String(player?.weapon1 ?? "");
+    const weapon2 = String(player?.weapon2 ?? "");
 
-    return String(
-        slot === 1
-            ? player?.weapon2 ?? ""
-            : player?.weapon1 ?? ""
-    );
+    // Theo trạng thái cần kiểm tra: slot 1 đang dùng weapon1.
+    if (slot === 2) return weapon2;
+    if (slot === 1) return weapon1;
+
+    // Dự phòng cho trạng thái mặc định của slot.
+    return weapon1;
 }
 
 // ============================================================

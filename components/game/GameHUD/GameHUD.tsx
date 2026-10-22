@@ -101,8 +101,7 @@ const crosshairVisible = useCrosshairStore(
 const handleAttack = () => {
     if (!room) return;
 
-    const isRifle =
-        weaponType.trim().toLowerCase() === "rifle";
+    const isRifle = hasRifle;
 
     const aim = useAimStore.getState();
 // Báo cho LocalPlayerController xoay thân theo tâm ngắm.
@@ -190,12 +189,11 @@ const handleFirePointerDown = (
 
     event.currentTarget.setPointerCapture(event.pointerId);
 
-    // Đấm chỉ một lần mỗi lần chạm.
-    if (weaponType.trim().toLowerCase() !== "rifle") {
-        useAimingStore.getState().setAiming(false);
-        handleAttack();
-        return;
-    }
+if (!hasRifle) {
+    useAimingStore.getState().setAiming(false);
+    handleAttack();
+    return;
+}
 
     // Bật animation ngắm ngay khi nhấn nút BẮN.
     useAimingStore.getState().setAiming(true);
@@ -311,25 +309,36 @@ const isCrouching = useCrouchStore(
             unsubscribe?.();
 
          
+
 const updateWeapon = () => {
-    const slot = Number(player.equippedSlot || 0);
+    const slot = Number(player.equippedSlot ?? 0);
+
+    const weapon1 = String(player.weapon1 ?? "")
+        .trim()
+        .toLowerCase();
+
+    const weapon2 = String(player.weapon2 ?? "")
+        .trim()
+        .toLowerCase();
 
     const nextWeapon =
         slot === 1
-            ? String(player.weapon1 || "")
+            ? weapon1
             : slot === 2
-                ? String(player.weapon2 || "")
+                ? weapon2
                 : "";
 
     console.log("[WEAPON STATE]", {
-        equippedSlot: player.equippedSlot,
-        weapon1: player.weapon1,
-        weapon2: player.weapon2,
+        sessionId: room.sessionId,
+        equippedSlot: slot,
+        weapon1,
+        weapon2,
         nextWeapon,
     });
 
     setWeaponType(nextWeapon);
 };
+
 
 
             updateWeapon();
@@ -690,10 +699,6 @@ const removePickedUpListener = room.onMessage(
             message.weaponType ?? "",
         ).trim().toLowerCase();
 
-        if (pickedType === "rifle") {
-            setWeaponType("rifle");
-        }
-
         const weaponName =
             pickedType === "rifle"
                 ? "Súng trường"
@@ -768,8 +773,10 @@ const handlePickupWeapon = () => {
     // RENDER
     // ========================================================
 
-    const hpPercent = hp / 100;
+const hpPercent = hp / 100;
 
+const hasRifle =
+    weaponType.trim().toLowerCase() === "rifle";
     return (
         <div className="game-hud">
             {/* HP BAR */}
@@ -826,11 +833,13 @@ const handlePickupWeapon = () => {
         stopFiring();
         firePointerRef.current = null;
     }}
+
     className={`game-hud__attack-button ${
-        weaponType === "rifle"
-            ? "game-hud__attack-button--rifle"
-            : "game-hud__attack-button--punch"
-    }`}
+    hasRifle
+        ? "game-hud__attack-button--rifle"
+        : "game-hud__attack-button--punch"
+}`}
+
     style={{
         position: "relative",
         zIndex: 30,
@@ -839,7 +848,7 @@ const handlePickupWeapon = () => {
         WebkitUserSelect: "none",
     }}
 >
-    {weaponType === "rifle" ? "BẮN" : "ĐẤM"}
+{hasRifle ? "BẮN" : "ĐẤM"}
 </button>
 
 
