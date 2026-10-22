@@ -95,7 +95,6 @@ setPlayerName(player.name || "Player");
     const $ = getStateCallbacks(room);
 
     syncPlayer();
-const [punchTrigger, setPunchTrigger] = useState(0);
     const unsubscribe = $(player).onChange(syncPlayer);
 
     return () => {
