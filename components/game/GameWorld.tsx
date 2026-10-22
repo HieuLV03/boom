@@ -6,7 +6,7 @@ import type { Group } from "three";
 
 import WeaponController from "./weapons/WeaponController";
 import ScareObject from "./ScareObject";
-import BulletEffects from "./BulletEffects";
+import BulletEffects from "../game/effects/BulletEffects/BulletEffects";
 import MapRenderer from "./maps/MapRenderer";
 import Zombie from "./Zombie/Zombie";
 
@@ -34,7 +34,7 @@ export default function GameWorld({
             <WeaponController playerRef={playerRef} />
 
             {/* Tạm thời chỉ hiện zombie khi chọn map zombie-house */}
-            {mapId === "zombie-house" && <Zombie />}
+            <Zombie />
 
             <CameraController target={playerRef} />
 

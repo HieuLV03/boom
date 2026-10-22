@@ -6,7 +6,8 @@ import {
     useMemo,
     useRef,
 } from "react";
-
+import LeftHandRifleIK from "./LeftHandRifleIK";
+import type { RefObject } from "react";
 import {
     createPortal,
     useFrame,
@@ -23,10 +24,12 @@ import {
     Box3,
     CapsuleGeometry,
     Color,
+    Euler,
     LoopOnce,
     LoopRepeat,
     Mesh,
     MeshStandardMaterial,
+    Quaternion,
     SphereGeometry,
     Vector3,
 } from "three";
@@ -43,22 +46,85 @@ import WeaponModel from "../weapons/WeaponModel";
 // CONFIG
 // ============================================================
 
+
 const MODEL_PATH = "/models/character/character.glb";
 
-const MODEL_SCALE = 1.5;
-const WEAPON_SCALE = 1;
+const MODEL_SCALE = 1.2;
 
-const WEAPON_POSITION: [number, number, number] = [
-    0,
-    0,
-    0,
-];
+const HELD_WEAPON_POSES = {
+    // Súng khi đứng yên
+    idle: {
+        position: [-5, 21, 0] as [number, number, number],
+        rotationDeg: [180, 9, -90] as [number, number, number],
+    },
 
-const WEAPON_ROTATION: [number, number, number] = [
-    0,
-    0,
-    0,
-];
+    // Súng khi chạy
+    run: {
+        position: [-5, 21, 0] as [number, number, number],
+        rotationDeg: [180, 9, -90] as [number, number, number],
+    },
+
+    // Súng khi ngắm
+    aim: {
+        position: [-11, 21, 6] as [number, number, number],
+        rotationDeg: [180, -10, -110] as [number, number, number],
+    },
+
+    mountScale: 1,
+    modelScale: 33,
+};
+
+
+const RIFLE_HAND_CONFIG = {
+    // Bật/tắt điều khiển tay trái
+    enabled: true,
+
+    // Tọa độ bàn tay trái trong hệ tọa độ của nhân vật.
+    // Đây là giá trị khởi đầu, cần tinh chỉnh theo model thực tế.
+    leftHandTarget: [-0.35, 0.9, 0.15] as [
+        number,
+        number,
+        number,
+    ],
+};
+
+type ArmPoseConfig = {
+    rightArm: [number, number, number];
+    rightForeArm: [number, number, number];
+    leftArm: [number, number, number];
+    leftForeArm: [number, number, number];
+};
+
+const RIFLE_ARM_POSES: {
+    idle: ArmPoseConfig;
+    run: ArmPoseConfig;
+    aim: ArmPoseConfig;
+} = {
+    // Cầm súng đứng yên
+    idle: {
+        rightArm: [-12, 0, -8],
+        rightForeArm: [-18, 0, 0],
+        leftArm: [-18, 0, 10],
+        leftForeArm: [-25, 0, 0],
+    },
+
+    // Cầm súng khi chạy
+    run: {
+        rightArm: [-20, 0, -12],
+        rightForeArm: [-28, 0, 0],
+        leftArm: [-25, 0, 14],
+        leftForeArm: [-32, 0, 0],
+    },
+
+    // Cầm súng khi ngắm / bắn
+    aim: {
+        rightArm: [-8, 0, -5],
+        rightForeArm: [-12, 0, 0],
+        leftArm: [-10, 0, 8],
+        leftForeArm: [-18, 0, 0],
+    },
+};
+
 
 const COLORS = {
     hoodie: "#202633",
@@ -75,9 +141,11 @@ const COLORS = {
 
 type Props = {
     moving?: boolean;
+    movingBackward?: boolean;
     running?: boolean;
     crouching?: boolean;
     punchTrigger?: number;
+    aiming?: boolean;
     jumpTrigger?: number;
     weaponType?: string;
 };
@@ -551,18 +619,25 @@ function CharacterClothing({
     );
 }
 
+
 // ============================================================
 // HELD WEAPON
 // ============================================================
 
-
 function HeldWeapon({
     root,
     weaponType,
+    running,
+    aiming,
+    leftHandGripTargetRef,
 }: {
     root: Object3D;
     weaponType: string;
+    running: boolean;
+    aiming: boolean;
+leftHandGripTargetRef: RefObject<Object3D | null>;
 }) {
+
     const normalizedWeaponType = String(weaponType ?? "")
         .trim()
         .toLowerCase()
@@ -570,7 +645,9 @@ function HeldWeapon({
 
     const isRifle =
         normalizedWeaponType === "rifle" ||
-        normalizedWeaponType === "assault_rifle";
+        normalizedWeaponType === "assault_rifle" ||
+        normalizedWeaponType === "ak47" ||
+        normalizedWeaponType === "ak_47";
 
     const hand = useMemo(
         () =>
@@ -582,46 +659,55 @@ function HeldWeapon({
         [root],
     );
 
+    // Ưu tiên tư thế ngắm, tiếp theo là chạy, cuối cùng là đứng im.
+    const pose = aiming
+        ? HELD_WEAPON_POSES.aim
+        : running
+            ? HELD_WEAPON_POSES.run
+            : HELD_WEAPON_POSES.idle;
+
     useEffect(() => {
         if (!isRifle) return;
 
-        root.updateMatrixWorld(true);
-
         console.log("[HELD WEAPON DEBUG]", {
             weaponType,
-            isRifle,
             handName: hand?.name ?? "NOT FOUND",
-            handPosition: hand
-                ? {
-                    x: hand.position.x,
-                    y: hand.position.y,
-                    z: hand.position.z,
-                }
-                : null,
-            weaponScale: WEAPON_SCALE,
-            weaponPosition: WEAPON_POSITION,
-            weaponRotation: WEAPON_ROTATION,
+            pose: aiming ? "aim" : running ? "run" : "idle",
+            position: pose.position,
+            rotationDeg: pose.rotationDeg,
+            mountScale: HELD_WEAPON_POSES.mountScale,
+            modelScale: HELD_WEAPON_POSES.modelScale,
         });
-    }, [root, weaponType, isRifle, hand]);
+    }, [weaponType, isRifle, hand, aiming, running, pose]);
 
     if (!isRifle || !hand) return null;
+
+    const [rx, ry, rz] = pose.rotationDeg;
 
     return createPortal(
         <group
             name="HeldRifleMount"
-            position={WEAPON_POSITION}
-            rotation={WEAPON_ROTATION}
-            scale={WEAPON_SCALE}
+            position={pose.position}
+            rotation={[
+                (rx * Math.PI) / 180,
+                (ry * Math.PI) / 180,
+                (rz * Math.PI) / 180,
+            ]}
+            scale={HELD_WEAPON_POSES.mountScale}
         >
-            <WeaponModel
-                weaponType="rifle"
-                modelPath="/models/gun/rifle/ak47.glb"
-                scale={10}
-            />
+    <WeaponModel
+    weaponType="rifle"
+    modelPath="/models/gun/rifle/ak47.glb"
+    scale={HELD_WEAPON_POSES.modelScale}
+    showDebugMarkers={true}
+    leftHandGripPosition={[0.33, 0.45, 0]}
+    leftHandGripTargetRef={leftHandGripTargetRef}
+/>
         </group>,
         hand,
     );
 }
+
 
 
 // ============================================================
@@ -630,8 +716,10 @@ function HeldWeapon({
 
 export default function Character3D({
     moving = false,
+    movingBackward = false,
     running = false,
     crouching = false,
+    aiming = false,
     punchTrigger = 0,
     jumpTrigger = 0,
     weaponType = "",
@@ -643,10 +731,43 @@ export default function Character3D({
         [scene],
     );
 
-    const { actions, mixer } = useAnimations(
-        animations,
-        clonedScene,
-    );
+    const leftHandGripTargetRef = useRef<Object3D | null>(null);
+
+const leftArmBones = useMemo(() => ({
+    shoulder: findBone(clonedScene, [
+        "mixamorigLeftArm",
+        "mixamorig:LeftArm",
+        "LeftArm",
+    ]),
+
+    forearm: findBone(clonedScene, [
+        "mixamorigLeftForeArm",
+        "mixamorig:LeftForeArm",
+        "LeftForeArm",
+        "LeftForearm",
+    ]),
+
+    hand: findBone(clonedScene, [
+        "mixamorigLeftHand",
+        "mixamorig:LeftHand",
+        "LeftHand",
+    ]),
+}), [clonedScene]);
+
+
+
+useEffect(() => {
+    console.table({
+        leftShoulder:
+            leftArmBones.shoulder?.name ?? "NOT FOUND",
+        leftForearm:
+            leftArmBones.forearm?.name ?? "NOT FOUND",
+        leftHand:
+            leftArmBones.hand?.name ?? "NOT FOUND",
+    });
+}, [leftArmBones]);
+
+
 
     const activeActionRef =
         useRef<AnimationAction | null>(null);
@@ -659,6 +780,37 @@ export default function Character3D({
 
     const lastPunchTriggerRef = useRef(punchTrigger);
     const lastJumpTriggerRef = useRef(jumpTrigger);
+const { actions, mixer } = useAnimations(
+    animations,
+    clonedScene,
+);
+const rifleArmBones = useMemo(() => ({
+    rightArm: findBone(clonedScene, [
+        "mixamorigRightArm",
+        "mixamorig:RightArm",
+        "RightArm",
+    ]),
+
+    rightForeArm: findBone(clonedScene, [
+        "mixamorigRightForeArm",
+        "mixamorig:RightForeArm",
+        "RightForeArm",
+        "RightForearm",
+    ]),
+
+    leftArm: findBone(clonedScene, [
+        "mixamorigLeftArm",
+        "mixamorig:LeftArm",
+        "LeftArm",
+    ]),
+
+    leftForeArm: findBone(clonedScene, [
+        "mixamorigLeftForeArm",
+        "mixamorig:LeftForeArm",
+        "LeftForeArm",
+        "LeftForearm",
+    ]),
+}), [clonedScene]);
 
     // ========================================================
     // MODEL DEBUG
@@ -703,175 +855,256 @@ export default function Character3D({
     // FIND ANIMATION ACTION
     // ========================================================
 
-    const findAction = (
-        pattern: RegExp,
-    ): AnimationAction | null => {
-        const entry = Object.entries(actions).find(
-            ([name, action]) =>
-                pattern.test(name) && action != null,
-        );
+  const findAction = (
+    pattern: RegExp,
+): AnimationAction | null => {
+    for (const [name, action] of Object.entries(actions)) {
+        if (action && pattern.test(name)) {
+            return action;
+        }
+    }
 
-        return entry?.[1] ?? null;
-    };
+    // Dự phòng nếu key trong actions không trùng tên clip
+    const clip = animations.find((item) => pattern.test(item.name));
+
+    if (!clip) return null;
+
+    return mixer.clipAction(clip, clonedScene);
+};
 
     // ========================================================
     // CHOOSE LOCOMOTION
     // ========================================================
 
-    const getLocomotionAction = (): AnimationAction | null => {
-        const normalizedWeaponType = (weaponType ?? "")
-            .trim()
-            .toLowerCase()
-            .replace(/[\s-]+/g, "_");
+const getLocomotionAction = (): AnimationAction | null => {
+    const normalizedWeaponType = String(weaponType ?? "")
+        .trim()
+        .toLowerCase()
+        .replace(/[\s-]+/g, "_");
 
-        const hasRifle =
-            normalizedWeaponType === "rifle" ||
-            normalizedWeaponType === "assault_rifle";
+const hasRifle =
+    normalizedWeaponType.includes("rifle") ||
+    normalizedWeaponType === "ak47" ||
+    normalizedWeaponType === "ak_47";
+    // Animation ngắm súng
+    const aimIdleAction =
+        findAction(/^male_aim_idle$/i);
 
-        const rifleIdleAction = hasRifle
-            ? findAction(/^male_rifle_idle$/i)
-            : null;
+    const aimWalkAction =
+        findAction(/^male_aim_walk$/i);
 
-        const idleAction =
-            rifleIdleAction ??
-            findAction(/^male_idle$/i) ??
-            findAction(/^idle$/i) ??
-            findAction(/idle/i);
+    // Animation cầm súng
+    const rifleIdleAction =
+        findAction(/^male_rifle_idle$/i);
 
-        const walkingAction =
-            findAction(/^male_walking$/i) ??
-            findAction(/crouch.*walk|walk.*crouch/i) ??
-            findAction(/walking|walk/i);
+    const rifleWalkingAction =
+        findAction(/^male_rifle_walking$/i);
 
-        const runAction =
-            findAction(/^male_run$/i) ??
-            findAction(/running|run/i);
+    const rifleWalkBackAction =
+        findAction(/^male_rifle_walk_back$/i);
 
-        const crouchIdleAction =
-            findAction(/^male_crouch_idle$/i) ??
-            findAction(/crouch.*idle|idle.*crouch/i);
+    // Animation mặc định
+    const idleAction =
+        findAction(/^male_idle$/i) ??
+        findAction(/^idle$/i) ??
+        findAction(/idle/i);
 
-        const crouchWalkingAction =
-            findAction(/^male_crouch_walking$/i) ??
-            findAction(/crouch.*walk|walk.*crouch/i);
+    const walkingAction =
+        findAction(/^male_walking$/i) ??
+        findAction(/walking|walk/i);
 
-        if (crouching) {
-            if (moving) {
-                return (
-                    crouchWalkingAction ??
-                    walkingAction ??
-                    idleAction
-                );
-            }
+    const runAction =
+        findAction(/^male_run$/i) ??
+        findAction(/running|run/i);
 
-            return crouchIdleAction ?? idleAction;
-        }
+    const crouchIdleAction =
+        findAction(/^male_crouch_idle$/i) ??
+        findAction(/crouch.*idle|idle.*crouch/i);
 
-        if (running && moving) {
-            return runAction ?? walkingAction ?? idleAction;
-        }
+    const crouchWalkingAction =
+        findAction(/^male_crouch_walking$/i) ??
+        findAction(/crouch.*walk|walk.*crouch/i);
 
+    // 1. Cúi người: giữ nguyên logic hiện tại
+  
+    // 1. Đang giữ nút bắn và có súng:
+    // Ưu tiên animation ngắm trước cả trạng thái cúi.
+    if (hasRifle && aiming) {
         if (moving) {
-            return walkingAction ?? runAction ?? idleAction;
+            return (
+                aimWalkAction ??
+                rifleWalkingAction ??
+                walkingAction ??
+                idleAction
+            );
         }
 
-        return idleAction ?? walkingAction ?? runAction;
-    };
+        return (
+            aimIdleAction ??
+            rifleIdleAction ??
+            idleAction ??
+            walkingAction
+        );
+    }
+
+    // 2. Cúi người.
+    if (crouching) {
+        return moving
+            ? crouchWalkingAction ??
+                  walkingAction ??
+                  idleAction
+            : crouchIdleAction ??
+                  idleAction;
+    }
+
+    // 3. Cầm súng và đi lùi.
+    if (hasRifle && moving && movingBackward) {
+        return (
+            rifleWalkBackAction ??
+            rifleWalkingAction ??
+            walkingAction ??
+            idleAction
+        );
+    }
+
+    // 4. Chạy.
+ // 4. Chạy.
+// Ưu tiên animation cầm súng để tay không chuyển về tư thế tay không.
+if (moving && running) {
+    if (hasRifle) {
+        return (
+            rifleWalkingAction ??
+            runAction ??
+            walkingAction ??
+            idleAction
+        );
+    }
+
+    return runAction ?? walkingAction ?? idleAction;
+}
+    // 5. Cầm súng nhưng không ngắm.
+    if (hasRifle) {
+        return moving
+            ? rifleWalkingAction ??
+                  walkingAction ??
+                  idleAction
+            : rifleIdleAction ??
+                  idleAction ??
+                  walkingAction;
+    }
+
+    // 6. Không cầm súng.
+    return moving
+        ? walkingAction ?? runAction ?? idleAction
+        : idleAction ?? walkingAction ?? runAction;
+};
+
 
     // ========================================================
     // DEBUG RIFLE ANIMATION
     // ========================================================
 
-    useEffect(() => {
-        const normalizedWeaponType = (weaponType ?? "")
+  useEffect(() => {
+    const normalizedWeaponType = String(weaponType ?? "")
+        .trim()
+        .toLowerCase()
+        .replace(/[\s-]+/g, "_");
+
+const hasRifle =
+    normalizedWeaponType.includes("rifle") ||
+    normalizedWeaponType === "ak47" ||
+    normalizedWeaponType === "ak_47";
+
+    const aimIdleAction = findAction(/^male_aim_idle$/i);
+    const aimWalkAction = findAction(/^male_aim_walk$/i);
+    const rifleIdleAction = findAction(/^male_rifle_idle$/i);
+
+    const selectedAction = getLocomotionAction();
+
+    console.log("[AIM ANIMATION DEBUG]", {
+        aiming,
+        weaponType,
+        hasRifle,
+        moving,
+        crouching,
+        aimIdleFound: Boolean(aimIdleAction),
+        aimWalkFound: Boolean(aimWalkAction),
+        rifleIdleFound: Boolean(rifleIdleAction),
+        selectedClip:
+            selectedAction?.getClip().name ?? "NOT FOUND",
+    });
+}, [
+    aiming,
+    weaponType,
+    moving,
+    movingBackward,
+    running,
+    crouching,
+    actions,
+    animations,
+]);
+
+
+useEffect(() => {
+    const nextAction = getLocomotionAction();
+
+    locomotionActionRef.current = nextAction;
+
+    if (!nextAction || punchingRef.current || jumpingRef.current) {
+        return;
+    }
+
+    const previousAction = activeActionRef.current;
+
+    // Đã phát đúng animation thì không reset lại.
+    if (
+        previousAction === nextAction &&
+        nextAction.isRunning()
+    ) {
+        return;
+    }
+
+    // Dừng các animation khác.
+    for (const action of Object.values(actions)) {
+        if (!action || action === nextAction) continue;
+
+        action.stopFading();
+        action.fadeOut(0.12);
+    }
+
+    // Chỉ khởi động animation được chọn một lần.
+    nextAction.stopFading();
+    nextAction.enabled = true;
+    nextAction.reset();
+    nextAction.setLoop(LoopRepeat, Infinity);
+    nextAction.clampWhenFinished = false;
+    nextAction.setEffectiveWeight(1);
+    nextAction.setEffectiveTimeScale(1);
+    nextAction.fadeIn(0.12).play();
+
+    activeActionRef.current = nextAction;
+
+    console.log("[ANIMATION ACTIVE]", {
+        weaponType,
+        normalizedWeaponType: String(weaponType ?? "")
             .trim()
             .toLowerCase()
-            .replace(/[\s-]+/g, "_");
-
-        const hasRifle =
-            normalizedWeaponType === "rifle" ||
-            normalizedWeaponType === "assault_rifle";
-
-        const rifleIdleAction = findAction(
-            /^male_rifle_idle$/i,
-        );
-
-        const selectedAction = getLocomotionAction();
-
-        console.log("[RIFLE IDLE DEBUG]", {
-            weaponType,
-            normalizedWeaponType,
-            hasRifle,
-            rifleIdleFound: Boolean(rifleIdleAction),
-            selectedClip:
-                selectedAction?.getClip().name ?? "NOT FOUND",
-        });
-    }, [
-        weaponType,
+            .replace(/[\s-]+/g, "_"),
         moving,
-        running,
+        aiming,
         crouching,
-        actions,
-        animations,
-    ]);
+        clip: nextAction.getClip().name,
+    });
+}, [
+    actions,
+    moving,
+    movingBackward,
+    running,
+    crouching,
+    aiming,
+    weaponType,
+]);
 
-    // ========================================================
-    // ANIMATION: IDLE / WALK / RUN
-    // ========================================================
-
-    useEffect(() => {
-        const nextAction = getLocomotionAction();
-
-        locomotionActionRef.current = nextAction;
-
-        if (
-            !nextAction ||
-            punchingRef.current ||
-            jumpingRef.current
-        ) {
-            return;
-        }
-
-        const previousAction = activeActionRef.current;
-
-        if (
-            previousAction === nextAction &&
-            nextAction.isRunning()
-        ) {
-            return;
-        }
-
-        // Fade out other actions to avoid conflicting poses.
-        for (const action of Object.values(actions)) {
-            if (action && action !== nextAction) {
-                action.fadeOut(0.12);
-            }
-        }
-
-        nextAction.enabled = true;
-        nextAction.reset();
-        nextAction.setLoop(LoopRepeat, Infinity);
-        nextAction.clampWhenFinished = false;
-        nextAction.setEffectiveWeight(1);
-        nextAction.setEffectiveTimeScale(1);
-        nextAction.fadeIn(0.15).play();
-
-        activeActionRef.current = nextAction;
-
-        console.log("[ANIMATION] Locomotion:", {
-            weaponType,
-            moving,
-            running,
-            crouching,
-            clip: nextAction.getClip().name,
-        });
-    }, [
-        actions,
-        moving,
-        running,
-        crouching,
-        weaponType,
-    ]);
 
     // ========================================================
     // ANIMATION: JUMP FINISHED
@@ -1080,18 +1313,38 @@ export default function Character3D({
     // RENDER
     // ========================================================
 
+// ========================================================
+// RENDER
+// ========================================================
+
 return (
     <group scale={MODEL_SCALE}>
-            <primitive object={clonedScene} />
+        <primitive object={clonedScene} />
 
-            <CharacterClothing root={clonedScene} />
+        <CharacterClothing root={clonedScene} />
 
-            <HeldWeapon
-                root={clonedScene}
-                weaponType={weaponType}
-            />
-        </group>
-    );
+        {/* Tay phải vẫn giữ súng như cơ chế cũ */}
+    <HeldWeapon
+    root={clonedScene}
+    weaponType={weaponType}
+    running={moving && running}
+    aiming={aiming}
+    leftHandGripTargetRef={leftHandGripTargetRef}
+/>
+        {/* Chỉ IK tay trái đến ốp tay phía trước của súng */}
+ 
+<LeftHandRifleIK
+    root={clonedScene}
+    bones={leftArmBones}
+    weaponType={weaponType}
+    moving={moving}
+    aiming={aiming}
+    leftHandGripTargetRef={leftHandGripTargetRef}
+/>
+     
+    </group>
+);
 }
+
 
 useGLTF.preload(MODEL_PATH);

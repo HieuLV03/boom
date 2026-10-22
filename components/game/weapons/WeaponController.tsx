@@ -36,7 +36,21 @@ const PICKUP_DISTANCE = 2.0;
 
 // Nâng model lên khỏi tọa độ pickup một chút.
 // Có thể đổi thành 0 nếu server đã lưu đúng tọa độ tâm model.
+
 const PICKUP_VISUAL_OFFSET = 0;
+
+// Cấu hình riêng cho súng nằm trên mặt đất.
+// Các góc xoay được tính bằng độ để dễ chỉnh.
+const PICKUP_WEAPON_CONFIG = {
+    scale: 0.24,
+
+    // X: ngửa/cúi đầu súng
+    // Y: xoay hướng trái/phải
+    // Z: nghiêng thân súng
+    rotationX: 0,
+    rotationY: 90,
+    rotationZ: 0,
+};
 
 function getWeaponModelPath(weaponType: string): string {
     return (
@@ -369,26 +383,32 @@ export default function WeaponController({
 
     return (
         <>
-            {pickups.map((pickup) => (
-                <group
-                    key={pickup.id}
-                    name={`Pickup_${pickup.id}`}
-                    position={[
-                        pickup.x,
-                        pickup.y + PICKUP_VISUAL_OFFSET,
-                        pickup.z,
-                    ]}
-                    rotation={[0, Math.PI / 4, 0]}
-                >
-                    <WeaponModel
-                        weaponType={pickup.weaponType}
-                        modelPath={getWeaponModelPath(
-                            pickup.weaponType,
-                        )}
-                        scale={0.24}
-                    />
-                </group>
-            ))}
+           
+{pickups.map((pickup) => (
+    <group
+        key={pickup.id}
+        name={`Pickup_${pickup.id}`}
+        position={[
+            pickup.x,
+            pickup.y + PICKUP_VISUAL_OFFSET,
+            pickup.z,
+        ]}
+    >
+        <WeaponModel
+            weaponType={pickup.weaponType}
+            modelPath={getWeaponModelPath(
+                pickup.weaponType,
+            )}
+            scale={PICKUP_WEAPON_CONFIG.scale}
+            rotation={[
+                PICKUP_WEAPON_CONFIG.rotationX * Math.PI / 180,
+                PICKUP_WEAPON_CONFIG.rotationY * Math.PI / 180,
+                PICKUP_WEAPON_CONFIG.rotationZ * Math.PI / 180,
+            ]}
+        />
+    </group>
+))}
+
         </>
     );
 }

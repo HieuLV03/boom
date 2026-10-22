@@ -1,0 +1,30 @@
+
+/*
+ * BulletEffects chủ yếu sử dụng vật thể 3D của Three.js.
+ * File CSS này dành cho các hiệu ứng DOM/HUD bổ sung
+ * nếu sau này bạn muốn hiển thị flash trên giao diện.
+ */
+
+.bullet-effects-hud {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.bullet-effects-flash {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+        circle at center,
+        rgba(255, 190, 90, 0.12) 0%,
+        rgba(255, 150, 40, 0.04) 25%,
+        transparent 55%
+    );
+    opacity: 0;
+    transition: opacity 65ms ease-out;
+}
+
+.bullet-effects-flash.active {
+    opacity: 1;
+}

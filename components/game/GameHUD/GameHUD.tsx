@@ -18,6 +18,7 @@ import {
 import { useRunStore } from "@/stores/run.store";
 import "./GameHUD.css";
 import { useAimStore } from "@/stores/aim.store";
+import { useAimingStore } from "@/stores/aiming.store";
 import { getStateCallbacks } from "@colyseus/sdk";
 import { useMultiplayerStore } from "@/stores/multiplayer.store";
 import { useCrosshairStore } from "@/stores/crosshair.store";
@@ -103,18 +104,25 @@ const handleAttack = () => {
     const isRifle =
         weaponType.trim().toLowerCase() === "rifle";
 
-    // Không có súng: kích hoạt animation đấm.
-    if (!isRifle) {
-        usePunchStore.getState().triggerPunch();
-
-        console.log(
-            "[PUNCH] Trigger:",
-            usePunchStore.getState().punchTrigger,
-        );
-    }
-
     const aim = useAimStore.getState();
 
+    if (isRifle) {
+        // Hiển thị hiệu ứng đạn ở client.
+        window.dispatchEvent(
+            new CustomEvent("boom:bullet-fired", {
+                detail: {
+                    origin: aim.origin,
+                    direction: aim.direction,
+                    range: 51,
+                    weapon: "rifle",
+                },
+            }),
+        );
+    } else {
+        usePunchStore.getState().triggerPunch();
+    }
+
+    // Server vẫn quyết định phát bắn hợp lệ và sát thương.
     room.send("attack", {
         action: isRifle ? "shoot" : "punch",
         origin: aim.origin,
@@ -125,6 +133,9 @@ const handleAttack = () => {
 
 const stopFiring = () => {
     isFiringRef.current = false;
+
+    // Dừng animation ngắm súng khi thả nút.
+    useAimingStore.getState().setAiming(false);
 
     if (fireIntervalRef.current !== null) {
         window.clearInterval(fireIntervalRef.current);
@@ -167,22 +178,28 @@ const handleFirePointerDown = (
     event.currentTarget.setPointerCapture(event.pointerId);
 
     // Đấm chỉ một lần mỗi lần chạm.
-    if (weaponType !== "rifle") {
+    if (weaponType.trim().toLowerCase() !== "rifle") {
+        useAimingStore.getState().setAiming(false);
         handleAttack();
         return;
     }
 
-    // Súng: bắn ngay viên đầu tiên.
+    // Bật animation ngắm ngay khi nhấn nút BẮN.
+    useAimingStore.getState().setAiming(true);
+
     isFiringRef.current = true;
+
+    // Bắn ngay phát đầu tiên.
     handleAttack();
 
-    // Tiếp tục bắn khi người chơi vẫn giữ nút.
+    // Tiếp tục bắn trong lúc vẫn giữ nút.
     fireIntervalRef.current = window.setInterval(() => {
         if (isFiringRef.current) {
             handleAttack();
         }
     }, FIRE_INTERVAL);
 };
+
 
 const handleFirePointerMove = (
     event: PointerEvent<HTMLButtonElement>,

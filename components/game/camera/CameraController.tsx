@@ -22,7 +22,7 @@ type Props = {
 // ============================================================
 
 const HEIGHT = 2.4;
-const TARGET_HEIGHT = 3.8;
+const TARGET_HEIGHT = 3.1;
 const SMOOTH_SPEED = 10;
 
 const CAMERA_DISTANCE = 4;

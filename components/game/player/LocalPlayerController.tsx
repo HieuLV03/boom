@@ -27,7 +27,7 @@ import { useJumpStore } from "@/stores/jump.store";
 import {
     getStateCallbacks,
 } from "@colyseus/sdk";
-
+import { useAimingStore } from "@/stores/aiming.store";
 import Player from "./Player";
 import { useCrosshairStore } from "@/stores/crosshair.store";
 import {
@@ -85,7 +85,9 @@ const { camera, scene } = useThree();
 const collisionRaycasterRef = useRef(new Raycaster());
 const hospitalModelRef = useRef<Object3D | null>(null);
 const running = useRunStore((state) => state.running);
-
+const aiming = useAimingStore(
+    (state) => state.aiming,
+);
     // ========================================================
     // MULTIPLAYER
     // ========================================================
@@ -176,7 +178,8 @@ const lastSentMoving = useRef<boolean | null>(null);
         isMoving,
         setIsMoving,
     ] = useState(false);
-
+const [movingBackward, setMovingBackward] = useState(false);
+const movingBackwardRef = useRef(false);
 
     // ========================================================
     // BOMB ESCAPE
@@ -1764,7 +1767,17 @@ if (
 // Nhân vật vẫn chạy animation khi người chơi giữ joystick,
 // kể cả lúc bị góc tường chặn hoàn toàn.
 const hasMovementInput = strength > 0.08;
+// Joystick có y dương nghĩa là người chơi kéo về phía sau
+// theo hệ tọa độ điều khiển hiện tại.
+const nextMovingBackward =
+    hasMovementInput &&
+    y > DEAD_ZONE &&
+    Math.abs(y) >= Math.abs(x);
 
+if (nextMovingBackward !== movingBackwardRef.current) {
+    movingBackwardRef.current = nextMovingBackward;
+    setMovingBackward(nextMovingBackward);
+}
 const actualSpeed = Math.hypot(
     velocityX.current,
     velocityZ.current,
@@ -1846,8 +1859,14 @@ return (
             <Player
                 position={[0, 0, 0]}
                 moving={isMoving}
+                movingBackward={movingBackward}
                 running={running && isMoving && !isCrouching}
                 crouching={isCrouching}
+aiming={
+    aiming &&
+    weaponType.trim().toLowerCase().replace(/[\s-]+/g, "_")
+        .includes("rifle")
+}
                 jumpTrigger={jumpTrigger}
                 weaponType={weaponType}
             />
