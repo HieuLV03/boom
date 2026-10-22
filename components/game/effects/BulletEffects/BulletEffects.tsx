@@ -21,6 +21,7 @@ interface Vec3 {
 interface BulletShotEvent {
     origin: Vec3;
     direction: Vec3;
+    target?: Vec3;
     range?: number;
     weapon?: string;
 }
@@ -105,12 +106,25 @@ export default function BulletEffects({
                     ? data.range!
                     : defaultRange;
 
-            const end = origin
-                .clone()
-                .addScaledVector(direction, range);
+                   const targetData = data.target;
+
+            const hasTarget =
+                targetData !== undefined &&
+                Number.isFinite(targetData.x) &&
+                Number.isFinite(targetData.y) &&
+                Number.isFinite(targetData.z);
+
+            const end = hasTarget
+                ? new THREE.Vector3(
+                      targetData.x,
+                      targetData.y,
+                      targetData.z,
+                  )
+                : origin
+                      .clone()
+                      .addScaledVector(direction, range);
 
             const distance = origin.distanceTo(end);
-
             const shot: BulletShot = {
                 id: ++nextId.current,
                 origin,

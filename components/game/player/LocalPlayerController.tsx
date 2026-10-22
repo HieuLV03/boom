@@ -148,7 +148,11 @@ const weaponType =
         useRef(0);
         const serverYRef = useRef(0);
 const targetRotation = useRef(0);
+// Ưu tiên hướng tâm ngắm trong thời gian ngắn sau khi tấn công.
+const attackAimUntilRef = useRef(0);
 
+// Theo dõi góc đã gửi lên server.
+const lastSentRotation = useRef<number | null>(null);
     // ========================================================
     // MOVING STATE
     // ========================================================
@@ -849,10 +853,214 @@ if (Number.isFinite(serverY)) {
         room,
     ]);
 
+useEffect(() => {
+    const handleAttackAim = (event: Event) => {
+        const customEvent = event as CustomEvent<{
+            direction?: {
+                x: number;
+                y: number;
+                z: number;
+            };
+        }>;
 
+        const direction = customEvent.detail?.direction;
+
+        if (
+            !direction ||
+            !Number.isFinite(direction.x) ||
+            !Number.isFinite(direction.z)
+        ) {
+            return;
+        }
+
+        // Chỉ lấy hướng ngang, không cho thân nhân vật nghiêng lên/xuống.
+        if (Math.hypot(direction.x, direction.z) < 0.0001) {
+            return;
+        }
+
+        targetRotation.current = Math.atan2(
+            direction.x,
+            direction.z,
+        );
+
+        // Tạm ưu tiên hướng ngắm hơn hướng joystick.
+        attackAimUntilRef.current = Date.now() + 500;
+    };
+
+    window.addEventListener(
+        "boom:attack-aim",
+        handleAttackAim,
+    );
+
+    return () => {
+        window.removeEventListener(
+            "boom:attack-aim",
+            handleAttackAim,
+        );
+    };
+}, []);
     // ========================================================
     // INITIAL SPAWN
     // ========================================================
+
+    
+useEffect(() => {
+    const handleRequestBullet = (event: Event) => {
+        const customEvent = event as CustomEvent<{
+            origin?: { x: number; y: number; z: number };
+            direction?: { x: number; y: number; z: number };
+            range?: number;
+            weapon?: string;
+        }>;
+
+        const data = customEvent.detail;
+        const player = playerRef.current;
+
+        const aimOrigin = data?.origin;
+        const aimDirection = data?.direction;
+
+        if (
+            !player ||
+            !aimOrigin ||
+            !aimDirection ||
+            !Number.isFinite(aimOrigin.x) ||
+            !Number.isFinite(aimOrigin.y) ||
+            !Number.isFinite(aimOrigin.z) ||
+            !Number.isFinite(aimDirection.x) ||
+            !Number.isFinite(aimDirection.y) ||
+            !Number.isFinite(aimDirection.z)
+        ) {
+            console.warn("[Bullet] Dữ liệu ngắm không hợp lệ", data);
+            return;
+        }
+
+        const range = Math.max(0, data.range ?? 51);
+
+        // Tia ngắm bắt đầu từ camera, đi theo tâm ngắm.
+        const cameraOrigin = new THREE.Vector3(
+            aimOrigin.x,
+            aimOrigin.y,
+            aimOrigin.z,
+        );
+
+        const cameraDirection = new THREE.Vector3(
+            aimDirection.x,
+            aimDirection.y,
+            aimDirection.z,
+        ).normalize();
+
+        // Điểm ngắm mặc định nếu tia không chạm vật thể nào.
+        const target = cameraOrigin
+            .clone()
+            .addScaledVector(cameraDirection, range);
+
+        // Tìm điểm va chạm trên mô hình bệnh viện.
+        const hospital = hospitalModelRef.current;
+
+        if (hospital) {
+            hospital.updateMatrixWorld(true);
+
+            const raycaster = raycasterRef.current;
+            raycaster.set(cameraOrigin, cameraDirection);
+            raycaster.near = 0.05;
+            raycaster.far = range;
+
+            const hits = raycaster.intersectObject(hospital, true);
+
+            const hit = hits.find(
+                (item) =>
+                    item.object instanceof THREE.Mesh &&
+                    item.distance > 0.05,
+            );
+
+            if (hit) {
+                target.copy(hit.point);
+            }
+        }
+
+        // Tìm đầu nòng súng trong model nhân vật.
+const muzzleCandidates: THREE.Object3D[] = [];
+
+player.updateMatrixWorld(true);
+
+player.traverse((object: THREE.Object3D) => {
+    const name = object.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+
+    if (
+        name === "muzzle" ||
+        name === "muzzlepoint" ||
+        name === "muzzleend" ||
+        name === "muzzletip" ||
+        name === "barrelend" ||
+        name === "firepoint"
+    ) {
+        muzzleCandidates.push(object);
+    }
+});
+
+const muzzle = muzzleCandidates[0];
+const origin = new THREE.Vector3();
+
+if (muzzle) {
+    muzzle.getWorldPosition(origin);
+} else {
+    // Vị trí dự phòng khi model không có node đầu nòng.
+    const yaw = player.rotation.y;
+
+    origin.set(
+        player.position.x + Math.sin(yaw) * 0.65
+            + Math.cos(yaw) * 0.2,
+        player.position.y + 1.35,
+        player.position.z + Math.cos(yaw) * 0.65
+            - Math.sin(yaw) * 0.2,
+    );
+
+    console.warn(
+        "[Bullet] Không tìm thấy node đầu nòng; đang dùng vị trí dự phòng.",
+    );
+}
+
+        // Đạn xuất phát từ nòng và hội tụ về điểm trên tia ngắm.
+        const direction = target.clone().sub(origin);
+
+        if (direction.lengthSq() < 0.000001) return;
+
+        direction.normalize();
+
+        window.dispatchEvent(
+            new CustomEvent("boom:bullet-fired", {
+                detail: {
+                    origin: {
+                        x: origin.x,
+                        y: origin.y,
+                        z: origin.z,
+                    },
+                    direction: {
+                        x: direction.x,
+                        y: direction.y,
+                        z: direction.z,
+                    },
+                    target: {
+                        x: target.x,
+                        y: target.y,
+                        z: target.z,
+                    },
+                    range,
+                    weapon: data.weapon ?? "rifle",
+                },
+            }),
+        );
+    };
+
+    window.addEventListener("boom:request-bullet", handleRequestBullet);
+
+    return () => {
+        window.removeEventListener("boom:request-bullet", handleRequestBullet);
+    };
+}, [playerRef]);
+
 
     useEffect(() => {
 
@@ -1806,15 +2014,15 @@ const nextMoving = hasMovementInput || actualSpeed > 0.1;
    Giữ hướng joystick khi va chạm với tường.
 ==================================================== */
 
-if (hasMovementInput) {
-    // Lấy hướng điều khiển ban đầu, không dùng vận tốc
-    // đã bị thay đổi bởi xử lý va chạm.
+if (
+    hasMovementInput &&
+    Date.now() > attackAimUntilRef.current
+) {
     targetRotation.current = Math.atan2(
         moveX,
         moveZ,
     );
 }
-
 // Xoay theo góc ngắn nhất để tránh giật khi qua ±PI.
 const angleDifference = Math.atan2(
     Math.sin(targetRotation.current - player.rotation.y),
@@ -1832,9 +2040,27 @@ player.rotation.y +=
         // ====================================================
 
   if (room) {
-    const shouldSendMovement =
-        actualSpeed > 0.001 ||
-        lastSentMoving.current !== nextMoving;
+
+    const rotationDifference =
+    lastSentRotation.current === null
+        ? Infinity
+        : Math.abs(
+            Math.atan2(
+                Math.sin(
+                    player.rotation.y -
+                    lastSentRotation.current
+                ),
+                Math.cos(
+                    player.rotation.y -
+                    lastSentRotation.current
+                ),
+            ),
+        );
+
+const shouldSendMovement =
+    actualSpeed > 0.001 ||
+    lastSentMoving.current !== nextMoving ||
+    rotationDifference > 0.02;
 
     if (shouldSendMovement) {
         room.send("move", {
@@ -1846,6 +2072,7 @@ player.rotation.y +=
         });
 
         lastSentMoving.current = nextMoving;
+        lastSentRotation.current = player.rotation.y;
     }
 }
     });

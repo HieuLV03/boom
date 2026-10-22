@@ -105,22 +105,35 @@ const handleAttack = () => {
         weaponType.trim().toLowerCase() === "rifle";
 
     const aim = useAimStore.getState();
+// Báo cho LocalPlayerController xoay thân theo tâm ngắm.
+window.dispatchEvent(
+    new CustomEvent("boom:attack-aim", {
+        detail: {
+            direction: aim.direction,
+        },
+    }),
+);
 
-    if (isRifle) {
-        // Hiển thị hiệu ứng đạn ở client.
-        window.dispatchEvent(
-            new CustomEvent("boom:bullet-fired", {
-                detail: {
-                    origin: aim.origin,
-                    direction: aim.direction,
-                    range: 51,
-                    weapon: "rifle",
-                },
-            }),
-        );
-    } else {
-        usePunchStore.getState().triggerPunch();
-    }
+if (isRifle) {
+    const range = 51;
+
+    // Gửi tia ngắm camera; LocalPlayerController sẽ tìm
+    // điểm va chạm thực tế trên đường ngắm.
+    window.dispatchEvent(
+        new CustomEvent("boom:request-bullet", {
+            detail: {
+                origin: aim.origin,
+                direction: aim.direction,
+                range,
+                weapon: "rifle",
+            },
+        }),
+    );
+} else {
+    usePunchStore.getState().triggerPunch();
+
+}
+
 
     // Server vẫn quyết định phát bắn hợp lệ và sát thương.
     room.send("attack", {

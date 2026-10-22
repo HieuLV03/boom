@@ -405,6 +405,8 @@ export default function WeaponController({
                 PICKUP_WEAPON_CONFIG.rotationY * Math.PI / 180,
                 PICKUP_WEAPON_CONFIG.rotationZ * Math.PI / 180,
             ]}
+                enableFireEffects={false}
+
         />
     </group>
 ))}
