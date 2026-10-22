@@ -25,7 +25,8 @@ export class WeaponPickupSystem {
     private readonly state: BattleState;
     private readonly collision: HospitalCollision;
     private readonly broadcast: WeaponPickupSystemOptions["broadcast"];
-
+// Mỗi người chơi có danh sách súng đã nhặt riêng.
+private readonly claimedPickupIds = new Map<string, Set<string>>();
     constructor(options: WeaponPickupSystemOptions) {
         this.state = options.state;
         this.collision = options.collision;
@@ -167,73 +168,91 @@ initialize(): void {
     // NHẶT SÚNG
     // ========================================================
 
-    handlePickup(sessionId: string) {
-        if (this.state.gameOver) return;
+ 
+handlePickup(sessionId: string): void {
+    if (this.state.gameOver) return;
 
-        const player = this.state.players.get(sessionId);
+    const player = this.state.players.get(sessionId);
 
-        if (!player || !player.alive) return;
+    if (!player || !player.alive) return;
 
-        let nearest: WeaponPickupState | null = null;
-        let nearestDistance = Infinity;
+    let claimed = this.claimedPickupIds.get(sessionId);
 
-        this.state.weaponPickups.forEach((pickup) => {
-            if (!pickup.available) return;
-
-            const distance = Math.hypot(
-                player.x - pickup.x,
-                player.z - pickup.z,
-            );
-
-            if (distance < nearestDistance) {
-                nearest = pickup;
-                nearestDistance = distance;
-            }
-        });
-
-        if (
-            !nearest ||
-            nearestDistance > PICKUP_DISTANCE
-        ) {
-            return;
-        }
-
-        const pickup = nearest as WeaponPickupState;
-
-        let slot: 1 | 2;
-
-        if (!player.weapon1) {
-            slot = 1;
-        } else if (!player.weapon2) {
-            slot = 2;
-        } else {
-            slot = player.equippedSlot === 2 ? 2 : 1;
-        }
-
-        if (slot === 1) {
-            player.weapon1 = pickup.weaponType;
-        } else {
-            player.weapon2 = pickup.weaponType;
-        }
-
-        player.equippedSlot = slot;
-        player.ammo = 999;
-
-        // Xóa khỏi MapSchema để client ngừng render model.
-        this.state.weaponPickups.delete(pickup.id);
-
-        this.broadcast("weaponPickedUp", {
-            playerId: sessionId,
-            weaponType: pickup.weaponType,
-            slot,
-            pickupId: pickup.id,
-        });
-
-        console.log("[WEAPON] Đã nhặt súng:", {
-            player: player.name,
-            weaponType: pickup.weaponType,
-            slot,
-            distance: nearestDistance,
-        });
+    if (!claimed) {
+        claimed = new Set<string>();
+        this.claimedPickupIds.set(sessionId, claimed);
     }
+
+    let nearest: WeaponPickupState | null = null;
+    let nearestDistance = Infinity;
+
+    this.state.weaponPickups.forEach((pickup) => {
+        // Khẩu súng vẫn tồn tại trên bản đồ,
+        // nhưng mỗi người chơi chỉ được nhặt nó một lần.
+        if (!pickup.available) return;
+        if (claimed!.has(pickup.id)) return;
+
+        const distance = Math.hypot(
+            player.x - pickup.x,
+            player.z - pickup.z,
+        );
+
+        if (distance < nearestDistance) {
+            nearest = pickup;
+            nearestDistance = distance;
+        }
+    });
+
+    if (!nearest || nearestDistance > PICKUP_DISTANCE) {
+        return;
+    }
+
+    const pickup = nearest as WeaponPickupState;
+
+    let slot: 1 | 2;
+
+    if (!player.weapon1) {
+        slot = 1;
+    } else if (!player.weapon2) {
+        slot = 2;
+    } else {
+        slot = player.equippedSlot === 2 ? 2 : 1;
+    }
+
+    if (slot === 1) {
+        player.weapon1 = pickup.weaponType;
+    } else {
+        player.weapon2 = pickup.weaponType;
+    }
+
+    player.equippedSlot = slot;
+    player.ammo = 999;
+
+    // Đánh dấu riêng cho người chơi này.
+    claimed.add(pickup.id);
+
+    // KHÔNG xóa pickup khỏi weaponPickups.
+    // Người chơi khác vẫn có thể nhặt cùng khẩu súng.
+
+    this.broadcast("weaponPickedUp", {
+        playerId: sessionId,
+        weaponType: pickup.weaponType,
+        slot,
+        pickupId: pickup.id,
+    });
+
+    console.log("[WEAPON] Đã nhặt súng:", {
+        player: player.name,
+        sessionId,
+        pickupId: pickup.id,
+        weaponType: pickup.weaponType,
+        slot,
+        distance: nearestDistance,
+    });
+}
+
+removePlayer(sessionId: string): void {
+    this.claimedPickupIds.delete(sessionId);
+}
+
 }

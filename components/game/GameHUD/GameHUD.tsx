@@ -69,7 +69,7 @@ const MAX_CAMERA_PITCH = 1.52;
     );
 
     const [weaponType, setWeaponType] = useState("");
-
+const pickedUpIdsRef = useRef<Set<string>>(new Set());
     const [hp, setHp] = useState(100);
 
     const [nearbyWeapon, setNearbyWeapon] =
@@ -583,7 +583,7 @@ useEffect(() => {
     setNearbyWeapon(null);
     setIsPicking(false);
     setPickupMessage("");
-
+pickedUpIdsRef.current.clear();
     if (!room) {
         console.log("[PICKUP] Không có room");
         return;
@@ -624,9 +624,15 @@ useEffect(() => {
             available: boolean;
         }> = [];
 
-        pickupMap.forEach((pickup: any, key: string) => {
-            if (!pickup) return;
+    pickupMap.forEach((pickup: any, key: string) => {
+    if (!pickup) return;
 
+    const pickupId = String(pickup.id || key);
+
+    // Chỉ ẩn pickup đã được chính người chơi này nhặt.
+    if (pickedUpIdsRef.current.has(pickupId)) {
+        return;
+    }
             const distance = Math.hypot(
                 playerX - Number(pickup.x ?? 0),
                 playerZ - Number(pickup.z ?? 0),
@@ -682,6 +688,8 @@ const removePickedUpListener = room.onMessage(
         playerId?: string;
         weaponType?: string;
         slot?: number;
+            pickupId?: string;
+
     }) => {
         console.log("[PICKUP] Server phản hồi weaponPickedUp", {
             message,
@@ -694,6 +702,9 @@ const removePickedUpListener = room.onMessage(
         ) {
             return;
         }
+        if (message.pickupId) {
+    pickedUpIdsRef.current.add(message.pickupId);
+}
 
         const pickedType = String(
             message.weaponType ?? "",

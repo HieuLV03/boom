@@ -362,7 +362,7 @@ console.log("[DEBUG WEAPON] Sau initialize", {
         this.spawnSystem?.removePlayer(sessionId);
         this.physicsSystem?.removePlayer(sessionId);
         this.combatSystem?.removePlayer(sessionId);
-
+this.weaponPickupSystem?.removePlayer(sessionId);
         if (this.hostSessionId === sessionId) {
             const nextHost = this.state.players.keys().next();
 
