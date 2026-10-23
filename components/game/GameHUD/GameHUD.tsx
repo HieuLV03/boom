@@ -321,12 +321,12 @@ const updateWeapon = () => {
         .trim()
         .toLowerCase();
 
-    const nextWeapon =
-        slot === 1
-            ? weapon1
-            : slot === 2
-                ? weapon2
-                : "";
+const nextWeapon =
+    slot === 1
+        ? weapon1
+        : slot === 2
+            ? weapon2
+            : "";
 
 console.log(
     "[WEAPON STATE]",
@@ -790,8 +790,16 @@ const handlePickupWeapon = () => {
 
 const hpPercent = hp / 100;
 
+const normalizedWeaponType = String(weaponType ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+
 const hasRifle =
-    weaponType.trim().toLowerCase() === "rifle";
+    normalizedWeaponType.includes("rifle") ||
+    normalizedWeaponType === "ak47" ||
+    normalizedWeaponType === "ak_47";
+
     return (
         <div className="game-hud">
             {/* HP BAR */}

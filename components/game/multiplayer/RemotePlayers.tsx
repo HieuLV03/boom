@@ -34,17 +34,22 @@ type RemotePlayerData = {
     id: string;
     player: any;
 };
+
 function getEquippedWeapon(player: any): string {
     const slot = Number(player?.equippedSlot ?? 0);
-    const weapon1 = String(player?.weapon1 ?? "");
-    const weapon2 = String(player?.weapon2 ?? "");
 
-    // Theo trạng thái cần kiểm tra: slot 1 đang dùng weapon1.
-    if (slot === 2) return weapon2;
+    const weapon1 = String(player?.weapon1 ?? "")
+        .trim()
+        .toLowerCase();
+
+    const weapon2 = String(player?.weapon2 ?? "")
+        .trim()
+        .toLowerCase();
+
     if (slot === 1) return weapon1;
+    if (slot === 2) return weapon2;
 
-    // Dự phòng cho trạng thái mặc định của slot.
-    return weapon1;
+    return "";
 }
 
 // ============================================================
@@ -78,18 +83,7 @@ const [aiming, setAiming] = useState(Boolean(player?.aiming));
 const [weaponType, setWeaponType] = useState(
     getEquippedWeapon(player)
 );
-const hasRifle = (value: string) => {
-    const normalized = String(value ?? "")
-        .trim()
-        .toLowerCase()
-        .replace(/[\s-]+/g, "_");
 
-    return (
-        normalized.includes("rifle") ||
-        normalized === "ak47" ||
-        normalized === "ak_47"
-    );
-};
 // Mỗi nhân vật từ xa có bộ đếm đấm riêng.
 const [punchTrigger, setPunchTrigger] = useState(0);
 
@@ -119,7 +113,6 @@ setPlayerName(player.name || "Player");
 const [playerName, setPlayerName] = useState(
     player?.name || "Player"
 );
-
 useEffect(() => {
     if (!room) return;
 
@@ -129,30 +122,20 @@ useEffect(() => {
             playerId?: string;
             action?: string;
         }) => {
-            if (message.playerId !== id) return;
-            if (message.action !== "punch") return;
-
-            // Có súng thì không phát animation đấm.
-            if (hasRifle(getEquippedWeapon(player))) {
-                console.warn(
-                    "[REMOTE PUNCH BLOCKED]",
-                    {
-                        id,
-                        weaponType: getEquippedWeapon(player),
-                        action: message.action,
-                    },
-                );
-                return;
+            if (
+                message.playerId === id &&
+                message.action === "punch"
+            ) {
+                setPunchTrigger((value) => value + 1);
             }
-
-            setPunchTrigger((value) => value + 1);
         },
     );
 
     return () => {
         unsubscribe();
     };
-}, [room, id, player]);
+}, [room, id]);
+
     // ========================================================
     // LOG
     // ========================================================
