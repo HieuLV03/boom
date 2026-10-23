@@ -353,10 +353,12 @@ useEffect(() => {
             .toLowerCase()
             .replace(/[\s-]+/g, "_");
 
-        const nextWeapon =
-            slot === 1 ? weapon1 :
-            slot === 2 ? weapon2 :
-            "";
+ 
+const nextWeapon =
+    slot === 0 ? weapon1 :
+    slot === 1 ? weapon2 :
+    "";
+
 
         console.log("[HUD WEAPON SYNC]", {
             roomId: room.roomId,
