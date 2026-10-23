@@ -263,6 +263,18 @@ console.log("[DEBUG WEAPON] Sau initialize", {
     }
 
     private registerMessages(): void {
+
+        this.onMessage("aiming", (client, message) => {
+        const player = this.state.players.get(client.sessionId);
+
+        if (!player || !player.alive || this.state.gameOver) {
+            return;
+        }
+
+        player.aiming = message?.aiming === true;
+    });
+
+    
         this.onMessage("pickupWeapon", (client) => {
             this.weaponPickupSystem?.handlePickup(
                 client.sessionId,

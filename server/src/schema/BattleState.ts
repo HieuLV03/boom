@@ -13,12 +13,14 @@ export class PlayerState extends Schema {
 
     @type("string")
     name: string = "";
+@type("boolean")
+moving: boolean = false;
 
-    @type("boolean")
-    moving: boolean = false;
+@type("boolean")
+aiming: boolean = false;
 
-    @type("number")
-    x: number = 0;
+@type("number")
+x: number = 0;
 
     @type("number")
     y: number = 0;

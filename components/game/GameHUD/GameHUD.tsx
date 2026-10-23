@@ -143,17 +143,24 @@ if (isRifle) {
 };
 
 
+
 const stopFiring = () => {
     isFiringRef.current = false;
 
-    // Dừng animation ngắm súng khi thả nút.
+    // Tắt animation ngắm ở máy hiện tại.
     useAimingStore.getState().setAiming(false);
+
+    // Đồng bộ trạng thái hết ngắm lên server.
+    if (room) {
+        room.send("aiming", { aiming: false });
+    }
 
     if (fireIntervalRef.current !== null) {
         window.clearInterval(fireIntervalRef.current);
         fireIntervalRef.current = null;
     }
 };
+
 
 const running = useRunStore(
     (state) => state.running,
@@ -195,10 +202,16 @@ if (!hasRifle) {
     return;
 }
 
-    // Bật animation ngắm ngay khi nhấn nút BẮN.
+
+if (hasRifle) {
+    // Bật animation ngắm ở máy hiện tại.
     useAimingStore.getState().setAiming(true);
 
-    isFiringRef.current = true;
+    // Báo cho server để đồng bộ animation tới đối thủ.
+    room?.send("aiming", { aiming: true });
+}
+
+isFiringRef.current = true;
 
     // Bắn ngay phát đầu tiên.
     handleAttack();
