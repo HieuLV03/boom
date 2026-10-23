@@ -292,28 +292,14 @@ const handleFirePointerUp = (
 const handleJump = () => {
     if (!room) return;
 
-    // Kích hoạt animation nhảy ở máy hiện tại.
     useJumpStore.getState().triggerJump();
-
-    // Đồng bộ sự kiện nhảy đến server và người chơi khác.
-    room.send("jump");
 };
 
 const handleCrouch = () => {
     if (!room) return;
 
-    // Đổi trạng thái cúi ở máy hiện tại.
     useCrouchStore.getState().toggleCrouch();
-
-    // Gửi đúng trạng thái mới, không gửi trạng thái cũ.
-    const nextCrouching =
-        useCrouchStore.getState().crouching;
-
-    room.send("crouch", {
-        crouching: nextCrouching,
-    });
 };
-
 
 const isCrouching = useCrouchStore(
     (state) => state.crouching,
@@ -355,10 +341,9 @@ useEffect(() => {
 
  
 const nextWeapon =
-    slot === 0 ? weapon1 :
-    slot === 1 ? weapon2 :
+    slot === 1 ? weapon1 :
+    slot === 2 ? weapon2 :
     "";
-
 
         console.log("[HUD WEAPON SYNC]", {
             roomId: room.roomId,
@@ -866,7 +851,8 @@ const normalizedWeaponType = String(weaponType ?? "")
 const hasRifle =
     normalizedWeaponType.includes("rifle") ||
     normalizedWeaponType === "ak47" ||
-    normalizedWeaponType === "ak_47";
+    normalizedWeaponType === "ak_47" ||
+    normalizedWeaponType === "ak_47_rifle";
 
     console.log("[HUD BUTTON DEBUG]", {
     weaponType,
