@@ -1029,29 +1029,40 @@ if (muzzle) {
 
         direction.normalize();
 
-        window.dispatchEvent(
-            new CustomEvent("boom:bullet-fired", {
-                detail: {
-                    origin: {
-                        x: origin.x,
-                        y: origin.y,
-                        z: origin.z,
-                    },
-                    direction: {
-                        x: direction.x,
-                        y: direction.y,
-                        z: direction.z,
-                    },
-                    target: {
-                        x: target.x,
-                        y: target.y,
-                        z: target.z,
-                    },
-                    range,
-                    weapon: data.weapon ?? "rifle",
-                },
-            }),
-        );
+  const trajectory = {
+    origin: {
+        x: origin.x,
+        y: origin.y,
+        z: origin.z,
+    },
+    direction: {
+        x: direction.x,
+        y: direction.y,
+        z: direction.z,
+    },
+    target: {
+        x: target.x,
+        y: target.y,
+        z: target.z,
+    },
+    range,
+    weapon: data.weapon ?? "rifle",
+};
+
+// Hiệu ứng đạn: bắt đầu từ đầu nòng súng.
+window.dispatchEvent(
+    new CustomEvent("boom:bullet-fired", {
+        detail: trajectory,
+    }),
+);
+
+// Gửi cùng quỹ đạo cho GameHUD để chuyển lên server.
+window.dispatchEvent(
+    new CustomEvent("boom:bullet-trajectory", {
+        detail: trajectory,
+    }),
+);
+
     };
 
     window.addEventListener("boom:request-bullet", handleRequestBullet);

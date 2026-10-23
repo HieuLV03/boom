@@ -98,50 +98,98 @@ const crosshairVisible = useCrosshairStore(
     // ========================================================
 
 
+
 const handleAttack = () => {
     if (!room) return;
 
     const isRifle = hasRifle;
-
     const aim = useAimStore.getState();
-// Báo cho LocalPlayerController xoay thân theo tâm ngắm.
-window.dispatchEvent(
-    new CustomEvent("boom:attack-aim", {
-        detail: {
-            direction: aim.direction,
-        },
-    }),
-);
 
-if (isRifle) {
-    const range = 51;
-
-    // Gửi tia ngắm camera; LocalPlayerController sẽ tìm
-    // điểm va chạm thực tế trên đường ngắm.
+    // Xoay thân nhân vật về hướng tâm ngắm.
     window.dispatchEvent(
-        new CustomEvent("boom:request-bullet", {
+        new CustomEvent("boom:attack-aim", {
             detail: {
-                origin: aim.origin,
                 direction: aim.direction,
-                range,
-                weapon: "rifle",
             },
         }),
     );
-} else {
+
+    if (isRifle) {
+        // LocalPlayerController sẽ tính điểm ngắm và
+        // hướng đạn thực tế từ đầu nòng súng.
+        window.dispatchEvent(
+            new CustomEvent("boom:request-bullet", {
+                detail: {
+                    origin: aim.origin,
+                    direction: aim.direction,
+                    range: 51,
+                    weapon: "rifle",
+                },
+            }),
+        );
+
+        // Không gửi attack ở đây.
+        // GameHUD sẽ gửi sau khi nhận boom:bullet-trajectory.
+        return;
+    }
+
+    // Đấm vẫn gửi trực tiếp lên server.
     usePunchStore.getState().triggerPunch();
 
-}
-
-
-    // Server vẫn quyết định phát bắn hợp lệ và sát thương.
     room.send("attack", {
-        action: isRifle ? "shoot" : "punch",
+        action: "punch",
         origin: aim.origin,
         direction: aim.direction,
     });
 };
 
+
+
+useEffect(() => {
+    if (!room) return;
+
+    const handleBulletTrajectory = (event: Event) => {
+        const customEvent = event as CustomEvent<{
+            origin?: { x: number; y: number; z: number };
+            direction?: { x: number; y: number; z: number };
+            target?: { x: number; y: number; z: number };
+            range?: number;
+            weapon?: string;
+        }>;
+
+        const trajectory = customEvent.detail;
+        const { origin, direction } = trajectory ?? {};
+
+        if (
+            !origin ||
+            !direction ||
+            ![origin.x, origin.y, origin.z,
+              direction.x, direction.y, direction.z].every(
+                Number.isFinite,
+            )
+        ) {
+            return;
+        }
+
+        room.send("attack", {
+            action: "shoot",
+            origin,
+            direction,
+        });
+    };
+
+    window.addEventListener(
+        "boom:bullet-trajectory",
+        handleBulletTrajectory,
+    );
+
+    return () => {
+        window.removeEventListener(
+            "boom:bullet-trajectory",
+            handleBulletTrajectory,
+        );
+    };
+}, [room]);
 
 
 const stopFiring = () => {
