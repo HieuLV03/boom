@@ -309,7 +309,6 @@ const isCrouching = useCrouchStore(
             unsubscribe?.();
 
          
-
 const updateWeapon = () => {
     const slot = Number(player.equippedSlot ?? 0);
 
@@ -321,28 +320,23 @@ const updateWeapon = () => {
         .trim()
         .toLowerCase();
 
-const nextWeapon =
-    slot === 1
-        ? weapon1
-        : slot === 2
-            ? weapon2
-            : "";
+    const nextWeapon =
+        slot === 1 ? weapon1 :
+        slot === 2 ? weapon2 :
+        "";
 
-console.log(
-    "[WEAPON STATE]",
-    JSON.stringify({
+    console.log("[HUD WEAPON DEBUG]", {
+        roomId: room.roomId,
         sessionId: room.sessionId,
-        equippedSlot: slot,
+        playerId: player.id,
+        slot,
         weapon1,
         weapon2,
         nextWeapon,
-        hasRifle: nextWeapon === "rifle",
-    }),
-);
+    });
 
     setWeaponType(nextWeapon);
 };
-
 
 
             updateWeapon();
@@ -800,6 +794,11 @@ const hasRifle =
     normalizedWeaponType === "ak47" ||
     normalizedWeaponType === "ak_47";
 
+    console.log("[HUD BUTTON DEBUG]", {
+    weaponType,
+    normalizedWeaponType,
+    hasRifle,
+});
     return (
         <div className="game-hud">
             {/* HP BAR */}
