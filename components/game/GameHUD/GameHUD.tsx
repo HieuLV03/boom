@@ -288,13 +288,32 @@ const handleFirePointerUp = (
 // JUMP & CROUCH
 // ========================================================
 
+
 const handleJump = () => {
+    if (!room) return;
+
+    // Kích hoạt animation nhảy ở máy hiện tại.
     useJumpStore.getState().triggerJump();
+
+    // Đồng bộ sự kiện nhảy đến server và người chơi khác.
+    room.send("jump");
 };
 
 const handleCrouch = () => {
+    if (!room) return;
+
+    // Đổi trạng thái cúi ở máy hiện tại.
     useCrouchStore.getState().toggleCrouch();
+
+    // Gửi đúng trạng thái mới, không gửi trạng thái cũ.
+    const nextCrouching =
+        useCrouchStore.getState().crouching;
+
+    room.send("crouch", {
+        crouching: nextCrouching,
+    });
 };
+
 
 const isCrouching = useCrouchStore(
     (state) => state.crouching,

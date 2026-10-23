@@ -1254,6 +1254,49 @@ targetRotation.current = player.rotation.y;
         playerRef,
     ]);
 
+
+const lastSyncedRoomRef = useRef<typeof room>(null);
+const lastSentCrouchRef = useRef<boolean | null>(null);
+const lastSentJumpRef = useRef(0);
+
+useEffect(() => {
+    if (!room) {
+        lastSyncedRoomRef.current = null;
+        lastSentCrouchRef.current = null;
+        lastSentJumpRef.current = jumpTrigger;
+        return;
+    }
+
+    // Phòng mới: đồng bộ trạng thái cúi hiện tại,
+    // nhưng không phát lại cú nhảy từ phòng trước.
+    if (lastSyncedRoomRef.current !== room) {
+        lastSyncedRoomRef.current = room;
+        lastSentCrouchRef.current = isCrouching;
+        lastSentJumpRef.current = jumpTrigger;
+
+        room.send("crouch", {
+            crouching: isCrouching,
+        });
+
+        return;
+    }
+
+    // Chỉ gửi khi trạng thái cúi thay đổi.
+    if (lastSentCrouchRef.current !== isCrouching) {
+        room.send("crouch", {
+            crouching: isCrouching,
+        });
+
+        lastSentCrouchRef.current = isCrouching;
+    }
+
+    // Mỗi lần triggerJump tăng, gửi một tín hiệu nhảy.
+    if (jumpTrigger !== lastSentJumpRef.current) {
+        lastSentJumpRef.current = jumpTrigger;
+        room.send("jump");
+    }
+}, [room, isCrouching, jumpTrigger]);
+
 useEffect(() => {
     let hospital: Object3D | null = null;
 
