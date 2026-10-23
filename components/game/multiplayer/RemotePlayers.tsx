@@ -78,7 +78,18 @@ const [aiming, setAiming] = useState(Boolean(player?.aiming));
 const [weaponType, setWeaponType] = useState(
     getEquippedWeapon(player)
 );
+const hasRifle = (value: string) => {
+    const normalized = String(value ?? "")
+        .trim()
+        .toLowerCase()
+        .replace(/[\s-]+/g, "_");
 
+    return (
+        normalized.includes("rifle") ||
+        normalized === "ak47" ||
+        normalized === "ak_47"
+    );
+};
 // Mỗi nhân vật từ xa có bộ đếm đấm riêng.
 const [punchTrigger, setPunchTrigger] = useState(0);
 
@@ -108,6 +119,7 @@ setPlayerName(player.name || "Player");
 const [playerName, setPlayerName] = useState(
     player?.name || "Player"
 );
+
 useEffect(() => {
     if (!room) return;
 
@@ -117,20 +129,30 @@ useEffect(() => {
             playerId?: string;
             action?: string;
         }) => {
-            if (
-                message.playerId === id &&
-                message.action === "punch"
-            ) {
-                setPunchTrigger((value) => value + 1);
+            if (message.playerId !== id) return;
+            if (message.action !== "punch") return;
+
+            // Có súng thì không phát animation đấm.
+            if (hasRifle(getEquippedWeapon(player))) {
+                console.warn(
+                    "[REMOTE PUNCH BLOCKED]",
+                    {
+                        id,
+                        weaponType: getEquippedWeapon(player),
+                        action: message.action,
+                    },
+                );
+                return;
             }
+
+            setPunchTrigger((value) => value + 1);
         },
     );
 
     return () => {
         unsubscribe();
     };
-}, [room, id]);
-
+}, [room, id, player]);
     // ========================================================
     // LOG
     // ========================================================

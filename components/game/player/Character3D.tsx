@@ -1272,8 +1272,20 @@ useEffect(() => {
 
         lastPunchTriggerRef.current = punchTrigger;
 
-        if (jumpingRef.current) return;
+const normalizedWeaponType = String(weaponType ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
 
+const hasRifle =
+    normalizedWeaponType.includes("rifle") ||
+    normalizedWeaponType === "ak47" ||
+    normalizedWeaponType === "ak_47";
+
+// Có súng thì không cho phát animation đấm.
+if (hasRifle || jumpingRef.current) {
+    return;
+}
         const punchAction = findAction(
             /punch|attack|melee/i,
         );

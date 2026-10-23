@@ -328,13 +328,17 @@ const updateWeapon = () => {
                 ? weapon2
                 : "";
 
-    console.log("[WEAPON STATE]", {
+console.log(
+    "[WEAPON STATE]",
+    JSON.stringify({
         sessionId: room.sessionId,
         equippedSlot: slot,
         weapon1,
         weapon2,
         nextWeapon,
-    });
+        hasRifle: nextWeapon === "rifle",
+    }),
+);
 
     setWeaponType(nextWeapon);
 };
