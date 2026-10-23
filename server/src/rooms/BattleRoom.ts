@@ -274,7 +274,20 @@ console.log("[DEBUG WEAPON] Sau initialize", {
         player.aiming = message?.aiming === true;
     });
 
-    
+    this.onMessage("crouch", (client, message) => {
+    const player = this.state.players.get(client.sessionId);
+    if (!player || !player.alive || this.state.gameOver) return;
+
+    player.crouching = message?.crouching === true;
+});
+
+this.onMessage("jump", (client) => {
+    const player = this.state.players.get(client.sessionId);
+    if (!player || !player.alive || this.state.gameOver) return;
+
+    player.jumpTrigger += 1;
+});
+
         this.onMessage("pickupWeapon", (client) => {
             this.weaponPickupSystem?.handlePickup(
                 client.sessionId,

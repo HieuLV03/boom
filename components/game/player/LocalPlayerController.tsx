@@ -1630,9 +1630,9 @@ if (running && joystickMagnitude <= DEAD_ZONE) {
         // SPEED
         // ====================================================
 
-const WALK_SPEED = 5.5;
-const RUN_SPEED = 9.0;
-const CROUCH_SPEED = 2.5;
+const WALK_SPEED = 4.5;
+const RUN_SPEED = 7.2;
+const CROUCH_SPEED = 2.4;
 
 const MAX_SPEED = isCrouching
     ? CROUCH_SPEED

@@ -76,8 +76,12 @@ const [movingBackward, setMovingBackward] = useState(
     Boolean(player?.movingBackward)
 );
 const [running, setRunning] = useState(Boolean(player?.running));
-const [crouching, setCrouching] = useState(Boolean(player?.crouching));
-
+const [crouching, setCrouching] = useState(
+    Boolean(player?.crouching)
+);
+const [jumpTrigger, setJumpTrigger] = useState(
+    Number(player?.jumpTrigger ?? 0)
+);
 const [aiming, setAiming] = useState(Boolean(player?.aiming));
 
 const [weaponType, setWeaponType] = useState(
@@ -94,8 +98,9 @@ useEffect(() => {
         setMoving(Boolean(player.moving));
         setMovingBackward(Boolean(player.movingBackward));
         setRunning(Boolean(player.running));
-        setCrouching(Boolean(player.crouching));
         setAiming(Boolean(player.aiming));
+        setCrouching(Boolean(player.crouching));
+setJumpTrigger(Number(player.jumpTrigger ?? 0));
      setWeaponType(getEquippedWeapon(player));
 setPlayerName(player.name || "Player");
     };
@@ -247,6 +252,8 @@ useEffect(() => {
     aiming={aiming}
     weaponType={weaponType}
     punchTrigger={punchTrigger}
+        jumpTrigger={jumpTrigger}
+
 />
         </group>
 

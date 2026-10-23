@@ -18,6 +18,11 @@ moving: boolean = false;
 
 @type("boolean")
 aiming: boolean = false;
+@type("boolean")
+crouching: boolean = false;
+
+@type("number")
+jumpTrigger: number = 0;
 
 @type("number")
 x: number = 0;
