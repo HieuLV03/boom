@@ -319,82 +319,122 @@ const isCrouching = useCrouchStore(
     (state) => state.crouching,
 );
 
-    // ========================================================
-    // CURRENT PLAYER WEAPON
-    // ========================================================
+useEffect(() => {
+    setWeaponType("");
 
-    useEffect(() => {
-        if (!room) {
+    if (!room) return;
+
+    const players = room.state?.players;
+
+    if (!players) {
+        console.warn("[HUD WEAPON] Players map chưa sẵn sàng");
+        return;
+    }
+
+    const $ = getStateCallbacks(room);
+
+    let unsubscribePlayer: (() => void) | undefined;
+
+    const readWeapon = (player: any) => {
+        if (!player) {
             setWeaponType("");
             return;
         }
 
-        const players: any = room.state?.players;
+        const slot = Number(player.equippedSlot ?? 0);
 
-        if (!players) return;
+        const weapon1 = String(player.weapon1 ?? "")
+            .trim()
+            .toLowerCase()
+            .replace(/[\s-]+/g, "_");
 
-        const $ = getStateCallbacks(room);
+        const weapon2 = String(player.weapon2 ?? "")
+            .trim()
+            .toLowerCase()
+            .replace(/[\s-]+/g, "_");
 
-        let unsubscribe: (() => void) | undefined;
+        const nextWeapon =
+            slot === 1 ? weapon1 :
+            slot === 2 ? weapon2 :
+            "";
 
-        const bindPlayer = (player: any) => {
-            unsubscribe?.();
+        console.log("[HUD WEAPON SYNC]", {
+            roomId: room.roomId,
+            sessionId: room.sessionId,
+            slot,
+            weapon1,
+            weapon2,
+            nextWeapon,
+        });
 
-         
-const updateWeapon = () => {
-    const slot = Number(player.equippedSlot ?? 0);
+        setWeaponType(nextWeapon);
+    };
 
-    const weapon1 = String(player.weapon1 ?? "")
-        .trim()
-        .toLowerCase();
+    const bindLocalPlayer = (player: any) => {
+        unsubscribePlayer?.();
 
-    const weapon2 = String(player.weapon2 ?? "")
-        .trim()
-        .toLowerCase();
+        if (!player) {
+            setWeaponType("");
+            return;
+        }
 
-    const nextWeapon =
-        slot === 1 ? weapon1 :
-        slot === 2 ? weapon2 :
-        "";
+        // Đọc trạng thái ngay khi tìm thấy người chơi.
+        readWeapon(player);
 
-    console.log("[HUD WEAPON DEBUG]", {
-        roomId: room.roomId,
-        sessionId: room.sessionId,
-        playerId: player.id,
-        slot,
-        weapon1,
-        weapon2,
-        nextWeapon,
-    });
+        // Theo dõi mọi thay đổi trong schema người chơi.
+        unsubscribePlayer = $(player).onChange(() => {
+            readWeapon(player);
+        });
+    };
 
-    setWeaponType(nextWeapon);
-};
-
-
-            updateWeapon();
-
-            unsubscribe = $(player).onChange(updateWeapon);
-        };
-
+    const findLocalPlayer = () => {
         const localPlayer = players.get(room.sessionId);
 
         if (localPlayer) {
-            bindPlayer(localPlayer);
+            bindLocalPlayer(localPlayer);
+            return true;
         }
 
-        const removeAdd = $(players).onAdd(
-            (player: any, sessionId: string) => {
-                if (sessionId === room.sessionId) {
-                    bindPlayer(player);
-                }
-            },
-        );
+        return false;
+    };
 
-        return () => {
-            unsubscribe?.();
-            removeAdd();
-        };
-    }, [room]);
+    // Người chơi có thể đã tồn tại trước khi effect chạy.
+    findLocalPlayer();
+
+    // Hoặc được thêm sau khi kết nối room.
+    const removeAddListener = $(players).onAdd(
+        (player: any, sessionId: string) => {
+            if (sessionId === room.sessionId) {
+                bindLocalPlayer(player);
+            }
+        },
+    );
+
+    // Sự kiện nhặt súng là tín hiệu kiểm tra lại schema,
+    // không thay thế trạng thái vũ khí do server quản lý.
+    const removePickupListener = room.onMessage(
+        "weaponPickedUp",
+        (message: {
+            playerId?: string;
+        }) => {
+            if (message?.playerId !== room.sessionId) {
+                return;
+            }
+
+            const localPlayer = players.get(room.sessionId);
+
+            if (localPlayer) {
+                readWeapon(localPlayer);
+            }
+        },
+    );
+
+    return () => {
+        unsubscribePlayer?.();
+        removeAddListener();
+        removePickupListener();
+    };
+}, [room]);
 
     // ========================================================
     // HP
