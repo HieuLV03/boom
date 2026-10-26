@@ -1,21 +1,29 @@
 
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import { useGLTF } from "@react-three/drei";
-import { createPortal, useFrame, useThree } from "@react-three/fiber";
+import {
+    createPortal,
+    useFrame,
+    useThree,
+} from "@react-three/fiber";
 import { SkeletonUtils } from "three-stdlib";
 import {
     Box3,
-    CylinderGeometry,
     Group,
     Mesh,
-    MeshStandardMaterial,
     Quaternion,
     Vector3,
 } from "three";
 import type { RefObject } from "react";
 import type { Object3D } from "three";
+
 type Vec3Tuple = [number, number, number];
 
 type ShellData = {
@@ -31,7 +39,6 @@ type Props = {
     scale?: number;
     position?: Vec3Tuple;
     rotation?: Vec3Tuple;
-    leftHandGripPosition?: Vec3Tuple;
     leftHandGripTargetRef?: RefObject<Object3D | null>;
     showDebugMarkers?: boolean;
     enableFireEffects?: boolean;
@@ -51,7 +58,6 @@ function degreesToRadians(values: Vec3Tuple): Vec3Tuple {
 
 /**
  * Vỏ đạn bay ra khỏi súng.
- * floorY hiện là độ cao sàn ước lượng, chưa nhận diện sàn từng tầng.
  */
 function ShellCasing({
     casing,
@@ -83,19 +89,16 @@ function ShellCasing({
 
         const velocity = velocityRef.current;
 
-        // Trọng lực.
         velocity.y -= 9.8 * dt;
 
         mesh.position.x += velocity.x * dt;
         mesh.position.y += velocity.y * dt;
         mesh.position.z += velocity.z * dt;
 
-        // Xoay vỏ đạn trong không trung.
         mesh.rotation.x += 9 * dt;
         mesh.rotation.y += 13 * dt;
         mesh.rotation.z += 7 * dt;
 
-        // Va chạm sàn đơn giản để thử hiệu ứng.
         if (
             mesh.position.y <= casing.floorY &&
             velocity.y < 0
@@ -138,7 +141,6 @@ export default function WeaponModel({
     scale = 33,
     position = [0, 0, 0],
     rotation = [0, 0, 0],
-    leftHandGripPosition = [0.33, 0.45, 0],
     leftHandGripTargetRef,
     showDebugMarkers = false,
     enableFireEffects = false,
@@ -155,7 +157,7 @@ export default function WeaponModel({
 
     const gltf = useGLTF(modelPath);
 
-    // Clone model để tránh dùng chung object giữa các nhân vật.
+    // Clone riêng model súng cho instance này.
     const weapon = useMemo(() => {
         const cloned = SkeletonUtils.clone(gltf.scene) as Group;
 
@@ -168,7 +170,7 @@ export default function WeaponModel({
             }
         });
 
-        // Đưa tâm model về gốc.
+        // Giữ nguyên cách căn tâm model hiện tại.
         const bounds = new Box3().setFromObject(cloned);
         const center = bounds.getCenter(new Vector3());
 
@@ -176,6 +178,77 @@ export default function WeaponModel({
 
         return cloned;
     }, [gltf.scene]);
+
+   
+    // Marker này chỉ được tìm bên trong GLB súng đã clone.
+    const leftHandGripMarker = useMemo(() => {
+        const marker = weapon.getObjectByName("LeftHandGrip");
+
+        if (!marker) {
+            console.error(
+                '[WeaponModel] Không tìm thấy "LeftHandGrip" trong GLB súng:',
+                modelPath,
+            );
+        }
+
+        return marker ?? null;
+    }, [weapon, modelPath]);
+
+
+    // Đăng ký marker để IK tay trái sử dụng.
+    useEffect(() => {
+        if (!leftHandGripTargetRef) return;
+
+        if (!leftHandGripMarker) {
+            leftHandGripTargetRef.current = null;
+
+            const markerNames: string[] = [];
+
+            weapon.traverse((object) => {
+                if (
+                    object.name &&
+                    /grip|hand|left/i.test(object.name)
+                ) {
+                    markerNames.push(object.name);
+                }
+            });
+
+            console.error(
+                '[WeaponModel] Không tìm thấy marker "LeftHandGrip".',
+                {
+                    modelPath,
+                    matchingNames: markerNames,
+                },
+            );
+
+            return;
+        }
+
+        leftHandGripTargetRef.current = leftHandGripMarker;
+
+        console.info(
+            '[WeaponModel] Đã đăng ký marker "LeftHandGrip".',
+            {
+                name: leftHandGripMarker.name,
+                parent: leftHandGripMarker.parent?.name,
+                modelPath,
+            },
+        );
+
+        return () => {
+            if (
+                leftHandGripTargetRef.current ===
+                leftHandGripMarker
+            ) {
+                leftHandGripTargetRef.current = null;
+            }
+        };
+    }, [
+        leftHandGripMarker,
+        leftHandGripTargetRef,
+        modelPath,
+        weapon,
+    ]);
 
     const mountRotation = useMemo(
         () => degreesToRadians(rotation),
@@ -188,17 +261,20 @@ export default function WeaponModel({
         );
     };
 
-    // Nghe sự kiện bắn súng từ LocalPlayerController.
+    // Lắng nghe sự kiện bắn súng.
     useEffect(() => {
-if (!enableFireEffects || weaponType !== "rifle") {
-    return;
-}
+        if (
+            !enableFireEffects ||
+            weaponType !== "rifle"
+        ) {
+            return;
+        }
+
         const handleShot = (event: Event) => {
             const detail = (
                 event as CustomEvent<BulletFiredDetail>
             ).detail;
 
-            // Nếu sự kiện có chỉ rõ loại súng, chỉ nhận sự kiện rifle.
             if (
                 detail?.weapon &&
                 detail.weapon !== "rifle"
@@ -206,7 +282,6 @@ if (!enableFireEffects || weaponType !== "rifle") {
                 return;
             }
 
-            // Tạo độ giật ngắn khi bắn liên tục.
             recoilRef.current = Math.min(
                 recoilRef.current + 0.7,
                 1.5,
@@ -223,7 +298,6 @@ if (!enableFireEffects || weaponType !== "rifle") {
             ejectPoint.getWorldPosition(worldPosition);
             ejectPoint.getWorldQuaternion(worldQuaternion);
 
-            // Hất vỏ đạn sang bên và hơi chếch lên.
             const velocity = new Vector3(1.8, 2.2, -0.8)
                 .applyQuaternion(worldQuaternion);
 
@@ -241,8 +315,6 @@ if (!enableFireEffects || weaponType !== "rifle") {
                     velocity.y,
                     velocity.z,
                 ],
-
-                // Giá trị tạm để kiểm tra hiệu ứng trên một tầng.
                 floorY: worldPosition.y - 1.3,
             };
 
@@ -263,8 +335,10 @@ if (!enableFireEffects || weaponType !== "rifle") {
                 handleShot,
             );
         };
-}, [weaponType, enableFireEffects]);
-    // Làm độ giật giảm dần về 0.
+    }, [weaponType, enableFireEffects]);
+
+    // Giảm recoil theo thời gian.
+
   useFrame((_, delta) => {
     const root = weaponRootRef.current;
     if (!root) return;
@@ -276,15 +350,20 @@ if (!enableFireEffects || weaponType !== "rifle") {
         return;
     }
 
-    const recoil = recoilRef.current;
-
     recoilRef.current = Math.max(
         0,
-        recoil - delta * 7,
+        recoilRef.current - delta * 7,
     );
 
-    root.position.x = -recoil * 0.025;
-    root.rotation.z = recoil * 0.035;
+    const recoil = recoilRef.current;
+    const safeScale = Math.max(Math.abs(scale), 0.001);
+
+    // Giới hạn độ giật theo tọa độ world, tránh súng
+    // dịch chuyển quá xa khi model có scale lớn.
+    root.position.x = -(recoil * 0.05) / safeScale;
+
+    // Giảm độ xoay để điểm grip ít lệch khỏi bàn tay.
+    root.rotation.z = recoil * 0.012;
 });
     return (
         <>
@@ -293,40 +372,30 @@ if (!enableFireEffects || weaponType !== "rifle") {
                 rotation={mountRotation}
                 scale={scale}
             >
-                {/* Nhóm này chỉ điều khiển hình súng và hiệu ứng giật. */}
                 <group ref={weaponRootRef}>
                     <primitive object={weapon} />
-
-                    {/* Điểm thoát vỏ đạn, đặt gần khe nhả vỏ của súng. */}
+                    {/* Điểm thoát vỏ đạn. */}
                     <group
                         ref={casingEjectRef}
                         position={[0.18, 0.36, 0.08]}
                     >
                         {showDebugMarkers && (
                             <mesh>
-                                <sphereGeometry args={[0.025, 8, 8]} />
+                                <sphereGeometry
+                                    args={[0.025, 8, 8]}
+                                />
                                 <meshBasicMaterial color="orange" />
                             </mesh>
                         )}
                     </group>
                 </group>
-
-                {/* Giữ điểm IK ổn định, không làm nó rung theo độ giật. */}
-              <object3D
-    ref={leftHandGripTargetRef}
-    name="LeftHandGripTarget"
-    position={leftHandGripPosition}
-/>
-
-                {showDebugMarkers && (
-                    <mesh position={leftHandGripPosition}>
-                        <sphereGeometry args={[0.025, 8, 8]} />
-                        <meshBasicMaterial color="lime" />
-                    </mesh>
+                {/* Hiển thị vị trí world của marker grip thật. */}
+                {showDebugMarkers && leftHandGripMarker && (
+                    <GripDebugMarker marker={leftHandGripMarker} />
                 )}
             </group>
 
-            {/* Vỏ đạn được tạo ở scene chính theo tọa độ thế giới. */}
+            {/* Vỏ đạn nằm trong scene chính theo world coordinates. */}
             {createPortal(
                 <>
                     {casings.map((casing) => (
@@ -340,6 +409,42 @@ if (!enableFireEffects || weaponType !== "rifle") {
                 worldScene,
             )}
         </>
+    );
+}
+
+/**
+ * Hiện chấm xanh tại world position của marker thật.
+ * Không thay đổi transform của marker hoặc model súng.
+ */
+function GripDebugMarker({
+    marker,
+}: {
+    marker: Object3D;
+}) {
+    const debugRef = useRef<Mesh>(null);
+    const worldPosition = useMemo(() => new Vector3(), []);
+
+    useFrame(() => {
+        const debug = debugRef.current;
+        if (!debug) return;
+
+        marker.updateWorldMatrix(true, false);
+        marker.getWorldPosition(worldPosition);
+
+        // Chấm debug nằm ngoài hierarchy của súng,
+        // vì vậy dùng world position trực tiếp.
+        debug.position.copy(worldPosition);
+    });
+
+    return (
+        <mesh ref={debugRef} renderOrder={999}>
+            <sphereGeometry args={[0.025, 10, 10]} />
+            <meshBasicMaterial
+                color="lime"
+                depthTest={false}
+                depthWrite={false}
+            />
+        </mesh>
     );
 }
 

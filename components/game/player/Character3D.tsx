@@ -6,7 +6,7 @@ import {
     useMemo,
     useRef,
 } from "react";
-import LeftHandRifleIK from "./LeftHandRifleIK";
+import { useLeftHandRifleIK } from "./LeftHandRifleIK";
 import type { RefObject } from "react";
 import {
     createPortal,
@@ -54,78 +54,22 @@ const MODEL_SCALE = 1.2;
 const HELD_WEAPON_POSES = {
     // Súng khi đứng yên
     idle: {
-        position: [-5, 21, 0] as [number, number, number],
+        position: [3, 21, 0] as [number, number, number],
         rotationDeg: [180, 9, -90] as [number, number, number],
     },
-
     // Súng khi chạy
     run: {
         position: [-5, 21, 0] as [number, number, number],
         rotationDeg: [180, 9, -90] as [number, number, number],
     },
-
     // Súng khi ngắm
     aim: {
         position: [-11, 21, 6] as [number, number, number],
         rotationDeg: [180, -10, -110] as [number, number, number],
     },
-
     mountScale: 1,
     modelScale: 33,
 };
-
-
-const RIFLE_HAND_CONFIG = {
-    // Bật/tắt điều khiển tay trái
-    enabled: true,
-
-    // Tọa độ bàn tay trái trong hệ tọa độ của nhân vật.
-    // Đây là giá trị khởi đầu, cần tinh chỉnh theo model thực tế.
-    leftHandTarget: [-0.35, 0.9, 0.15] as [
-        number,
-        number,
-        number,
-    ],
-};
-
-type ArmPoseConfig = {
-    rightArm: [number, number, number];
-    rightForeArm: [number, number, number];
-    leftArm: [number, number, number];
-    leftForeArm: [number, number, number];
-};
-
-const RIFLE_ARM_POSES: {
-    idle: ArmPoseConfig;
-    run: ArmPoseConfig;
-    aim: ArmPoseConfig;
-} = {
-    // Cầm súng đứng yên
-    idle: {
-        rightArm: [-12, 0, -8],
-        rightForeArm: [-18, 0, 0],
-        leftArm: [-18, 0, 10],
-        leftForeArm: [-25, 0, 0],
-    },
-
-    // Cầm súng khi chạy
-    run: {
-        rightArm: [-20, 0, -12],
-        rightForeArm: [-28, 0, 0],
-        leftArm: [-25, 0, 14],
-        leftForeArm: [-32, 0, 0],
-    },
-
-    // Cầm súng khi ngắm / bắn
-    aim: {
-        rightArm: [-8, 0, -5],
-        rightForeArm: [-12, 0, 0],
-        leftArm: [-10, 0, 8],
-        leftForeArm: [-18, 0, 0],
-    },
-};
-
-
 const COLORS = {
     hoodie: "#202633",
     sleeves: "#30394A",
@@ -134,11 +78,9 @@ const COLORS = {
     sole: "#777D87",
     hood: "#252D3B",
 };
-
 // ============================================================
 // TYPES
 // ============================================================
-
 type Props = {
     moving?: boolean;
     movingBackward?: boolean;
@@ -149,7 +91,6 @@ type Props = {
     jumpTrigger?: number;
     weaponType?: string;
 };
-
 type SegmentProps = {
     root: Object3D;
     start: Bone | null;
@@ -158,7 +99,6 @@ type SegmentProps = {
     radius: number;
     depthRatio?: number;
 };
-
 type AccessoryProps = {
     root: Object3D;
     bone: Bone | null;
@@ -166,31 +106,25 @@ type AccessoryProps = {
     scale: [number, number, number];
     offset?: [number, number, number];
 };
-
 // ============================================================
 // BONE HELPERS
 // ============================================================
-
 function normalizeName(name: string) {
     return name
         .toLowerCase()
         .replace(/[^a-z0-9]/g, "");
 }
-
 function findBone(
     root: Object3D,
     candidates: string[],
 ): Bone | null {
     const bones: Bone[] = [];
-
     root.traverse((object) => {
         if ((object as Bone).isBone) {
             bones.push(object as Bone);
         }
     });
-
     const names = candidates.map(normalizeName);
-
     for (const name of names) {
         const found = bones.find(
             (bone) => normalizeName(bone.name) === name,
@@ -206,14 +140,12 @@ function findBone(
 
         if (found) return found;
     }
-
     return null;
 }
 
 // ============================================================
 // CLOTHING SEGMENT
 // ============================================================
-
 function ClothingSegment({
     root,
     start,
@@ -223,32 +155,26 @@ function ClothingSegment({
     depthRatio = 0.85,
 }: SegmentProps) {
     const meshRef = useRef<Mesh>(null);
-
     const geometry = useMemo(
         () => new CapsuleGeometry(1, 1, 4, 12),
         [],
     );
-
     const startPosition = useMemo(
         () => new Vector3(),
         [],
     );
-
     const endPosition = useMemo(
         () => new Vector3(),
         [],
     );
-
     const direction = useMemo(
         () => new Vector3(),
         [],
     );
-
     const midpoint = useMemo(
         () => new Vector3(),
         [],
     );
-
     const up = useMemo(
         () => new Vector3(0, 1, 0),
         [],
@@ -256,9 +182,7 @@ function ClothingSegment({
 
     useFrame(() => {
         const mesh = meshRef.current;
-
         if (!mesh || !start || !end) return;
-
         root.updateMatrixWorld(true);
 
         start.getWorldPosition(startPosition);
@@ -271,7 +195,6 @@ function ClothingSegment({
             endPosition,
             startPosition,
         );
-
         const length = direction.length();
 
         if (length < 0.0000001) {
@@ -624,6 +547,8 @@ function CharacterClothing({
 // HELD WEAPON
 // ============================================================
 
+
+
 function HeldWeapon({
     root,
     weaponType,
@@ -635,9 +560,10 @@ function HeldWeapon({
     weaponType: string;
     running: boolean;
     aiming: boolean;
-leftHandGripTargetRef: RefObject<Object3D | null>;
+    leftHandGripTargetRef: {
+        current: Object3D | null;
+    };
 }) {
-
     const normalizedWeaponType = String(weaponType ?? "")
         .trim()
         .toLowerCase()
@@ -649,7 +575,7 @@ leftHandGripTargetRef: RefObject<Object3D | null>;
         normalizedWeaponType === "ak47" ||
         normalizedWeaponType === "ak_47";
 
-    const hand = useMemo(
+    const rightHand = useMemo(
         () =>
             findBone(root, [
                 "mixamorigRightHand",
@@ -659,28 +585,25 @@ leftHandGripTargetRef: RefObject<Object3D | null>;
         [root],
     );
 
-    // Ưu tiên tư thế ngắm, tiếp theo là chạy, cuối cùng là đứng im.
     const pose = aiming
         ? HELD_WEAPON_POSES.aim
         : running
-            ? HELD_WEAPON_POSES.run
-            : HELD_WEAPON_POSES.idle;
+          ? HELD_WEAPON_POSES.run
+          : HELD_WEAPON_POSES.idle;
 
     useEffect(() => {
         if (!isRifle) return;
 
-        console.log("[HELD WEAPON DEBUG]", {
-            weaponType,
-            handName: hand?.name ?? "NOT FOUND",
+        console.log("[HELD WEAPON]", {
+            rightHand: rightHand?.name ?? "NOT FOUND",
             pose: aiming ? "aim" : running ? "run" : "idle",
             position: pose.position,
             rotationDeg: pose.rotationDeg,
-            mountScale: HELD_WEAPON_POSES.mountScale,
-            modelScale: HELD_WEAPON_POSES.modelScale,
+            scale: HELD_WEAPON_POSES.modelScale,
         });
-    }, [weaponType, isRifle, hand, aiming, running, pose]);
+    }, [isRifle, rightHand, aiming, running, pose]);
 
-    if (!isRifle || !hand) return null;
+    if (!isRifle || !rightHand) return null;
 
     const [rx, ry, rz] = pose.rotationDeg;
 
@@ -695,16 +618,14 @@ leftHandGripTargetRef: RefObject<Object3D | null>;
             ]}
             scale={HELD_WEAPON_POSES.mountScale}
         >
-    <WeaponModel
+         <WeaponModel
     weaponType="rifle"
     modelPath="/models/gun/rifle/ak47.glb"
     scale={HELD_WEAPON_POSES.modelScale}
-    showDebugMarkers={true}
-    leftHandGripPosition={[0.33, 0.45, 0]}
     leftHandGripTargetRef={leftHandGripTargetRef}
 />
         </group>,
-        hand,
+        rightHand,
     );
 }
 
@@ -732,6 +653,26 @@ export default function Character3D({
     );
 
     const leftHandGripTargetRef = useRef<Object3D | null>(null);
+const leftHandTargetRef = useRef<Object3D | null>(null);
+
+// Lấy marker LeftHandTarget từ GLB nhân vật.
+useEffect(() => {
+    const marker = clonedScene.getObjectByName("LeftHandTarget");
+
+    leftHandTargetRef.current = marker ?? null;
+
+    if (!marker) {
+        console.error(
+            '[Character3D] Không tìm thấy marker "LeftHandTarget" trong model nhân vật.',
+        );
+    }
+
+    return () => {
+        leftHandTargetRef.current = null;
+    };
+}, [clonedScene]);
+
+
 
 const leftArmBones = useMemo(() => ({
     shoulder: findBone(clonedScene, [
@@ -754,6 +695,101 @@ const leftArmBones = useMemo(() => ({
     ]),
 }), [clonedScene]);
 
+// Lấy marker lòng bàn tay và kiểm tra hierarchy.
+useEffect(() => {
+    const marker = clonedScene.getObjectByName("LeftHandTarget");
+    const hand = leftArmBones.hand;
+
+    leftHandTargetRef.current = marker ?? null;
+
+    let parent = marker?.parent;
+    let markerUnderHand = false;
+
+    while (parent) {
+        if (parent === hand) {
+            markerUnderHand = true;
+            break;
+        }
+
+        parent = parent.parent;
+    }
+
+    console.log("[LEFT HAND IK CHECK]", {
+        markerFound: Boolean(marker),
+        markerName: marker?.name,
+        markerParent: marker?.parent?.name,
+        leftHandBone: hand?.name,
+        markerUnderHand,
+    });
+
+    if (!marker) {
+        console.error(
+            '[Character3D] Không tìm thấy marker "LeftHandTarget".',
+        );
+    } else if (!markerUnderHand) {
+        console.error(
+            '[Character3D] LeftHandTarget phải nằm trong hierarchy của xương LeftHand.',
+        );
+    }
+
+    console.table({
+        leftShoulder: leftArmBones.shoulder?.name ?? "NOT FOUND",
+        leftForearm: leftArmBones.forearm?.name ?? "NOT FOUND",
+        leftHand: hand?.name ?? "NOT FOUND",
+    });
+
+    return () => {
+        leftHandTargetRef.current = null;
+    };
+}, [clonedScene, leftArmBones]);
+
+useEffect(() => {
+    const marker = clonedScene.getObjectByName("LeftHandTarget");
+    const hand = leftArmBones.hand;
+
+    let parent = marker?.parent;
+    let belongsToLeftHand = false;
+
+    while (parent) {
+        if (parent === hand) {
+            belongsToLeftHand = true;
+            break;
+        }
+        parent = parent.parent;
+    }
+
+    console.log("[LEFT HAND IK CHECK]", {
+        markerFound: Boolean(marker),
+        markerName: marker?.name,
+        markerParent: marker?.parent?.name,
+        leftHandBone: hand?.name,
+        markerUnderLeftHandBone: belongsToLeftHand,
+    });
+}, [clonedScene, leftArmBones.hand]);
+
+// Đặt useEffect kiểm tra ngay bên dưới leftArmBones.
+useEffect(() => {
+    const marker = clonedScene.getObjectByName("LeftHandTarget");
+    const hand = leftArmBones.hand;
+
+    let parent = marker?.parent;
+    let belongsToLeftHand = false;
+
+    while (parent) {
+        if (parent === hand) {
+            belongsToLeftHand = true;
+            break;
+        }
+        parent = parent.parent;
+    }
+
+    console.log("[LEFT HAND IK CHECK]", {
+        markerFound: Boolean(marker),
+        markerParent: marker?.parent?.name,
+        leftHandBone: hand?.name,
+        markerUnderLeftHandBone: belongsToLeftHand,
+    });
+}, [clonedScene, leftArmBones.hand]);
 
 
 useEffect(() => {
@@ -780,10 +816,22 @@ useEffect(() => {
 
     const lastPunchTriggerRef = useRef(punchTrigger);
     const lastJumpTriggerRef = useRef(jumpTrigger);
+
 const { actions, mixer } = useAnimations(
     animations,
     clonedScene,
 );
+
+// Đăng ký IK sau callback cập nhật animation.
+useLeftHandRifleIK({
+    root: clonedScene,
+    bones: leftArmBones,
+    weaponType,
+    moving,
+    aiming,
+    leftHandTargetRef,
+    leftHandGripTargetRef,
+});
 const rifleArmBones = useMemo(() => ({
     rightArm: findBone(clonedScene, [
         "mixamorigRightArm",
@@ -1317,33 +1365,28 @@ useEffect(() => {
 // RENDER
 // ========================================================
 
+
 return (
     <group scale={MODEL_SCALE}>
         <primitive object={clonedScene} />
 
         <CharacterClothing root={clonedScene} />
 
-        {/* Tay phải vẫn giữ súng như cơ chế cũ */}
-    <HeldWeapon
-    root={clonedScene}
-    weaponType={weaponType}
-    running={moving && running}
-    aiming={aiming}
-    leftHandGripTargetRef={leftHandGripTargetRef}
-/>
-        {/* Chỉ IK tay trái đến ốp tay phía trước của súng */}
- 
-<LeftHandRifleIK
-    root={clonedScene}
-    bones={leftArmBones}
-    weaponType={weaponType}
-    moving={moving}
-    aiming={aiming}
-    leftHandGripTargetRef={leftHandGripTargetRef}
-/>
+        {/* Bước 1: Gắn súng vào tay phải và đăng ký điểm grip. */}
+        <HeldWeapon
+            root={clonedScene}
+            weaponType={weaponType}
+            running={moving && running}
+            aiming={aiming}
+            leftHandGripTargetRef={leftHandGripTargetRef}
+        />
+
+        {/* Bước 2: Sau khi có target trên súng, IK đưa tay trái đến đó. */}
+
      
     </group>
 );
+
 }
 
 

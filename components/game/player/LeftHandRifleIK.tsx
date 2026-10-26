@@ -1,40 +1,11 @@
 
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { RefObject } from "react";
-
-import {
-    MathUtils,
-    Mesh,
-    MeshBasicMaterial,
-    Quaternion,
-    Vector3,
-} from "three";
-
+import { Quaternion, Vector3 } from "three";
 import type { Bone, Object3D } from "three";
-
-// ============================================================
-// ĐIỂM TRÊN LÒNG BÀN TAY TRÁI
-// Giữ nguyên tọa độ bạn đã căn chỉnh ở giai đoạn 1.
-// ============================================================
-
-const PALM_CONTACT_LOCAL: [number, number, number] = [
-    0,
-    6,
-    6,
-];
-
-const PALM_MARKER_SIZE = 0.035;
-
-// Bắt đầu với lực thấp để tránh xoắn tay.
-// Khi khớp đúng, có thể tăng dần các giá trị này.
-const IK_WEIGHT_AIM = 0.55;
-const IK_WEIGHT_MOVE = 0.35;
-const IK_WEIGHT_IDLE = 0.3;
-
-const MAX_STEP_ANGLE = 0.12;
 
 type LeftArmBones = {
     shoulder: Bone | null;
@@ -48,90 +19,38 @@ type Props = {
     weaponType: string;
     moving: boolean;
     aiming: boolean;
+    leftHandTargetRef: RefObject<Object3D | null>;
     leftHandGripTargetRef: RefObject<Object3D | null>;
 };
 
-export default function LeftHandRifleIK({
+const POSITION_EPSILON = 0.002;
+const MAX_STEP_ANGLE = Math.PI / 18;
+const MAX_AIM_STEP_ANGLE = Math.PI / 36;
+
+export function useLeftHandRifleIK({
     root,
     bones,
     weaponType,
     moving,
     aiming,
+    leftHandTargetRef,
     leftHandGripTargetRef,
 }: Props) {
-    const markerRef = useRef<Mesh>(null);
+    const worldHand = useMemo(() => new Vector3(), []);
+    const worldGrip = useMemo(() => new Vector3(), []);
+    const worldJoint = useMemo(() => new Vector3(), []);
 
-    const palmContactLocal = useMemo(
-        () => new Vector3(...PALM_CONTACT_LOCAL),
-        [],
-    );
+    const fromDirection = useMemo(() => new Vector3(), []);
+    const toDirection = useMemo(() => new Vector3(), []);
 
-    const targetPosition = useMemo(
-        () => new Vector3(),
-        [],
-    );
+    const worldDelta = useMemo(() => new Quaternion(), []);
+    const stepDelta = useMemo(() => new Quaternion(), []);
+    const parentWorldQ = useMemo(() => new Quaternion(), []);
+    const inverseParentQ = useMemo(() => new Quaternion(), []);
+    const localDelta = useMemo(() => new Quaternion(), []);
 
-    const handPosition = useMemo(
-        () => new Vector3(),
-        [],
-    );
-
-    const jointPosition = useMemo(
-        () => new Vector3(),
-        [],
-    );
-
-    const toHand = useMemo(
-        () => new Vector3(),
-        [],
-    );
-
-    const toTarget = useMemo(
-        () => new Vector3(),
-        [],
-    );
-
-    const worldDelta = useMemo(
-        () => new Quaternion(),
-        [],
-    );
-
-    const parentWorldQ = useMemo(
-        () => new Quaternion(),
-        [],
-    );
-
-    const inverseParentQ = useMemo(
-        () => new Quaternion(),
-        [],
-    );
-
-    const localDelta = useMemo(
-        () => new Quaternion(),
-        [],
-    );
-
-    const identityQ = useMemo(
-        () => new Quaternion(),
-        [],
-    );
-
-    const markerMaterial = useMemo(
-        () =>
-            new MeshBasicMaterial({
-                color: "#00ff66",
-                depthTest: false,
-                depthWrite: false,
-                toneMapped: false,
-            }),
-        [],
-    );
-
-    useEffect(() => {
-        return () => {
-            markerMaterial.dispose();
-        };
-    }, [markerMaterial]);
+    const warnedRef = useRef(false);
+    const debugFrameRef = useRef(0);
 
     useFrame(() => {
         const normalized = String(weaponType ?? "")
@@ -144,150 +63,185 @@ export default function LeftHandRifleIK({
             normalized === "ak47" ||
             normalized === "ak_47";
 
-        const { shoulder, forearm, hand } = bones;
-        const gripTarget = leftHandGripTargetRef.current;
-        const marker = markerRef.current;
+        if (!hasRifle) return;
 
-        if (
-            !hasRifle ||
-            !shoulder ||
-            !forearm ||
-            !hand ||
-            !gripTarget
-        ) {
-            if (marker) marker.visible = false;
+        const { shoulder, forearm, hand } = bones;
+        const handTarget = leftHandTargetRef.current;
+        const gunGrip = leftHandGripTargetRef.current;
+if (!handTarget || !gunGrip || !hand || !forearm || !shoulder) {
+    return;
+}
+
+if (aiming && !warnedRef.current) {
+    console.log("[IK INIT CHECK]", {
+        hand: hand.name,
+        handTarget: handTarget.name,
+        targetParent: handTarget.parent?.name,
+        gunGrip: gunGrip.name,
+        gripParent: gunGrip.parent?.name,
+        targetFound: Boolean(leftHandTargetRef.current),
+        gripFound: Boolean(leftHandGripTargetRef.current),
+    });
+
+    warnedRef.current = true;
+}
+        if (!shoulder || !forearm || !hand || !handTarget || !gunGrip) {
             return;
         }
 
-        if (marker) marker.visible = true;
+        // LeftHandTarget phải là con/cháu của xương bàn tay.
+        let ancestor: Object3D | null = handTarget;
+        let targetBelongsToHand = false;
 
-        // Cập nhật model nhân vật và điểm mục tiêu trên súng.
-        root.updateMatrixWorld(true);
-        gripTarget.updateWorldMatrix(true, false);
+        while (ancestor) {
+            if (ancestor === hand) {
+                targetBelongsToHand = true;
+                break;
+            }
 
-        // Điểm cam: vị trí mục tiêu trên thân súng, world space.
-        gripTarget.getWorldPosition(targetPosition);
+            ancestor = ancestor.parent;
+        }
 
-        const ikWeight = aiming
-            ? IK_WEIGHT_AIM
-            : moving
-                ? IK_WEIGHT_MOVE
-                : IK_WEIGHT_IDLE;
+        if (!targetBelongsToHand) {
+            if (!warnedRef.current) {
+                console.error(
+                    "[LeftHandRifleIK] LeftHandTarget không nằm trong LeftHand.",
+                    {
+                        target: handTarget.name,
+                        parent: handTarget.parent?.name,
+                        hand: hand.name,
+                    },
+                );
 
-        const iterations = aiming ? 8 : moving ? 5 : 4;
+                warnedRef.current = true;
+            }
 
-        // Ưu tiên xoay cẳng tay trước, sau đó xoay vai.
-        // Không xoay trực tiếp xương bàn tay.
-        const joints: Bone[] = [forearm, shoulder];
+            return;
+        }
+
+        warnedRef.current = false;
+
+        // Bàn tay trước, cẳng tay tiếp theo, cuối cùng là vai.
+        // Không thay đổi pose hoặc scale của súng.
+        const joints: Bone[] = [hand, forearm, shoulder];
+
+        const iterations = aiming ? 120 : moving ? 48 : 72;
+        const maxStepAngle = aiming
+            ? MAX_AIM_STEP_ANGLE
+            : MAX_STEP_ANGLE;
+
+        // Đồng bộ world matrix trước khi tính sai số.
+        root.updateWorldMatrix(true, true);
 
         for (let iteration = 0; iteration < iterations; iteration++) {
+            handTarget.updateWorldMatrix(true, false);
+            gunGrip.updateWorldMatrix(true, false);
+
+            handTarget.getWorldPosition(worldHand);
+            gunGrip.getWorldPosition(worldGrip);
+
+            const distance = worldHand.distanceTo(worldGrip);
+
+            if (distance <= POSITION_EPSILON) {
+                break;
+            }
+
             for (const joint of joints) {
-                root.updateMatrixWorld(true);
+                if (!joint.parent) continue;
 
-                // Điểm xanh thực tế trên lòng bàn tay.
-                hand.localToWorld(
-                    handPosition.copy(palmContactLocal),
-                );
+                // Cập nhật lại sau mỗi khớp vì khớp trước đó
+                // đã làm thay đổi vị trí marker trên bàn tay.
+                root.updateWorldMatrix(true, true);
+                handTarget.updateWorldMatrix(true, false);
+                gunGrip.updateWorldMatrix(true, false);
 
-                // Vị trí khớp đang xét.
-                joint.getWorldPosition(jointPosition);
+                handTarget.getWorldPosition(worldHand);
+                gunGrip.getWorldPosition(worldGrip);
+                joint.getWorldPosition(worldJoint);
 
-                toHand.subVectors(
-                    handPosition,
-                    jointPosition,
-                );
-
-                toTarget.subVectors(
-                    targetPosition,
-                    jointPosition,
-                );
+                fromDirection.subVectors(worldHand, worldJoint);
+                toDirection.subVectors(worldGrip, worldJoint);
 
                 if (
-                    toHand.lengthSq() < 1e-8 ||
-                    toTarget.lengthSq() < 1e-8
+                    fromDirection.lengthSq() < 1e-10 ||
+                    toDirection.lengthSq() < 1e-10
                 ) {
                     continue;
                 }
 
-                toHand.normalize();
-                toTarget.normalize();
+                fromDirection.normalize();
+                toDirection.normalize();
 
-                // Tính góc xoay đưa hướng tới bàn tay
-                // gần với hướng tới điểm trên súng.
+                // Góc quay trong world space để đưa điểm trên tay
+                // tiến gần đến điểm grip trên ốp súng.
                 worldDelta.setFromUnitVectors(
-                    toHand,
-                    toTarget,
+                    fromDirection,
+                    toDirection,
                 );
 
-                // Điều chỉnh từ từ, tránh giật mạnh.
-                worldDelta.slerp(
-                    identityQ,
-                    1 - ikWeight,
+                const angle =
+                    2 *
+                    Math.acos(
+                        Math.min(1, Math.max(-1, worldDelta.w)),
+                    );
+
+                if (angle < 1e-7) continue;
+
+                const ratio = Math.min(
+                    1,
+                    maxStepAngle / angle,
                 );
 
-                if (!joint.parent) continue;
+                stepDelta.identity().slerp(worldDelta, ratio);
 
-                // Chuyển phép xoay từ world space
-                // sang local space của xương.
+                // Chuyển phép quay từ world space sang local space
+                // của khớp trước khi cập nhật quaternion.
                 joint.parent.getWorldQuaternion(parentWorldQ);
 
-                inverseParentQ
-                    .copy(parentWorldQ)
-                    .invert();
+                inverseParentQ.copy(parentWorldQ).invert();
 
                 localDelta
                     .copy(inverseParentQ)
-                    .multiply(worldDelta)
+                    .multiply(stepDelta)
                     .multiply(parentWorldQ);
 
-                // Giới hạn góc mỗi bước để giảm xoắn.
-                const stepAngle =
-                    2 *
-                    Math.acos(
-                        MathUtils.clamp(
-                            Math.abs(localDelta.w),
-                            0,
-                            1,
-                        ),
-                    );
-
-                if (stepAngle > MAX_STEP_ANGLE) {
-                    localDelta.slerp(
-                        identityQ,
-                        1 - MAX_STEP_ANGLE / stepAngle,
-                    );
-                }
-
                 joint.quaternion.premultiply(localDelta);
+                joint.updateMatrix();
+
+                // Tính lại world transform ngay để khớp tiếp theo
+                // sử dụng vị trí mới nhất của cả hai marker.
+                root.updateWorldMatrix(true, true);
             }
         }
 
-        // Tính lại vị trí điểm xanh sau khi IK.
-        root.updateMatrixWorld(true);
+        // Kiểm tra khoảng cách thực tế sau khi giải IK.
+        if (aiming) {
+            debugFrameRef.current++;
 
-        hand.localToWorld(
-            handPosition.copy(palmContactLocal),
-        );
+            if (debugFrameRef.current % 30 === 0) {
+                root.updateWorldMatrix(true, true);
+                handTarget.updateWorldMatrix(true, false);
+                gunGrip.updateWorldMatrix(true, false);
 
-        // Hiển thị chấm xanh đúng tại điểm tiếp xúc hiện tại.
-        if (marker?.parent) {
-            marker.position.copy(
-                marker.parent.worldToLocal(
-                    handPosition.clone(),
-                ),
-            );
+                handTarget.getWorldPosition(worldHand);
+                gunGrip.getWorldPosition(worldGrip);
+
+                console.log("[AIM LEFT HAND IK]", {
+                    distance: Number(
+                        worldHand.distanceTo(worldGrip).toFixed(4),
+                    ),
+                    handWorld: worldHand.toArray().map((v) =>
+                        Number(v.toFixed(3)),
+                    ),
+                    gripWorld: worldGrip.toArray().map((v) =>
+                        Number(v.toFixed(3)),
+                    ),
+                    iterations,
+                });
+            }
+        } else {
+            debugFrameRef.current = 0;
         }
     });
 
-    return (
-        <mesh
-            ref={markerRef}
-            material={markerMaterial}
-            renderOrder={999}
-        >
-            <sphereGeometry
-                args={[PALM_MARKER_SIZE, 12, 12]}
-            />
-        </mesh>
-    );
 }

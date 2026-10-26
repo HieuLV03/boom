@@ -1,0 +1,76 @@
+.boom-map-editor {
+  height: 100dvh;
+  min-height: 620px;
+  display: flex;
+  flex-direction: column;
+  background: #11151a;
+  color: #e9edf2;
+  font: 13px/1.4 Arial, sans-serif;
+  overflow: hidden;
+}
+.bme-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  background: #1b2128;
+  border-bottom: 1px solid #303943;
+}
+.bme-eyebrow { color: #94a3b3; font-size: 10px; letter-spacing: .16em; font-weight: 700; }
+.bme-map-name {
+  display: block; width: min(380px, 45vw); margin-top: 3px;
+  background: transparent; border: 0; color: #fff; font-size: 19px; font-weight: 700; outline: none;
+}
+.bme-status { color: #9ba8b6; font-size: 11px; margin-top: 3px; }
+.bme-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.boom-map-editor button {
+  color: #e8edf3; background: #29323c; border: 1px solid #3b4652;
+  border-radius: 5px; padding: 7px 10px; cursor: pointer; font-size: 12px;
+}
+.boom-map-editor button:hover { background: #374351; }
+.boom-map-editor button:disabled { opacity: .35; cursor: not-allowed; }
+.bme-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 190px minmax(300px, 1fr) 280px; }
+.bme-panel { min-height: 0; overflow: auto; background: #1b2128; padding: 12px; }
+.bme-assets { border-right: 1px solid #303943; }
+.bme-inspector { border-left: 1px solid #303943; }
+.bme-panel h2 { margin: 0 0 10px; color: #aab6c3; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.bme-asset-list { display: grid; gap: 6px; }
+.bme-asset-button { display: flex; align-items: center; gap: 8px; text-align: left; width: 100%; }
+.bme-plus { margin-left: auto; color: #a9b6c4; font-size: 16px; }
+.bme-swatch { display: inline-block; flex: 0 0 10px; width: 10px; height: 10px; border-radius: 2px; background: #aaa; }
+.bme-floor { background: #777d78; } .bme-wall { background: #b7afa0; }
+.bme-door { background: #795538; } .bme-table { background: #9b7049; }
+.bme-bed { background: #6b87a4; } .bme-chair { background: #8c6847; }
+.bme-stairs { background: #8b8b80; } .bme-spawn { background: #35c46a; }
+.bme-zombie-spawn { background: #dc4242; }
+.bme-help { color: #8895a3; font-size: 11px; line-height: 1.6; }
+.bme-viewport { position: relative; min-width: 0; min-height: 0; background: #20252b; }
+.bme-viewport canvas { display: block; }
+.bme-toolbar { position: absolute; z-index: 5; left: 12px; top: 12px; display: flex; gap: 5px; }
+.bme-toolbar .active { background: #2764d8; border-color: #4b83f0; }
+.bme-toolbar .danger { color: #ffb3b3; }
+.bme-toolbar-spacer { width: 8px; }
+.bme-viewport-hint { position: absolute; bottom: 10px; left: 12px; right: 12px; pointer-events: none; color: #aeb8c2; font-size: 11px; text-shadow: 0 1px 2px #000; }
+.bme-hierarchy { max-height: 42%; overflow: auto; margin-bottom: 18px; }
+.bme-hierarchy-row { display: flex; align-items: center; width: 100%; gap: 7px; text-align: left; border-color: transparent !important; background: transparent !important; padding: 6px 5px !important; }
+.bme-hierarchy-row.selected { background: #293d58 !important; border-color: #426ba0 !important; }
+.bme-row-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; }
+.bme-kind { color: #8190a0; font-size: 9px; }
+.bme-properties { display: grid; gap: 10px; }
+.bme-properties label { display: grid; gap: 4px; color: #aeb9c5; font-size: 11px; }
+.bme-properties input:not([type="checkbox"]):not([type="color"]) {
+  min-width: 0; width: 100%; box-sizing: border-box; background: #11161b; border: 1px solid #39434e;
+  color: #edf2f6; border-radius: 4px; padding: 6px;
+}
+.bme-properties input[type="color"] { width: 100%; height: 27px; border: 0; background: transparent; padding: 0; }
+.bme-properties .bme-checkbox { display: flex; align-items: center; grid-template-columns: auto 1fr; }
+.bme-vector-title { color: #aeb9c5; font-size: 11px; margin-bottom: -6px; }
+.bme-vector { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.bme-vector label { min-width: 0; }
+@media (max-width: 1000px) {
+  .bme-layout { grid-template-columns: 150px minmax(250px, 1fr); }
+  .bme-inspector { display: none; }
+  .bme-header { align-items: flex-start; flex-direction: column; }
+  .bme-actions { justify-content: flex-start; }
+}

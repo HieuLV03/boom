@@ -21,8 +21,8 @@ type Props = {
 // CAMERA SETTINGS
 // ============================================================
 
-const HEIGHT = 2.4;
-const TARGET_HEIGHT = 3.1;
+const HEIGHT = 1;
+const TARGET_HEIGHT = 3;
 const SMOOTH_SPEED = 10;
 
 const CAMERA_DISTANCE = 4;

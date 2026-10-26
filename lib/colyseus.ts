@@ -3,7 +3,8 @@ import { Client } from "@colyseus/sdk";
 
 const gameServerUrl =
     process.env.NEXT_PUBLIC_GAME_SERVER_URL ||
-    "https://boom-server-vyrm.onrender.com";
+    "ws://localhost:2567";
+    
 
 console.log("[COLYSEUS] Server URL:", gameServerUrl);
 
