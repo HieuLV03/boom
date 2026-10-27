@@ -1,150 +1,83 @@
 
 "use client";
 
-import {
-    create,
-} from "zustand";
-
-import type {
-    Room,
-} from "@colyseus/sdk";
-
-
-// ============================================================
-// STORE TYPE
-// ============================================================
+import { create } from "zustand";
+import type { Room } from "@colyseus/sdk";
 
 type MultiplayerStore = {
+    room: Room<any> | null;
+    hostSessionId: string | null;
 
-    room:
-        Room<any> | null;
-
-    hostSessionId:
-        string | null;
-
-    setRoom: (
-        room: Room<any>
-    ) => void;
-
-    setHostSessionId: (
-        sessionId: string | null
-    ) => void;
-
+    setRoom: (room: Room<any>) => void;
+    setHostSessionId: (sessionId: string | null) => void;
     clearRoom: () => void;
-
 };
-
-
-// ============================================================
-// STORE
-// ============================================================
 
 export const useMultiplayerStore =
     create<MultiplayerStore>((set) => ({
+        room: null,
+        hostSessionId: null,
 
-        room:
-            null,
+        setRoom: (newRoom) => {
+            console.log("[STORE] Setting new room:", {
+                roomId: newRoom.roomId,
+                sessionId: newRoom.sessionId,
+            });
 
-        hostSessionId:
-            null,
+            set({
+                room: newRoom,
+                hostSessionId: null,
+            });
 
+            // Đồng bộ chủ phòng từ state của server.
+            const syncHost = () => {
+                const state = newRoom.state as
+                    | { hostId?: string }
+                    | undefined;
 
-        // ====================================================
-        // SET ROOM
-        // ====================================================
+                const hostId = state?.hostId;
 
-        setRoom: (
-            newRoom
-        ) => {
+                if (typeof hostId === "string" && hostId.length > 0) {
+                    set({ hostSessionId: hostId });
 
-            console.log(
-                "[STORE] Setting new room:",
-                {
-                    roomId:
-                        newRoom.roomId,
-
-                    sessionId:
-                        newRoom.sessionId,
+                    console.log("[STORE] Synced host:", hostId);
                 }
-            );
+            };
 
+            // Đồng bộ ngay nếu state đã có dữ liệu.
+            syncHost();
 
-            /*
-             * QUAN TRỌNG:
-             *
-             * Store KHÔNG gọi oldRoom.leave().
-             *
-             * Việc leave room phải do:
-             *
-             * - OUT button
-             * - disconnect
-             * - page lifecycle
-             *
-             * xử lý.
-             *
-             * Như vậy tránh việc setRoom()
-             * vô tình đóng room đang được sử dụng.
-             */
-
-
-            set({
-
-                room:
-                    newRoom,
-
-                hostSessionId:
-                    null,
-
+            // Đồng bộ tiếp khi server cập nhật state.
+            newRoom.onStateChange(() => {
+                syncHost();
             });
 
-        },
+            // Theo dõi thông điệp hostChanged nếu server gửi.
+            newRoom.onMessage("hostChanged", (data: {
+                hostId?: string;
+            }) => {
+                if (typeof data?.hostId === "string") {
+                    set({ hostSessionId: data.hostId });
 
-
-        // ====================================================
-        // SET HOST
-        // ====================================================
-
-        setHostSessionId: (
-            sessionId
-        ) => {
-
-            console.log(
-                "[STORE] Host session:",
-                sessionId
-            );
-
-
-            set({
-
-                hostSessionId:
-                    sessionId,
-
+                    console.log(
+                        "[STORE] Host changed:",
+                        data.hostId
+                    );
+                }
             });
-
         },
 
-
-        // ====================================================
-        // CLEAR ROOM
-        // ====================================================
+        setHostSessionId: (sessionId) => {
+            console.log("[STORE] Host session:", sessionId);
+            set({ hostSessionId: sessionId });
+        },
 
         clearRoom: () => {
-
-            console.log(
-                "[STORE] clearRoom()"
-            );
-
+            console.log("[STORE] clearRoom()");
 
             set({
-
-                room:
-                    null,
-
-                hostSessionId:
-                    null,
-
+                room: null,
+                hostSessionId: null,
             });
-
         },
-
     }));

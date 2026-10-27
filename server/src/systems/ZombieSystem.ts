@@ -13,7 +13,7 @@ import type { HospitalCollision } from "../../../shared/maps/hospital-collision.
 const ZOMBIE_COUNT = 5;
 const ZOMBIE_SPEED = 1.8;
 const ZOMBIE_ATTACK_RANGE = 1.5;
-const ZOMBIE_DAMAGE = 0;
+const ZOMBIE_DAMAGE = 10;
 const ZOMBIE_ATTACK_COOLDOWN = 1200;
 const ZOMBIE_UPDATE_INTERVAL = 100;
 const ZOMBIE_MAX_HP = 100;
@@ -252,6 +252,13 @@ export class ZombieSystem {
                 }
 
                 this.zombieAttackAt.set(zombie.id, now);
+                console.log("[ZOMBIE ATTACK DEBUG]", {
+    zombieId: zombie.id,
+    playerId: target.id,
+    distance,
+    playerHpBefore: target.hp,
+    playerAlive: target.alive,
+});
                 zombie.attacking = true;
 
                 const damage = Math.min(
@@ -260,7 +267,11 @@ export class ZombieSystem {
                 );
 
                 target.hp = Math.max(0, target.hp - damage);
-
+console.log("[ZOMBIE DAMAGE RESULT]", {
+    playerId: target.id,
+    damage,
+    playerHpAfter: target.hp,
+});
                 if (target.hp <= 0) {
                     target.hp = 0;
                     target.alive = false;

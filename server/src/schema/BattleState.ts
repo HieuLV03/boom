@@ -183,6 +183,10 @@ export class ZombieState extends Schema {
 // BATTLE STATE
 // ============================================================
 
+// ============================================================
+// BATTLE STATE
+// ============================================================
+
 export class BattleState extends Schema {
     @type("string")
     roomCode: string = "";
@@ -190,8 +194,18 @@ export class BattleState extends Schema {
     @type("string")
     mapId: string = "hospital";
 
+    // waiting = phòng chờ
+    // playing = đang chơi
+    // finished = trận đã kết thúc
+    @type("string")
+    roomStatus: string = "waiting";
+
+    // ID Colyseus của chủ phòng.
+    @type("string")
+    hostId: string = "";
+
     @type("number")
-    timeRemaining: number = 180;
+    timeRemaining: number = 300;
 
     @type("boolean")
     gameOver: boolean = false;

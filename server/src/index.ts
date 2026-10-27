@@ -1,86 +1,83 @@
-import {
-    Server,
-} from "colyseus";
 
-import {
-    BattleRoom,
-} from "./rooms/BattleRoom.js";
+import express from "express";
+import { createServer } from "node:http";
+import { Server, matchMaker } from "colyseus";
+import { WebSocketTransport } from "@colyseus/ws-transport";
 
+import { BattleRoom } from "./rooms/BattleRoom.js";
 
-const PORT =
-    Number(
-        process.env.PORT || 2567
-    );
+const PORT = Number(process.env.PORT || 2567);
 
+const app = express();
 
-console.log(
-    "[SERVER] Starting..."
-);
+app.use((req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
 
-console.log(
-    "[SERVER] PORT:",
-    PORT
-);
+    if (req.method === "OPTIONS") {
+        res.status(204).end();
+        return;
+    }
 
-console.log(
-    "[SERVER] BattleRoom:",
-    BattleRoom
-);
+    next();
+});
 
+const httpServer = createServer(app);
 
-const gameServer =
-    new Server();
-
-
-console.log(
-    "[SERVER] Defining room: battle"
-);
-
+const gameServer = new Server({
+    transport: new WebSocketTransport({
+        server: httpServer,
+    }),
+});
 
 gameServer
-    .define(
-        "battle",
-        BattleRoom
-    )
-    .filterBy([
-        "roomCode",
-    ]);
+    .define("battle", BattleRoom)
+    .filterBy(["roomCode"]);
 
+app.get("/find-room/:roomCode", async (req, res) => {
+    try {
+        const roomCode = String(req.params.roomCode ?? "").trim();
 
-console.log(
-    "[SERVER] Room battle registered"
-);
+        if (!/^\d{6}$/.test(roomCode)) {
+            res.status(400).json({
+                message: "Mã phòng phải gồm 6 chữ số.",
+            });
+            return;
+        }
 
+        const rooms = await matchMaker.query({
+            name: "battle",
+        });
 
-gameServer.listen(
-    PORT
-);
+        const foundRoom = rooms.find((room) => {
+            return (
+                String(room.metadata?.roomCode ?? "").trim() === roomCode &&
+                room.metadata?.roomStatus === "waiting" &&
+                room.clients < room.maxClients
+            );
+        });
 
+        if (!foundRoom) {
+            res.status(404).json({
+                message: "Không tìm thấy phòng chờ.",
+            });
+            return;
+        }
 
-console.log(
-    "======================================"
-);
+        res.json({
+            roomId: foundRoom.roomId,
+            roomCode,
+        });
+    } catch (error) {
+        console.error("[FIND ROOM ERROR]", error);
 
-console.log(
-    "        BOOM GAME SERVER"
-);
+        res.status(500).json({
+            message: "Lỗi máy chủ khi tìm phòng.",
+        });
+    }
+});
 
-console.log(
-    "======================================"
-);
+gameServer.listen(PORT);
 
-console.log(
-    `WebSocket: ws://localhost:${PORT}`
-);
-
-console.log(
-    `Port: ${PORT}`
-);
-
-console.log(
-    "Room: battle"
-);
-
-console.log(
-    "======================================"
-);
+console.log(`[SERVER] BOOM listening on port ${PORT}`);
+console.log("[SERVER] Room: battle");

@@ -113,17 +113,31 @@ export class CombatSystem {
         const slot = attacker.equippedSlot;
 
         const weapon =
-            slot === 1
-                ? attacker.weapon2
-                : slot === 0
-                    ? attacker.weapon1
-                    : "";
+    slot === 1
+        ? attacker.weapon1
+        : slot === 2
+            ? attacker.weapon2
+            : "";
 
         const isRifle = weapon === "rifle";
         const expectedAction = isRifle ? "shoot" : "punch";
 
-        if (message?.action !== expectedAction) return;
+if (message?.action !== expectedAction) {
+    console.log("[ATTACK REJECTED]", {
+        actionReceived: message?.action,
+        expectedAction,
+        slot,
+        weapon,
+    });
+    return;
+}
 
+console.log("[ATTACK ACCEPTED]", {
+    action: message.action,
+    slot,
+    weapon,
+    attackerId: sessionId,
+});
         const now = Date.now();
 
         const cooldown = isRifle

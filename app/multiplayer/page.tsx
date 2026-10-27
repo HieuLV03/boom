@@ -9,7 +9,16 @@ import { useMultiplayerStore } from "@/stores/multiplayer.store";
 import "./page.css";
 
 type MapId = "hospital";
-
+type AvailableRoom = {
+    roomId: string;
+    name?: string;
+    metadata?: {
+        roomCode?: string;
+        [key: string]: unknown;
+    };
+    clients?: number;
+    maxClients?: number;
+};
 function generateRoomCode(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -27,69 +36,141 @@ export default function MultiplayerPage() {
     const [status, setStatus] = useState("Sẵn sàng chơi");
     const [loading, setLoading] = useState(false);
 
-    async function createRoom() {
-        if (loading) return;
 
-        try {
-            setLoading(true);
-            setStatus("Đang tạo phòng...");
 
-            const code = generateRoomCode();
+type FoundRoom = {
+    roomId: string;
+    roomCode: string;
+};
 
-            const room = await client.create("battle", {
-                name: name.trim() || "Player",
-                roomCode: code,
-                mapId: selectedMap,
-            });
+async function findRoomByCode(
+    roomCode: string
+): Promise<FoundRoom | undefined> {
+    const serverUrl = (
+        process.env.NEXT_PUBLIC_GAME_SERVER_URL ||
+        "http://localhost:2567"
+    )
+        .replace(/^wss:/, "https:")
+        .replace(/^ws:/, "http:")
+        .replace(/\/$/, "");
 
-            setRoom(room);
+    const response = await fetch(
+        `${serverUrl}/find-room/${encodeURIComponent(roomCode.trim())}`,
+        { cache: "no-store" }
+    );
 
-            router.push(
-                `/game?room=${encodeURIComponent(room.roomId)}` +
-                `&session=${encodeURIComponent(room.sessionId)}` +
-                `&code=${encodeURIComponent(code)}`
-            );
-        } catch (error) {
-            console.error("[CREATE ROOM ERROR]", error);
-            setStatus("Không thể tạo phòng. Vui lòng thử lại.");
-        } finally {
-            setLoading(false);
-        }
+    if (response.status === 404) {
+        return undefined;
     }
 
-    async function joinRoom() {
-        if (loading) return;
+    if (!response.ok) {
+        throw new Error(
+            `Không thể tìm phòng: HTTP ${response.status}`
+        );
+    }
 
-        const code = roomCode.trim();
+    return await response.json() as FoundRoom;
+}
 
-        if (!/^\d{6}$/.test(code)) {
-            setStatus("Mã phòng phải gồm 6 chữ số.");
+    
+async function createRoom() {
+    if (loading) return;
+
+    const startedAt = performance.now();
+
+    try {
+        setLoading(true);
+        setStatus("Đang kết nối máy chủ...");
+
+        const code = generateRoomCode();
+
+        console.time("[BOOM] client.create");
+
+        const room = await client.create("battle", {
+            name: name.trim() || "Player",
+            roomCode: code,
+            mapId: selectedMap,
+        });
+
+        console.timeEnd("[BOOM] client.create");
+
+        console.log("[BOOM] Tạo phòng thành công", {
+            roomId: room.roomId,
+            sessionId: room.sessionId,
+            elapsedMs: Math.round(performance.now() - startedAt),
+        });
+
+        setStatus("Đã tạo phòng, đang mở sảnh...");
+        setRoom(room);
+
+        router.push(
+            `/lobby?room=${encodeURIComponent(room.roomId)}` +
+            `&session=${encodeURIComponent(room.sessionId)}` +
+            `&code=${encodeURIComponent(code)}`
+        );
+    } catch (error) {
+        console.error("[BOOM] CREATE ROOM ERROR", {
+            error,
+            elapsedMs: Math.round(performance.now() - startedAt),
+        });
+
+        setStatus(
+            "Không thể tạo phòng. Kiểm tra kết nối máy chủ."
+        );
+    } finally {
+        setLoading(false);
+    }
+}
+
+  
+async function joinRoom() {
+    if (loading) return;
+
+    const code = roomCode.trim();
+
+    if (!/^\d{6}$/.test(code)) {
+        setStatus("Mã phòng phải gồm 6 chữ số.");
+        return;
+    }
+
+    try {
+        setLoading(true);
+        setStatus("Đang tìm phòng...");
+
+      const targetRoom = await findRoomByCode(code);
+        if (!targetRoom) {
+            setStatus("Không tìm thấy phòng. Hãy kiểm tra mã phòng.");
             return;
         }
 
-        try {
-            setLoading(true);
-            setStatus("Đang vào phòng...");
+        setStatus("Đang tham gia phòng...");
 
-            const room = await client.join("battle", {
-                name: name.trim() || "Player",
-                roomCode: code,
-            });
+        const room = await client.joinById(targetRoom.roomId, {
+            name: name.trim() || "Player",
+            roomCode: code,
+        });
 
-            setRoom(room);
-
-            router.push(
-                `/game?room=${encodeURIComponent(room.roomId)}` +
-                `&session=${encodeURIComponent(room.sessionId)}` +
-                `&code=${encodeURIComponent(code)}`
-            );
-        } catch (error) {
-            console.error("[JOIN ROOM ERROR]", error);
-            setStatus("Không tìm thấy phòng hoặc phòng đã đầy.");
-        } finally {
-            setLoading(false);
+        // Kiểm tra trạng thái thực tế sau khi kết nối.
+        if (room.state.roomStatus !== "waiting") {
+            await room.leave();
+            setStatus("Trận đấu đã bắt đầu hoặc phòng không còn chờ.");
+            return;
         }
+
+        setRoom(room);
+
+        router.push(
+            `/lobby?room=${encodeURIComponent(room.roomId)}` +
+            `&session=${encodeURIComponent(room.sessionId)}` +
+            `&code=${encodeURIComponent(code)}`
+        );
+    } catch (error) {
+        console.error("[JOIN ROOM ERROR]", error);
+        setStatus("Không thể tham gia phòng. Vui lòng thử lại.");
+    } finally {
+        setLoading(false);
     }
+}
 
     return (
         <main className="multiplayer-page">
