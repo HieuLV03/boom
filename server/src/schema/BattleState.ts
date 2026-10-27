@@ -13,11 +13,19 @@ export class PlayerState extends Schema {
 
     @type("string")
     name: string = "";
-@type("boolean")
+
+    @type("boolean")
 moving: boolean = false;
 
 @type("boolean")
+running: boolean = false;
+
+@type("boolean")
+movingBackward: boolean = false;
+
+@type("boolean")
 aiming: boolean = false;
+
 @type("boolean")
 crouching: boolean = false;
 

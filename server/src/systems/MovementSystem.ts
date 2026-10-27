@@ -16,6 +16,10 @@ interface MoveMessage {
     x?: number;
     z?: number;
     rotation?: number;
+    running?: boolean;
+    movingBackward?: boolean;
+    crouching?: boolean;
+    aiming?: boolean;
 }
 
 export class MovementSystem {
@@ -138,12 +142,23 @@ console.log("[MOVE DEBUG]", {
         player.z - startZ,
     ),
 });
+const actuallyMoved =
+    Math.abs(finalX - startX) > 0.001 ||
+    Math.abs(finalZ - startZ) > 0.001;
 
-        player.moving =
-            Math.abs(finalX - startX) > 0.001 ||
-            Math.abs(finalZ - startZ) > 0.001;
+player.moving = actuallyMoved;
 
-        // Y vẫn do PlayerPhysicsSystem quản lý.
-        // Không chấp nhận Y tùy ý từ client.
+// Đồng bộ trạng thái hành động để client khác phát animation.
+player.running =
+    actuallyMoved &&
+    message.running === true &&
+    message.crouching !== true;
+
+player.movingBackward =
+    actuallyMoved &&
+    message.movingBackward === true;
+
+player.crouching = message.crouching === true;
+player.aiming = message.aiming === true;
     }
 }
