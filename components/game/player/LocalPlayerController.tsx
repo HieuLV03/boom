@@ -903,7 +903,6 @@ useEffect(() => {
     // INITIAL SPAWN
     // ========================================================
 
-    
 useEffect(() => {
     const handleRequestBullet = (event: Event) => {
         const customEvent = event as CustomEvent<{
@@ -916,161 +915,168 @@ useEffect(() => {
         const data = customEvent.detail;
         const player = playerRef.current;
 
-        const aimOrigin = data?.origin;
-        const aimDirection = data?.direction;
-
-        if (
-            !player ||
-            !aimOrigin ||
-            !aimDirection ||
-            !Number.isFinite(aimOrigin.x) ||
-            !Number.isFinite(aimOrigin.y) ||
-            !Number.isFinite(aimOrigin.z) ||
-            !Number.isFinite(aimDirection.x) ||
-            !Number.isFinite(aimDirection.y) ||
-            !Number.isFinite(aimDirection.z)
-        ) {
-            console.warn("[Bullet] Dữ liệu ngắm không hợp lệ", data);
+        if (!player || !data?.origin || !data?.direction) {
             return;
         }
 
-        const range = Math.max(0, data.range ?? 51);
+        const values = [
+            data.origin.x,
+            data.origin.y,
+            data.origin.z,
+            data.direction.x,
+            data.direction.y,
+            data.direction.z,
+        ];
 
-        // Tia ngắm bắt đầu từ camera, đi theo tâm ngắm.
-        const cameraOrigin = new THREE.Vector3(
-            aimOrigin.x,
-            aimOrigin.y,
-            aimOrigin.z,
+        if (!values.every(Number.isFinite)) return;
+
+        const maxRange = THREE.MathUtils.clamp(
+            Number(data.range ?? 51),
+            0.01,
+            51,
         );
 
-        const cameraDirection = new THREE.Vector3(
-            aimDirection.x,
-            aimDirection.y,
-            aimDirection.z,
-        ).normalize();
+        const cameraOrigin = new Vector3(
+            data.origin.x,
+            data.origin.y,
+            data.origin.z,
+        );
 
-        // Điểm ngắm mặc định nếu tia không chạm vật thể nào.
-        const target = cameraOrigin
-            .clone()
-            .addScaledVector(cameraDirection, range);
+        const cameraDirection = new Vector3(
+            data.direction.x,
+            data.direction.y,
+            data.direction.z,
+        );
 
-        // Tìm điểm va chạm trên mô hình bệnh viện.
-        const hospital = hospitalModelRef.current;
+        if (cameraDirection.lengthSq() < 0.000001) return;
 
-        if (hospital) {
-            hospital.updateMatrixWorld(true);
+        cameraDirection.normalize();
 
-            const raycaster = raycasterRef.current;
-            raycaster.set(cameraOrigin, cameraDirection);
-            raycaster.near = 0.05;
-            raycaster.far = range;
+        // 1. Raycast từ camera xuyên qua đúng tâm crosshair.
+        // Nếu có bề mặt ở gần thì ngắm bề mặt gần;
+        // nếu bề mặt ở xa thì ngắm đúng điểm xa đó.
+        const aimRay = raycasterRef.current;
+        aimRay.set(cameraOrigin, cameraDirection);
+        aimRay.near = 0;
+        aimRay.far = maxRange;
 
-            const hits = raycaster.intersectObject(hospital, true);
+        player.updateMatrixWorld(true);
+        scene.updateMatrixWorld(true);
 
-            const hit = hits.find(
-                (item) =>
-                    item.object instanceof THREE.Mesh &&
-                    item.distance > 0.05,
-            );
+        const hits = aimRay.intersectObjects(scene.children, true);
 
-            if (hit) {
-                target.copy(hit.point);
+        // Loại bỏ mọi mesh thuộc nhân vật của chính mình.
+        const firstHit = hits.find((hit) => {
+            let object: Object3D | null = hit.object;
+
+            while (object) {
+                if (object === player) return false;
+                object = object.parent;
             }
+
+            return true;
+        });
+
+        // Nếu tia ngắm không gặp gì, dùng điểm cuối tầm ngắm.
+    // Điểm ngắm chuẩn trên tia camera.
+const aimPoint = firstHit
+    ? firstHit.point.clone()
+    : cameraOrigin
+        .clone()
+        .addScaledVector(cameraDirection, maxRange);
+
+// Nếu camera nhìn vào tường rất gần, đẩy điểm ngắm
+// vào trong một khoảng nhỏ để tránh sai số giao mặt.
+if (firstHit && firstHit.distance < 2) {
+    aimPoint.addScaledVector(cameraDirection, -0.015);
+}
+        // 2. Lấy vị trí nòng súng sau khi cập nhật transform.
+        let muzzle: Object3D | null = null;
+
+        const muzzleNames = new Set([
+            "muzzlepoint",
+            "muzzletip",
+            "muzzleend",
+            "barrelend",
+            "firepoint",
+            "muzzle",
+        ]);
+
+        player.traverse((object) => {
+            const normalizedName = object.name
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, "");
+
+            if (!muzzle && muzzleNames.has(normalizedName)) {
+                muzzle = object;
+            }
+        });
+
+        const origin = new Vector3();
+
+        if (muzzle) {
+            (muzzle as Object3D).getWorldPosition(origin);
+        } else {
+            // Fallback khi model súng không có marker nòng.
+            const yaw = player.rotation.y;
+
+            origin.set(
+                player.position.x + Math.sin(yaw) * 0.65,
+                player.position.y + 1.35,
+                player.position.z + Math.cos(yaw) * 0.65,
+            );
         }
 
-        // Tìm đầu nòng súng trong model nhân vật.
-const muzzleCandidates: THREE.Object3D[] = [];
-
-player.updateMatrixWorld(true);
-
-player.traverse((object: THREE.Object3D) => {
-    const name = object.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "");
-
-    if (
-        name === "muzzle" ||
-        name === "muzzlepoint" ||
-        name === "muzzleend" ||
-        name === "muzzletip" ||
-        name === "barrelend" ||
-        name === "firepoint"
-    ) {
-        muzzleCandidates.push(object);
-    }
-});
-
-const muzzle = muzzleCandidates[0];
-const origin = new THREE.Vector3();
-
-if (muzzle) {
-    muzzle.getWorldPosition(origin);
-} else {
-    // Vị trí dự phòng khi model không có node đầu nòng.
-    const yaw = player.rotation.y;
-
-    origin.set(
-        player.position.x + Math.sin(yaw) * 0.65
-            + Math.cos(yaw) * 0.2,
-        player.position.y + 1.35,
-        player.position.z + Math.cos(yaw) * 0.65
-            - Math.sin(yaw) * 0.2,
-    );
-
-    console.warn(
-        "[Bullet] Không tìm thấy node đầu nòng; đang dùng vị trí dự phòng.",
-    );
-}
-
-        // Đạn xuất phát từ nòng và hội tụ về điểm trên tia ngắm.
-        const direction = target.clone().sub(origin);
+        // 3. Đường đạn là đường thẳng từ nòng súng đến aimPoint.
+        const direction = aimPoint.clone().sub(origin);
 
         if (direction.lengthSq() < 0.000001) return;
 
         direction.normalize();
 
-  const trajectory = {
-    origin: {
-        x: origin.x,
-        y: origin.y,
-        z: origin.z,
-    },
-    direction: {
-        x: direction.x,
-        y: direction.y,
-        z: direction.z,
-    },
-    target: {
-        x: target.x,
-        y: target.y,
-        z: target.z,
-    },
-    range,
-    weapon: data.weapon ?? "rifle",
-};
+        const trajectory = {
+            origin: {
+                x: origin.x,
+                y: origin.y,
+                z: origin.z,
+            },
+            direction: {
+                x: direction.x,
+                y: direction.y,
+                z: direction.z,
+            },
+            target: {
+                x: aimPoint.x,
+                y: aimPoint.y,
+                z: aimPoint.z,
+            },
+            distance: maxRange,
+            range: maxRange,
+            weapon: data.weapon ?? "rifle",
+        };
 
-// Hiệu ứng đạn: bắt đầu từ đầu nòng súng.
-window.dispatchEvent(
-    new CustomEvent("boom:bullet-fired", {
-        detail: trajectory,
-    }),
-);
+        window.dispatchEvent(
+            new CustomEvent("boom:bullet-fired", {
+                detail: trajectory,
+            }),
+        );
 
-// Gửi cùng quỹ đạo cho GameHUD để chuyển lên server.
-window.dispatchEvent(
-    new CustomEvent("boom:bullet-trajectory", {
-        detail: trajectory,
-    }),
-);
-
+        window.dispatchEvent(
+            new CustomEvent("boom:bullet-trajectory", {
+                detail: trajectory,
+            }),
+        );
     };
 
     window.addEventListener("boom:request-bullet", handleRequestBullet);
 
     return () => {
-        window.removeEventListener("boom:request-bullet", handleRequestBullet);
+        window.removeEventListener(
+            "boom:request-bullet",
+            handleRequestBullet,
+        );
     };
-}, [playerRef]);
+}, [playerRef, camera, scene]);
 
 
     useEffect(() => {
@@ -1431,42 +1437,47 @@ if (Number.isFinite(targetY)) {
         // AIM / CROSSHAIR — LANDSCAPE ONLY
         // ================================================
 
-        const CROSSHAIR_X = 0.54;
-        const CROSSHAIR_Y = 0.70;
+     
+const CROSSHAIR_X = 0.54;
+const CROSSHAIR_Y = 0.70;
 
-        useCrosshairStore.getState().setPosition(
-            CROSSHAIR_X,
-            CROSSHAIR_Y,
-            !isDead,
-        );
+// Offset phải giống hệt vị trí hiển thị trong GameHUD.
+const CROSSHAIR_OFFSET_X = 0.039;
+const CROSSHAIR_OFFSET_Y = 0.039;
 
-        const crosshairNdc = crosshairNdcRef.current.set(
-            CROSSHAIR_X * 2 - 1,
-            1 - CROSSHAIR_Y * 2,
-        );
+const effectiveX = CROSSHAIR_X - CROSSHAIR_OFFSET_X;
+const effectiveY = CROSSHAIR_Y - CROSSHAIR_OFFSET_Y;
 
-        const raycaster = raycasterRef.current;
-        raycaster.setFromCamera(crosshairNdc, camera);
+useCrosshairStore.getState().setPosition(
+    CROSSHAIR_X,
+    CROSSHAIR_Y,
+    !isDead,
+);
 
-        const shotOrigin = camera.getWorldPosition(
-            new Vector3()
-        );
+const crosshairNdc = crosshairNdcRef.current.set(
+    effectiveX * 2 - 1,
+    1 - effectiveY * 2,
+);
 
-        const shotDirection = raycaster.ray.direction;
+const raycaster = raycasterRef.current;
+raycaster.setFromCamera(crosshairNdc, camera);
 
-        useAimStore.getState().setAim(
-            {
-                x: shotOrigin.x,
-                y: shotOrigin.y,
-                z: shotOrigin.z,
-            },
-            {
-                x: shotDirection.x,
-                y: shotDirection.y,
-                z: shotDirection.z,
-            },
-        );
+const shotOrigin = camera.getWorldPosition(new Vector3());
+const shotDirection = raycaster.ray.direction;
 
+useAimStore.getState().setAim(
+    {
+        x: shotOrigin.x,
+        y: shotOrigin.y,
+        z: shotOrigin.z,
+    },
+    {
+        x: shotDirection.x,
+        y: shotDirection.y,
+        z: shotDirection.z,
+    },
+);
+ 
 
         // ====================================================
         // DEAD
@@ -1684,9 +1695,9 @@ if (running && joystickMagnitude <= DEAD_ZONE) {
         // SPEED
         // ====================================================
 
-const WALK_SPEED = 4.5;
-const RUN_SPEED = 7.2;
-const CROUCH_SPEED = 2.4;
+const WALK_SPEED = 4.2;
+const RUN_SPEED = 6.9;
+const CROUCH_SPEED = 2.1;
 
 const MAX_SPEED = isCrouching
     ? CROUCH_SPEED

@@ -140,6 +140,7 @@ const handleAttack = () => {
         action: "punch",
         origin: aim.origin,
         direction: aim.direction,
+        
     });
 };
 
@@ -149,13 +150,14 @@ useEffect(() => {
     if (!room) return;
 
     const handleBulletTrajectory = (event: Event) => {
-        const customEvent = event as CustomEvent<{
-            origin?: { x: number; y: number; z: number };
-            direction?: { x: number; y: number; z: number };
-            target?: { x: number; y: number; z: number };
-            range?: number;
-            weapon?: string;
-        }>;
+      const customEvent = event as CustomEvent<{
+    origin?: { x: number; y: number; z: number };
+    direction?: { x: number; y: number; z: number };
+    target?: { x: number; y: number; z: number };
+    distance?: number;
+    range?: number;
+    weapon?: string;
+}>;
 
         const trajectory = customEvent.detail;
         const { origin, direction } = trajectory ?? {};
@@ -175,6 +177,8 @@ useEffect(() => {
             action: "shoot",
             origin,
             direction,
+            distance: trajectory.distance,
+
         });
     };
 
@@ -932,8 +936,9 @@ const hasRifle =
                 <div
                     className="game-hud__crosshair"
                     style={{
-                        left: `${crosshairX * 100}%`,
-                        top: `${crosshairY * 100}%`,
+            left: `${(crosshairX - 0.039) * 100}%`,
+
+                        top: `${(crosshairY-0.039) * 100}%`,
                     }}
                 >
                     <div className="game-hud__crosshair-part game-hud__crosshair-part--top" />

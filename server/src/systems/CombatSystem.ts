@@ -22,6 +22,7 @@ interface AttackMessage {
     action?: string;
     origin?: Vec3;
     direction?: Vec3;
+    distance?: number;
 }
 
 interface CombatSystemOptions {
@@ -154,92 +155,106 @@ export class CombatSystem {
     // RIFLE ATTACK
     // ========================================================
 
-    private handleRifleAttack(
-        sessionId: string,
-        attacker: PlayerState,
-        message: AttackMessage,
-    ): void {
-        const origin = message.origin;
-        const direction = message.direction;
 
-        if (
-            !this.isValidVec3(origin) ||
-            !this.isValidVec3(direction)
-        ) {
-            return;
-        }
+private handleRifleAttack(
+    sessionId: string,
+    attacker: PlayerState,
+    message: AttackMessage,
+): void {
+    const origin = message.origin;
+    const direction = message.direction;
 
-        const directionLength = Math.hypot(
-            direction.x,
-            direction.y,
-            direction.z,
-        );
+    if (
+        !this.isValidVec3(origin) ||
+        !this.isValidVec3(direction)
+    ) {
+        return;
+    }
 
-        if (directionLength < 0.0001) return;
+    const directionLength = Math.hypot(
+        direction.x,
+        direction.y,
+        direction.z,
+    );
 
-        // Không cho client gửi origin ở quá xa nhân vật.
-        const playerOrigin: Vec3 = {
-            x: attacker.x,
-            y: attacker.y + 1.1,
-            z: attacker.z,
-        };
+    if (directionLength < 0.0001) return;
 
-        const originDistance = this.distance3D(
-            origin,
-            playerOrigin,
-        );
+    // Không cho client gửi vị trí nòng súng quá xa nhân vật.
+    const playerOrigin: Vec3 = {
+        x: attacker.x,
+        y: attacker.y + 1.1,
+        z: attacker.z,
+    };
 
-        if (originDistance > 10.5) return;
+    if (this.distance3D(origin, playerOrigin) > 10.5) {
+        return;
+    }
 
-        const normalizedDirection: Vec3 = {
-            x: direction.x / directionLength,
-            y: direction.y / directionLength,
-            z: direction.z / directionLength,
-        };
+    const normalizedDirection: Vec3 = {
+        x: direction.x / directionLength,
+        y: direction.y / directionLength,
+        z: direction.z / directionLength,
+    };
 
-        const hit = this.findNearestRayHit(
+    // Xác định mục tiêu bằng raycast phía server.
+    // Không dùng khoảng cách client gửi để quyết định sát thương.
+    const hit = this.findNearestRayHit(
+        sessionId,
+        origin,
+        normalizedDirection,
+        this.rifleRange,
+    );
+
+    // Khoảng cách hiển thị đạn tính từ nòng súng.
+    // Client gửi tầm bay; server giới hạn tối đa 51 đơn vị.
+    const requestedDistance = Number(message.distance);
+
+    const bulletDistance =
+        Number.isFinite(requestedDistance) &&
+        requestedDistance > 0
+            ? Math.min(requestedDistance, this.rifleRange)
+            : hit?.distance ?? this.rifleRange;
+
+    // Chỉ broadcast MỘT LẦN để tránh render hai viên đạn.
+    this.broadcast("attackPerformed", {
+        playerId: sessionId,
+        action: "shoot",
+        weapon: "rifle",
+        origin,
+        direction: normalizedDirection,
+        distance: bulletDistance,
+        hit: hit !== null,
+        targetId: hit?.id ?? null,
+        targetType: hit?.type ?? null,
+    });
+
+    // Không trúng mục tiêu thì kết thúc.
+    if (!hit) return;
+
+    if (hit.type === "player") {
+        this.damagePlayer(
             sessionId,
-            origin,
-            normalizedDirection,
-            this.rifleRange,
-        );
-
-        this.broadcast("attackPerformed", {
-            playerId: sessionId,
-            action: "shoot",
-            weapon: "rifle",
-            origin,
-            direction: normalizedDirection,
-            hit: hit !== null,
-            targetId: hit?.id ?? null,
-            targetType: hit?.type ?? null,
-        });
-
-        if (!hit) return;
-
-        if (hit.type === "player") {
-            this.damagePlayer(
-                sessionId,
-                hit.id,
-                this.rifleDamage,
-            );
-            return;
-        }
-
-        if (hit.type === "zombie") {
-            this.damageZombie(
-                sessionId,
-                hit.id,
-                this.rifleDamage,
-            );
-            return;
-        }
-
-        this.damageScareObject(
-            sessionId,
+            hit.id,
             this.rifleDamage,
         );
+        return;
     }
+
+    if (hit.type === "zombie") {
+        this.damageZombie(
+            sessionId,
+            hit.id,
+            this.rifleDamage,
+        );
+        return;
+    }
+
+    this.damageScareObject(
+        sessionId,
+        this.rifleDamage,
+    );
+}
+
 
     // ========================================================
     // PUNCH ATTACK

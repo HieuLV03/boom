@@ -194,6 +194,18 @@ export default function WeaponModel({
         return marker ?? null;
     }, [weapon, modelPath]);
 
+const muzzleMarker = useMemo(() => {
+    const marker = weapon.getObjectByName("MuzzlePoint");
+
+    if (!marker) {
+        console.error(
+            '[WeaponModel] Không tìm thấy "MuzzlePoint" trong GLB:',
+            modelPath,
+        );
+    }
+
+    return marker ?? null;
+}, [weapon, modelPath]);
 
     // Đăng ký marker để IK tay trái sử dụng.
     useEffect(() => {
@@ -372,6 +384,16 @@ export default function WeaponModel({
                 rotation={mountRotation}
                 scale={scale}
             >
+                {muzzleMarker &&
+    createPortal(
+        <MuzzleFlash
+            enabled={
+                enableFireEffects &&
+                weaponType === "rifle"
+            }
+        />,
+        muzzleMarker,
+    )}
                 <group ref={weaponRootRef}>
                     <primitive object={weapon} />
                     {/* Điểm thoát vỏ đạn. */}
@@ -416,6 +438,150 @@ export default function WeaponModel({
  * Hiện chấm xanh tại world position của marker thật.
  * Không thay đổi transform của marker hoặc model súng.
  */
+
+function MuzzleFlash({
+    enabled,
+}: {
+    enabled: boolean;
+}) {
+    const flashRef = useRef<Group>(null);
+    const coreRef = useRef<Mesh>(null);
+    const outerRef = useRef<Mesh>(null);
+    const lightRef = useRef<any>(null);
+
+    const lifeRef = useRef(1);
+    const activeRef = useRef(false);
+
+    useEffect(() => {
+        if (!enabled) return;
+
+        const handleShot = (event: Event) => {
+            const detail = (
+                event as CustomEvent<BulletFiredDetail>
+            ).detail;
+
+            if (
+                detail?.weapon &&
+                detail.weapon !== "rifle"
+            ) {
+                return;
+            }
+
+            lifeRef.current = 0;
+            activeRef.current = true;
+
+            if (flashRef.current) {
+                flashRef.current.visible = true;
+
+                // Hướng và hình dáng thay đổi rất nhẹ mỗi phát.
+                flashRef.current.rotation.z =
+                    (Math.random() - 0.5) * 0.45;
+                flashRef.current.rotation.y =
+                    (Math.random() - 0.5) * 0.3;
+
+                flashRef.current.scale.set(
+                    0.8 + Math.random() * 0.3,
+                    0.8 + Math.random() * 0.3,
+                    0.8 + Math.random() * 0.3,
+                );
+            }
+        };
+
+        window.addEventListener(
+            "boom:bullet-fired",
+            handleShot,
+        );
+
+        return () => {
+            window.removeEventListener(
+                "boom:bullet-fired",
+                handleShot,
+            );
+        };
+    }, [enabled]);
+
+    useFrame((_, delta) => {
+        const flash = flashRef.current;
+
+        if (!flash || !activeRef.current) return;
+
+        lifeRef.current += Math.min(delta, 0.05);
+
+        // Lóe nhanh, không phồng/co chậm.
+        const duration = 0.045;
+        const t = lifeRef.current / duration;
+
+        if (t >= 1) {
+            flash.visible = false;
+            activeRef.current = false;
+            return;
+        }
+
+        const fade = 1 - t;
+
+        if (coreRef.current) {
+            const material = coreRef.current
+                .material as import("three").MeshBasicMaterial;
+
+            material.opacity = fade;
+        }
+
+        if (outerRef.current) {
+            const material = outerRef.current
+                .material as import("three").MeshBasicMaterial;
+
+            material.opacity = fade * 0.65;
+        }
+
+        if (lightRef.current) {
+            lightRef.current.intensity = fade * 1.8;
+        }
+    });
+
+    return (
+        <group ref={flashRef} visible={false}>
+            {/* Lõi nóng sáng gần như trắng */}
+            <mesh
+                ref={coreRef}
+                rotation={[0, 0, Math.PI / 2]}
+                position={[0, 0, 0.003]}
+            >
+                <sphereGeometry args={[0.0035, 6, 5]} />
+                <meshBasicMaterial
+                    color="#fff4cf"
+                    transparent
+                    opacity={1}
+                    depthWrite={false}
+                    toneMapped={false}
+                />
+            </mesh>
+
+            {/* Chớp lửa ngắn ở miệng nòng */}
+            <mesh
+                ref={outerRef}
+                rotation={[Math.PI / 2, 0, 0]}
+                position={[0, 0, 0.008]}
+            >
+                <coneGeometry args={[0.0035, 0.016, 5]} />
+                <meshBasicMaterial
+                    color="#ff8a26"
+                    transparent
+                    opacity={0.65}
+                    depthWrite={false}
+                    toneMapped={false}
+                />
+            </mesh>
+
+            <pointLight
+                ref={lightRef}
+                color="#ffad55"
+                intensity={0}
+                distance={0.45}
+                decay={2}
+            />
+        </group>
+    );
+}
 function GripDebugMarker({
     marker,
 }: {
