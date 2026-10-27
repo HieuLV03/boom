@@ -16,11 +16,14 @@ const app = express();
 // ============================================================
 
 const allowedOrigins = new Set<string>([
+    // Local development
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://192.168.2.46:3000",
-]);
 
+    // Production frontend
+    "https://boom-roan-two.vercel.app",
+]);
 function buildCorsHeaders(
     origin: string | undefined
 ): Record<string, string> {
