@@ -152,7 +152,15 @@ const targetRotation = useRef(0);
 const attackAimUntilRef = useRef(0);
 
 // Theo dõi góc đã gửi lên server.
+
 const lastSentRotation = useRef<number | null>(null);
+
+const lastSentMoving = useRef<boolean | null>(null);
+const lastSentRunning = useRef<boolean | null>(null);
+const lastSentBackward = useRef<boolean | null>(null);
+const lastSentCrouching = useRef<boolean | null>(null);
+const lastSentAiming = useRef<boolean | null>(null);
+
     // ========================================================
     // MOVING STATE
     // ========================================================
@@ -177,7 +185,6 @@ const jumpTrigger = useJumpStore(
 
     const isMovingRef =
         useRef(false);
-const lastSentMoving = useRef<boolean | null>(null);
     const [
         isMoving,
         setIsMoving,
@@ -2104,40 +2111,67 @@ player.rotation.y +=
         // MULTIPLAYER
         // ====================================================
 
-  if (room) {
+ // ========================================================
+// MULTIPLAYER — SYNC MOVEMENT ANIMATION
+// ========================================================
+
+
+if (room) {
+    const currentRotation = player.rotation.y;
 
     const rotationDifference =
-    lastSentRotation.current === null
-        ? Infinity
-        : Math.abs(
-            Math.atan2(
-                Math.sin(
-                    player.rotation.y -
-                    lastSentRotation.current
-                ),
-                Math.cos(
-                    player.rotation.y -
-                    lastSentRotation.current
-                ),
-            ),
-        );
+        lastSentRotation.current === null
+            ? Infinity
+            : Math.abs(
+                  Math.atan2(
+                      Math.sin(
+                          currentRotation -
+                              lastSentRotation.current,
+                      ),
+                      Math.cos(
+                          currentRotation -
+                              lastSentRotation.current,
+                      ),
+                  ),
+              );
 
-const shouldSendMovement =
-    actualSpeed > 0.001 ||
-    lastSentMoving.current !== nextMoving ||
-    rotationDifference > 0.02;
+    const nextRunning =
+        running && nextMoving && !isCrouching;
+
+    // Gửi ngay khi bất kỳ trạng thái animation nào thay đổi.
+    const movementStateChanged =
+        lastSentMoving.current !== nextMoving ||
+        lastSentRunning.current !== nextRunning ||
+        lastSentBackward.current !== nextMovingBackward ||
+        lastSentCrouchRef.current !== isCrouching ||
+        lastSentAiming.current !== aiming;
+
+    // Tiếp tục cập nhật vị trí trong khi nhân vật di chuyển.
+    const shouldSendMovement =
+        actualSpeed > 0.001 ||
+        movementStateChanged ||
+        rotationDifference > 0.02;
 
     if (shouldSendMovement) {
         room.send("move", {
             x: player.position.x,
-            y: player.position.y,
             z: player.position.z,
-            rotation: player.rotation.y,
+            rotation: currentRotation,
+
+            // Trạng thái cần đồng bộ cho RemotePlayers.
             moving: nextMoving,
+            running: nextRunning,
+            movingBackward: nextMovingBackward,
+            crouching: isCrouching,
+            aiming,
         });
 
         lastSentMoving.current = nextMoving;
-        lastSentRotation.current = player.rotation.y;
+        lastSentRunning.current = nextRunning;
+        lastSentBackward.current = nextMovingBackward;
+        lastSentCrouchRef.current = isCrouching;
+        lastSentAiming.current = aiming;
+        lastSentRotation.current = currentRotation;
     }
 }
     });
