@@ -363,7 +363,6 @@ function ZombieModel({
         </group>
     );
 }
-
 // ============================================================
 // ZOMBIE STATE SYNC
 // ============================================================
@@ -380,56 +379,150 @@ export default function Zombie() {
             return;
         }
 
-        const callbacks = getStateCallbacks(room);
-        const collection = room.state.zombies;
+        let disposed = false;
+        let collectionBound = false;
 
         const unsubscribers: Array<() => void> = [];
 
+        const zombieUnsubscribers = new Map<
+            string,
+            () => void
+        >();
+
+        const callbacks = getStateCallbacks(room);
+
         const syncZombies = () => {
+            if (disposed) return;
+
+            const collection = (room.state as any)?.zombies;
+
+            if (
+                !collection ||
+                typeof collection.forEach !== "function"
+            ) {
+                setZombies([]);
+                return;
+            }
+
             const next: ZombieSnapshot[] = [];
 
-            collection.forEach((zombie: any) => {
-                next.push(readZombie(zombie));
-            });
+            collection.forEach(
+                (zombie: any, key: string) => {
+                    if (!zombie) return;
+
+                    next.push({
+                        ...readZombie(zombie),
+                        id: String(zombie.id || key),
+                    });
+                },
+            );
 
             setZombies(next);
         };
 
-        const bindZombie = (zombie: any) => {
-            const unsubscribe =
-                callbacks(zombie).onChange(() => {
-                    syncZombies();
-                });
+        const bindZombie = (
+            zombie: any,
+            key: string,
+        ) => {
+            if (!zombie) return;
 
-            unsubscribers.push(unsubscribe);
-        };
+            const id = String(zombie.id || key);
 
-        collection.forEach((zombie: any) => {
-            bindZombie(zombie);
-        });
+            if (zombieUnsubscribers.has(id)) {
+                return;
+            }
 
-        const unsubscribeAdd =
-            callbacks(collection).onAdd(
-                (zombie: any) => {
-                    bindZombie(zombie);
+            const unsubscribe = callbacks(zombie).onChange(
+                () => {
                     syncZombies();
                 },
             );
 
-        const unsubscribeRemove =
-            callbacks(collection).onRemove(() => {
-                syncZombies();
-            });
+            zombieUnsubscribers.set(id, unsubscribe);
+        };
 
-        syncZombies();
+        const bindCollection = () => {
+            if (disposed || collectionBound) return;
+
+            const collection = (room.state as any)?.zombies;
+
+            if (
+                !collection ||
+                typeof collection.forEach !== "function"
+            ) {
+                return;
+            }
+
+            collectionBound = true;
+
+            collection.forEach(
+                (zombie: any, key: string) => {
+                    bindZombie(zombie, String(key));
+                },
+            );
+
+            const unsubscribeAdd = callbacks(
+                collection,
+            ).onAdd(
+                (zombie: any, key: string) => {
+                    bindZombie(zombie, String(key));
+                    syncZombies();
+                },
+            );
+
+            const unsubscribeRemove = callbacks(
+                collection,
+            ).onRemove(
+                (zombie: any, key: string) => {
+                    const id = String(zombie?.id || key);
+
+                    zombieUnsubscribers.get(id)?.();
+                    zombieUnsubscribers.delete(id);
+
+                    syncZombies();
+                },
+            );
+
+            unsubscribers.push(
+                unsubscribeAdd,
+                unsubscribeRemove,
+            );
+
+            syncZombies();
+
+            console.log(
+                "[ZOMBIE] Đã kết nối collection:",
+                {
+                    roomId: room.roomId,
+                    count: (room.state as any).zombies.size,
+                },
+            );
+        };
+
+        // Thử kết nối ngay khi effect chạy.
+        bindCollection();
+
+        // Thử lại khi state được đồng bộ.
+        room.onStateChange(() => {
+            if (disposed) return;
+
+            bindCollection();
+            syncZombies();
+        });
 
         return () => {
-            unsubscribeAdd();
-            unsubscribeRemove();
+            disposed = true;
 
             unsubscribers.forEach((unsubscribe) => {
                 unsubscribe();
             });
+
+            zombieUnsubscribers.forEach((unsubscribe) => {
+                unsubscribe();
+            });
+
+            unsubscribers.length = 0;
+            zombieUnsubscribers.clear();
         };
     }, [room]);
 

@@ -285,305 +285,104 @@ export default function RemotePlayers() {
     // ROOM SYNC
     // ========================================================
 
-    useEffect(() => {
 
-        console.log(
-            "========================================"
-        );
+useEffect(() => {
+    if (!room) {
+        console.log("[REMOTE] No room");
+        setPlayers([]);
+        return;
+    }
 
-        console.log(
-            "[REMOTE] Room changed"
-        );
+    const currentRoom = room;
+    const $ = getStateCallbacks(currentRoom);
 
+    let disposed = false;
+    let boundPlayersMap: any = null;
 
-        // ====================================================
-        // NO ROOM
-        // ====================================================
+    let removeAdd: (() => void) | undefined;
+    let removeRemove: (() => void) | undefined;
 
-        if (!room) {
+    const syncPlayers = (playersMap: any) => {
+        if (disposed || !playersMap) return;
 
-            console.log(
-                "[REMOTE] ❌ No room"
-            );
+        const remotePlayers: RemotePlayerData[] = [];
 
-            setPlayers([]);
+        playersMap.forEach((player: any, id: string) => {
+            if (id === currentRoom.sessionId) return;
 
-            return;
+            remotePlayers.push({ id, player });
+        });
 
-        }
+        console.log("[REMOTE] Sync players:", {
+            roomId: currentRoom.roomId,
+            sessionId: currentRoom.sessionId,
+            total: playersMap.size,
+            remote: remotePlayers.length,
+            remoteIds: remotePlayers.map((p) => p.id),
+        });
 
+        setPlayers(remotePlayers);
+    };
 
-        // ====================================================
-        // LOCK CURRENT ROOM
-        // ====================================================
+    const bindPlayersMap = () => {
+        if (disposed) return;
 
-        const currentRoom =
-            room;
-
-
-        console.log(
-            "[REMOTE] ✅ Active room:",
-            {
-                roomId:
-                    currentRoom.roomId,
-
-                sessionId:
-                    currentRoom.sessionId,
-            }
-        );
-
-
-        // ====================================================
-        // PLAYERS MAP
-        // ====================================================
-
-        const playersMap =
-            currentRoom.state?.players;
-
+        const playersMap = currentRoom.state?.players;
 
         if (!playersMap) {
-
-            console.warn(
-                "[REMOTE] ❌ players map not ready"
-            );
-
-            setPlayers([]);
-
+            console.log("[REMOTE] Waiting for players map");
             return;
-
         }
 
+        if (playersMap === boundPlayersMap) return;
 
-        // ====================================================
-        // COLYSEUS CALLBACKS
-        // ====================================================
+        removeAdd?.();
+        removeRemove?.();
 
-        const $ =
-            getStateCallbacks(
-                currentRoom
-            );
+        boundPlayersMap = playersMap;
 
+        removeAdd = $(playersMap).onAdd(
+            (player: any, id: string) => {
+                console.log("[REMOTE] Player added:", {
+                    id,
+                    name: player?.name,
+                    localSession: currentRoom.sessionId,
+                });
 
-        // ====================================================
-        // SYNC PLAYERS
-        // ====================================================
-
-        const syncPlayers =
-            () => {
-
-                const remotePlayers:
-                    RemotePlayerData[] =
-                    [];
-
-
-                playersMap.forEach(
-                    (
-                        player: any,
-                        id: string
-                    ) => {
-
-                        // ------------------------------------
-                        // Không render chính mình
-                        // ------------------------------------
-
-                        if (
-                            id ===
-                            currentRoom.sessionId
-                        ) {
-
-                            return;
-
-                        }
-
-
-                        remotePlayers.push({
-                            id,
-                            player,
-                        });
-
-                    }
-                );
-
-
-                console.log(
-                    "[REMOTE] Sync players:",
-                    {
-                        roomId:
-                            currentRoom.roomId,
-
-                        sessionId:
-                            currentRoom.sessionId,
-
-                        total:
-                            playersMap.size,
-
-                        remote:
-                            remotePlayers.length,
-                    }
-                );
-
-
-                setPlayers(
-                    remotePlayers
-                );
-
-            };
-
-
-        // ====================================================
-        // INITIAL SYNC
-        // ====================================================
-
-        syncPlayers();
-
-
-        // ====================================================
-        // PLAYER ADDED
-        // ====================================================
-
-        const removeAdd =
-            $(playersMap).onAdd(
-                (
-                    player: any,
-                    id: string
-                ) => {
-
-                    console.log(
-                        "[REMOTE] ➕ PLAYER ADDED:",
-                        {
-                            roomId:
-                                currentRoom.roomId,
-
-                            localSession:
-                                currentRoom.sessionId,
-
-                            id,
-
-                            name:
-                                player?.name,
-
-                            x:
-                                player?.x,
-
-                            y:
-                                player?.y,
-
-                            z:
-                                player?.z,
-
-                            isLocal:
-                                id ===
-                                currentRoom.sessionId,
-                        }
-                    );
-
-
-                    syncPlayers();
-
-                }
-            );
-
-
-        // ====================================================
-        // PLAYER REMOVED
-        // ====================================================
-
-        const removeRemove =
-            $(playersMap).onRemove(
-                (
-                    player: any,
-                    id: string
-                ) => {
-
-                    console.log(
-                        "[REMOTE] ❌ PLAYER REMOVED:",
-                        {
-                            roomId:
-                                currentRoom.roomId,
-
-                            id,
-
-                            name:
-                                player?.name,
-                        }
-                    );
-
-
-                    syncPlayers();
-
-                }
-            );
-
-
-        // ====================================================
-        // EXISTING PLAYERS
-        // ====================================================
-
-        playersMap.forEach(
-            (
-                player: any,
-                id: string
-            ) => {
-
-                console.log(
-                    "[REMOTE] Existing player:",
-                    {
-                        roomId:
-                            currentRoom.roomId,
-
-                        id,
-
-                        name:
-                            player?.name,
-
-                        x:
-                            player?.x,
-
-                        y:
-                            player?.y,
-
-                        z:
-                            player?.z,
-
-                        isLocal:
-                            id ===
-                            currentRoom.sessionId,
-                    }
-                );
-
+                syncPlayers(playersMap);
             }
         );
 
+        removeRemove = $(playersMap).onRemove(
+            (_player: any, id: string) => {
+                console.log("[REMOTE] Player removed:", id);
+                syncPlayers(playersMap);
+            }
+        );
 
-        // ====================================================
-        // CLEANUP
-        // ====================================================
+        syncPlayers(playersMap);
+    };
 
-        return () => {
+    bindPlayersMap();
 
-            console.log(
-                "[REMOTE] Cleaning room listeners:",
-                {
-                    roomId:
-                        currentRoom.roomId,
+    const removeStateChange = currentRoom.onStateChange(() => {
+        bindPlayersMap();
+    });
 
-                    sessionId:
-                        currentRoom.sessionId,
-                }
-            );
+    return () => {
+        disposed = true;
 
+        removeAdd?.();
+        removeRemove?.();
 
-            removeAdd?.();
+        setPlayers([]);
 
-            removeRemove?.();
-
-
-            setPlayers([]);
-
-        };
-
-    }, [room]);
-
+        console.log("[REMOTE] Room listeners cleaned:", {
+            roomId: currentRoom.roomId,
+            sessionId: currentRoom.sessionId,
+        });
+    };
+}, [room]);
 
     // ========================================================
     // NO ROOM

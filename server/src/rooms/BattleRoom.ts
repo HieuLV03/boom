@@ -89,18 +89,18 @@ export class BattleRoom extends Room<BattleRoomOptions> {
             ? options.mapId
             : "hospital";
 
-        this.state.gameOver = false;
-        this.state.roomStatus = "waiting";
-        this.state.hostId = "";
-        this.state.timeRemaining = MATCH_DURATION;
-
-        // Tải collision một lần cho room.
+     this.state.gameOver = false;
+this.state.roomStatus = "waiting";
+this.state.hostId = "";
+this.state.timeRemaining = MATCH_DURATION;
+        // Load collision exactly once.
         this.hospitalCollision = await HospitalCollision.load();
 
         const collision = this.hospitalCollision;
 
         console.log("[BattleRoom] Map:", this.mapId);
 
+        // Spawn and respawn.
         this.spawnSystem = new SpawnSystem({
             state: this.state,
             collision,
@@ -110,27 +110,29 @@ export class BattleRoom extends Room<BattleRoomOptions> {
             },
         });
 
+        // Player physics.
         this.physicsSystem = new PlayerPhysicsSystem({
             state: this.state,
             collision,
             verticalVelocity: this.verticalVelocity,
         });
+this.clock.setInterval(() => {
+    if (this.state.roomStatus !== "playing") return;
+    if (this.state.gameOver) return;
 
-        this.clock.setInterval(() => {
-            if (this.state.roomStatus !== "playing") return;
-            if (this.state.gameOver) return;
+    this.physicsSystem?.update(
+        0.05,
+        this.state.gameOver,
+    );
+}, 50);
 
-            this.physicsSystem?.update(
-                0.05,
-                this.state.gameOver,
-            );
-        }, 50);
-
+        // Movement and collision.
         this.movementSystem = new MovementSystem({
             state: this.state,
             collision,
         });
 
+        // Combat.
         this.combatSystem = new CombatSystem({
             state: this.state,
             collision,
@@ -145,6 +147,7 @@ export class BattleRoom extends Room<BattleRoomOptions> {
             },
         });
 
+        // Bombs.
         this.bombSystem = new BombSystem({
             state: this.state,
             broadcast: (type, message) => {
@@ -165,6 +168,7 @@ export class BattleRoom extends Room<BattleRoomOptions> {
             },
         });
 
+        // Weapon pickups.
         this.weaponPickupSystem = new WeaponPickupSystem({
             state: this.state,
             collision,
@@ -173,12 +177,22 @@ export class BattleRoom extends Room<BattleRoomOptions> {
             },
         });
 
-        console.log("[DEBUG WEAPON] Room created", {
-            roomId: this.roomId,
-            mapId: this.mapId,
-            pickupCount: this.state.weaponPickups.size,
-        });
-
+console.log("[DEBUG WEAPON] Sau initialize", {
+    roomId: this.roomId,
+    mapId: this.mapId,
+    pickupCount: this.state.weaponPickups.size,
+    pickups: Array.from(
+        this.state.weaponPickups.values(),
+    ).map((pickup) => ({
+        id: pickup.id,
+        weaponType: pickup.weaponType,
+        x: pickup.x,
+        y: pickup.y,
+        z: pickup.z,
+        available: pickup.available,
+    })),
+});
+        // Zombies.
         this.zombieSystem = new ZombieSystem({
             state: this.state,
             hospitalCollision: collision,
@@ -193,13 +207,14 @@ export class BattleRoom extends Room<BattleRoomOptions> {
             },
         });
 
-        this.clock.setInterval(() => {
-            if (this.state.roomStatus !== "playing") return;
-            if (this.state.gameOver) return;
+this.clock.setInterval(() => {
+    if (this.state.roomStatus !== "playing") return;
+    if (this.state.gameOver) return;
 
-            this.zombieSystem?.update(this.state.gameOver);
-        }, 100);
+    this.zombieSystem?.update(this.state.gameOver);
+}, 100);
 
+        // Room code.
         const roomCode =
             typeof options.roomCode === "string" &&
             /^\d{6}$/.test(options.roomCode)
@@ -208,40 +223,40 @@ export class BattleRoom extends Room<BattleRoomOptions> {
 
         this.state.roomCode = roomCode;
 
-await this.setMetadata({
-    roomCode,
-    mapId: this.mapId,
-    roomStatus: "waiting",
-});
+        await this.setMetadata({
+            roomCode,
+            mapId: this.mapId,
+        });
 
+        // Register client messages.
         this.registerMessages();
 
-        this.matchTimer = this.clock.setInterval(() => {
-            if (this.state.roomStatus !== "playing") return;
+       this.matchTimer = this.clock.setInterval(() => {
+    if (this.state.roomStatus !== "playing") return;
 
-            if (this.state.gameOver) {
-                this.matchTimer?.clear();
-                this.matchTimer = null;
-                return;
-            }
+    if (this.state.gameOver) {
+        this.matchTimer?.clear();
+        this.matchTimer = null;
+        return;
+    }
 
-            this.state.timeRemaining = Math.max(
-                0,
-                this.state.timeRemaining - 1,
-            );
+    this.state.timeRemaining = Math.max(
+        0,
+        this.state.timeRemaining - 1,
+    );
 
-            if (this.state.timeRemaining <= 0) {
-                this.state.gameOver = true;
-                this.state.roomStatus = "finished";
+    if (this.state.timeRemaining <= 0) {
+        this.state.gameOver = true;
+        this.state.roomStatus = "finished";
 
-                this.broadcast("gameOver", {
-                    reason: "time",
-                });
+        this.broadcast("gameOver", {
+            reason: "time",
+        });
 
-                this.matchTimer?.clear();
-                this.matchTimer = null;
-            }
-        }, 1000);
+        this.matchTimer?.clear();
+        this.matchTimer = null;
+    }
+}, 1000);
 
         console.log(
             "[BattleRoom] Ready:",
@@ -252,135 +267,97 @@ await this.setMetadata({
     }
 
     private registerMessages(): void {
-        // ================================================
-        // START GAME
-        // Cho phép chơi solo: chỉ cần ít nhất 1 người.
-        // ================================================
-this.onMessage("startGame", async (client) => {
-            if (!this.state.players.has(client.sessionId)) {
-                client.send("startGameError", {
-                    message: "Bạn không còn ở trong phòng.",
-                });
-                return;
-            }
-
-            if (client.sessionId !== this.hostSessionId) {
-                client.send("startGameError", {
-                    message: "Chỉ chủ phòng mới được bắt đầu trận đấu.",
-                });
-                return;
-            }
-
-            if (this.state.roomStatus !== "waiting") {
-                client.send("startGameError", {
-                    message: "Phòng không ở trạng thái chờ.",
-                });
-                return;
-            }
-
-            if (this.state.players.size < 1) {
-                client.send("startGameError", {
-                    message: "Không có người chơi trong phòng.",
-                });
-                return;
-            }
-
-            this.state.gameOver = false;
-            this.state.timeRemaining = MATCH_DURATION;
-
-            // Khởi tạo hệ thống chơi khi trận bắt đầu.
-            this.weaponPickupSystem?.initialize();
-            this.zombieSystem?.initialize();
-
-            // Cập nhật trạng thái sau khi khởi tạo.
-        // Chuyển phòng từ sảnh chờ sang trạng thái đang chơi.
-this.state.roomStatus = "playing";
-
-await this.setMetadata({
-    roomCode: this.state.roomCode,
-    mapId: this.mapId,
-    roomStatus: "playing",
-});
-
-this.broadcast("gameStarted", {
-    roomCode: this.state.roomCode,
-    mapId: this.mapId,
-    timeRemaining: this.state.timeRemaining,
-});
-
-            console.log("[BattleRoom] Game started:", {
-                roomId: this.roomId,
-                hostId: this.hostSessionId,
-                players: this.state.players.size,
-            });
+this.onMessage("startGame", (client) => {
+    // Chỉ chủ phòng mới được bắt đầu.
+    if (client.sessionId !== this.hostSessionId) {
+        client.send("startGameError", {
+            message: "Chỉ chủ phòng mới được bắt đầu trận đấu.",
         });
+        return;
+    }
 
+    // Không bắt đầu lại trận đang chạy hoặc đã kết thúc.
+    if (this.state.roomStatus !== "waiting") {
+        client.send("startGameError", {
+            message: "Phòng không ở trạng thái chờ.",
+        });
+        return;
+    }
+
+    // Cần có ít nhất một người chơi.
+    if (this.state.players.size < 1) {
+        client.send("startGameError", {
+            message: "Không có người chơi trong phòng.",
+        });
+        return;
+    }
+
+    this.state.roomStatus = "playing";
+    this.state.gameOver = false;
+    this.state.timeRemaining = MATCH_DURATION;
+
+  this.weaponPickupSystem?.initialize();
+
+console.log("[DEBUG WEAPON] Sau initialize:", {
+    roomId: this.roomId,
+    pickupCount: this.state.weaponPickups.size,
+    pickups: Array.from(
+        this.state.weaponPickups.values(),
+    ).map((pickup) => ({
+        id: pickup.id,
+        weaponType: pickup.weaponType,
+        available: pickup.available,
+        x: pickup.x,
+        y: pickup.y,
+        z: pickup.z,
+    })),
+});
+
+this.zombieSystem?.initialize();
+    this.broadcast("gameStarted", {
+        roomCode: this.state.roomCode,
+        mapId: this.state.mapId,
+        timeRemaining: this.state.timeRemaining,
+    });
+
+    console.log("[BattleRoom] Game started:", {
+        roomId: this.roomId,
+        hostId: this.hostSessionId,
+        players: this.state.players.size,
+    });
+});
         this.onMessage("aiming", (client, message) => {
-            const player = this.state.players.get(client.sessionId);
+        const player = this.state.players.get(client.sessionId);
 
-            if (
-                !player ||
-                !player.alive ||
-                this.state.gameOver ||
-                this.state.roomStatus !== "playing"
-            ) {
-                return;
-            }
+        if (!player || !player.alive || this.state.gameOver) {
+            return;
+        }
 
-            player.aiming = message?.aiming === true;
-        });
+        player.aiming = message?.aiming === true;
+    });
 
-        this.onMessage("crouch", (client, message) => {
-            const player = this.state.players.get(client.sessionId);
+    this.onMessage("crouch", (client, message) => {
+    const player = this.state.players.get(client.sessionId);
+    if (!player || !player.alive || this.state.gameOver) return;
 
-            if (
-                !player ||
-                !player.alive ||
-                this.state.gameOver ||
-                this.state.roomStatus !== "playing"
-            ) {
-                return;
-            }
+    player.crouching = message?.crouching === true;
+});
 
-            player.crouching = message?.crouching === true;
-        });
+this.onMessage("jump", (client) => {
+    const player = this.state.players.get(client.sessionId);
+    if (!player || !player.alive || this.state.gameOver) return;
 
-        this.onMessage("jump", (client) => {
-            const player = this.state.players.get(client.sessionId);
-
-            if (
-                !player ||
-                !player.alive ||
-                this.state.gameOver ||
-                this.state.roomStatus !== "playing"
-            ) {
-                return;
-            }
-
-            player.jumpTrigger += 1;
-        });
+    player.jumpTrigger += 1;
+});
 
         this.onMessage("pickupWeapon", (client) => {
-            if (this.state.roomStatus !== "playing") return;
-
             this.weaponPickupSystem?.handlePickup(
                 client.sessionId,
             );
         });
 
-        // ================================================
-        // SWITCH WEAPON
-        // Slot 0 = tay không/mặc định
-        // Slot 1 = weapon1
-        // Slot 2 = weapon2
-        // ================================================
         this.onMessage("switchWeapon", (client, message) => {
-            if (
-                this.state.roomStatus !== "playing" ||
-                this.state.gameOver
-            ) {
-                return;
-            }
+            if (this.state.gameOver) return;
 
             const player = this.state.players.get(client.sessionId);
 
@@ -390,30 +367,35 @@ this.broadcast("gameStarted", {
 
             if (![0, 1, 2].includes(slot)) return;
 
-            if (slot === 1 && !player.weapon1) return;
-            if (slot === 2 && !player.weapon2) return;
+if (slot === 1 && !player.weapon1) return;
+if (slot === 2 && !player.weapon2) return;
+
+player.equippedSlot = slot;
+
 
             player.equippedSlot = slot;
         });
 
-        this.onMessage("attack", (client, message) => {
-            if (this.state.roomStatus !== "playing") return;
+     this.onMessage("attack", (client, message) => {
+    const player = this.state.players.get(client.sessionId);
 
-            const player = this.state.players.get(client.sessionId);
+    console.log("[BattleRoom] ATTACK RECEIVED", {
+        sessionId: client.sessionId,
+        action: message?.action,
+        weapon1: player?.weapon1,
+        weapon2: player?.weapon2,
+        equippedSlot: player?.equippedSlot,
+        alive: player?.alive,
+        gameOver: this.state.gameOver,
+    });
 
-            if (!player || !player.alive || this.state.gameOver) {
-                return;
-            }
-
-            this.combatSystem?.handleAttack(
-                client.sessionId,
-                message,
-            );
-        });
+    this.combatSystem?.handleAttack(
+        client.sessionId,
+        message,
+    );
+});
 
         this.onMessage("move", (client, message) => {
-            if (this.state.roomStatus !== "playing") return;
-
             this.movementSystem?.handleMove(
                 client.sessionId,
                 message,
@@ -422,34 +404,27 @@ this.broadcast("gameStarted", {
         });
 
         this.onMessage("plantBomb", (client) => {
-            if (this.state.roomStatus !== "playing") return;
-
             this.bombSystem?.plantBomb(client.sessionId);
         });
     }
 
-    onJoin(client: Client, options: BattleRoomOptions): void {
-        if (this.state.roomStatus !== "waiting") {
-            throw new Error(
-                "Trận đấu đã bắt đầu, không thể tham gia.",
-            );
-        }
-if (
-    options.roomCode &&
-    options.roomCode !== this.state.roomCode
-) {
-    throw new Error("Mã phòng không chính xác.");
-}
-        console.log("[BattleRoom] Join:", client.sessionId);
+   onJoin(client: Client, options: BattleRoomOptions): void {
+    // Không cho người mới vào khi trận đã bắt đầu.
+    if (this.state.roomStatus !== "waiting") {
+        throw new Error(
+            "Trận đấu đã bắt đầu, không thể tham gia."
+        );
+    }
 
-        // Người đầu tiên vào phòng là chủ phòng.
-// Xác định chủ phòng từ sessionId được lưu khi tạo phòng.
-// Nếu chưa có chủ phòng thì người đầu tiên vào sẽ là chủ.
-if (!this.hostSessionId) {
-    this.hostSessionId = client.sessionId;
-}
+    console.log("[BattleRoom] Join:", client.sessionId);
 
-this.state.hostId = this.hostSessionId;
+    // Người đầu tiên vào phòng là chủ phòng.
+    if (!this.hostSessionId) {
+        this.hostSessionId = client.sessionId;
+    }
+
+    // Đồng bộ chủ phòng cho tất cả client.
+    this.state.hostId = this.hostSessionId;
 
         const player = new PlayerState();
 
@@ -483,19 +458,11 @@ this.state.hostId = this.hostSessionId;
 
         this.state.players.set(client.sessionId, player);
 
-        // Đồng bộ host sau khi thêm người chơi vào state.
-        this.state.hostId = this.hostSessionId ?? "";
-
         this.broadcast("hostChanged", {
-            hostId: this.state.hostId,
+            hostId: this.hostSessionId,
         });
 
-        console.log("[BattleRoom] Player joined:", {
-            name: player.name,
-            sessionId: client.sessionId,
-            hostId: this.state.hostId,
-            playerCount: this.state.players.size,
-        });
+        console.log("[BattleRoom] Player joined:", player.name);
     }
 
     onLeave(client: Client): void {
@@ -508,27 +475,20 @@ this.state.hostId = this.hostSessionId;
         this.spawnSystem?.removePlayer(sessionId);
         this.physicsSystem?.removePlayer(sessionId);
         this.combatSystem?.removePlayer(sessionId);
-        this.weaponPickupSystem?.removePlayer(sessionId);
+this.weaponPickupSystem?.removePlayer(sessionId);
+      if (this.hostSessionId === sessionId) {
+    const nextHost = this.state.players.keys().next();
 
-        if (this.hostSessionId === sessionId) {
-            const nextHost = this.state.players.keys().next();
+    this.hostSessionId =
+        nextHost.done ? null : nextHost.value;
+}
 
-            this.hostSessionId =
-                nextHost.done ? null : nextHost.value;
-        }
+// Đồng bộ hostId mới vào schema.
+this.state.hostId = this.hostSessionId ?? "";
 
-        // Luôn cập nhật state sau khi xác định host mới.
-        this.state.hostId = this.hostSessionId ?? "";
-
-        this.broadcast("hostChanged", {
-            hostId: this.state.hostId,
-        });
-
-        console.log("[BattleRoom] Player left:", {
-            sessionId,
-            hostId: this.state.hostId,
-            remainingPlayers: this.state.players.size,
-        });
+this.broadcast("hostChanged", {
+    hostId: this.state.hostId,
+});
     }
 
     onDispose(): void {

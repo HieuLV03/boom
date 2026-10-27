@@ -200,9 +200,20 @@ export default function BombController({
         // SERVER BOMBS
         // ====================================================
 
-        const serverBombs =
-            room.state?.bombs;
+  const serverBombs = room.state?.bombs;
 
+console.log("[CLIENT BOMB] Room state diagnostic:", {
+    roomId: room.roomId,
+    sessionId: room.sessionId,
+    roomName: room.name,
+    stateExists: Boolean(room.state),
+    stateKeys: room.state
+        ? Object.keys(room.state)
+        : [],
+    hasBombs: Boolean(serverBombs),
+    hasPlayers: Boolean(room.state?.players),
+    roomStatus: room.state?.roomStatus,
+});
 
         if (!serverBombs) {
 

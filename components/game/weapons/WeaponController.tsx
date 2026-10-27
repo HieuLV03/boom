@@ -106,15 +106,27 @@ export default function WeaponController({
             return;
         }
 
-        const state = room.state as any;
-        const pickupMap = state.weaponPickups;
-        const playersMap = state.players;
+     const state = room.state as any;
+const pickupMap = state?.weaponPickups;
+const playersMap = state?.players;
 
+console.log("[WEAPON] Kiểm tra Colyseus state:", {
+    roomId: room.roomId,
+    hasState: !!state,
+    stateKeys: state ? Object.keys(state) : [],
+    hasWeaponPickups: !!pickupMap,
+    hasPlayers: !!playersMap,
+});
         if (!pickupMap) {
-            console.error(
-                "[WEAPON] Server không có weaponPickups trong state.",
-            );
-
+     console.log("[WEAPON] State debug:", {
+    roomId: room.roomId,
+    sessionId: room.sessionId,
+    stateConstructor: room.state?.constructor?.name,
+    stateKeys: Object.keys(room.state as any),
+    hasWeaponPickups: "weaponPickups" in (room.state as any),
+    hasPlayers: "players" in (room.state as any),
+    hasZombies: "zombies" in (room.state as any),
+});
             setPickups([]);
             return;
         }

@@ -1,13 +1,15 @@
 
 import { Client } from "@colyseus/sdk";
 
-const gameServerUrl =
+const serverUrl = (
     process.env.NEXT_PUBLIC_GAME_SERVER_URL ||
-    "ws://localhost:2567";
-    
+    "http://localhost:2567"
+)
+    .trim()
+    .replace(/\/+$/, "");
 
-console.log("[COLYSEUS] Server URL:", gameServerUrl);
+console.log("[BOOM] Colyseus server URL:", JSON.stringify(serverUrl));
 
-const client = new Client(gameServerUrl);
+const client = new Client(serverUrl);
 
 export default client;

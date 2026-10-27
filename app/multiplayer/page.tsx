@@ -37,7 +37,6 @@ export default function MultiplayerPage() {
     const [loading, setLoading] = useState(false);
 
 
-
 type FoundRoom = {
     roomId: string;
     roomCode: string;
@@ -52,7 +51,7 @@ async function findRoomByCode(
     )
         .replace(/^wss:/, "https:")
         .replace(/^ws:/, "http:")
-        .replace(/\/$/, "");
+        .replace(/\/+$/, "");
 
     const response = await fetch(
         `${serverUrl}/find-room/${encodeURIComponent(roomCode.trim())}`,
@@ -72,8 +71,7 @@ async function findRoomByCode(
     return await response.json() as FoundRoom;
 }
 
-    
-async function createRoom() {
+    async function createRoom() {
     if (loading) return;
 
     const startedAt = performance.now();
@@ -84,23 +82,20 @@ async function createRoom() {
 
         const code = generateRoomCode();
 
-        console.time("[BOOM] client.create");
-
-        const room = await client.create("battle", {
+        const room = await client.create("lobby", {
             name: name.trim() || "Player",
             roomCode: code,
             mapId: selectedMap,
         });
 
-        console.timeEnd("[BOOM] client.create");
-
-        console.log("[BOOM] Tạo phòng thành công", {
+        console.log("[BOOM] Lobby created:", {
             roomId: room.roomId,
             sessionId: room.sessionId,
-            elapsedMs: Math.round(performance.now() - startedAt),
+            elapsedMs: Math.round(
+                performance.now() - startedAt
+            ),
         });
 
-        setStatus("Đã tạo phòng, đang mở sảnh...");
         setRoom(room);
 
         router.push(
@@ -109,10 +104,7 @@ async function createRoom() {
             `&code=${encodeURIComponent(code)}`
         );
     } catch (error) {
-        console.error("[BOOM] CREATE ROOM ERROR", {
-            error,
-            elapsedMs: Math.round(performance.now() - startedAt),
-        });
+        console.error("[BOOM] CREATE LOBBY ERROR", error);
 
         setStatus(
             "Không thể tạo phòng. Kiểm tra kết nối máy chủ."
@@ -121,7 +113,6 @@ async function createRoom() {
         setLoading(false);
     }
 }
-
   
 async function joinRoom() {
     if (loading) return;
@@ -135,27 +126,42 @@ async function joinRoom() {
 
     try {
         setLoading(true);
-        setStatus("Đang tìm phòng...");
+        setStatus("Đang tìm sảnh chờ...");
 
-      const targetRoom = await findRoomByCode(code);
+        const targetRoom = await findRoomByCode(code);
+
         if (!targetRoom) {
-            setStatus("Không tìm thấy phòng. Hãy kiểm tra mã phòng.");
+            setStatus(
+                "Không tìm thấy sảnh chờ. Hãy kiểm tra mã phòng."
+            );
             return;
         }
 
-        setStatus("Đang tham gia phòng...");
+        setStatus("Đang tham gia sảnh...");
 
-        const room = await client.joinById(targetRoom.roomId, {
-            name: name.trim() || "Player",
-            roomCode: code,
-        });
+      
+const room = await client.joinById(
+    targetRoom.roomId,
+    {
+        name: name.trim() || "Player",
+        roomCode: code,
+    }
+);
 
-        // Kiểm tra trạng thái thực tế sau khi kết nối.
-        if (room.state.roomStatus !== "waiting") {
-            await room.leave();
-            setStatus("Trận đấu đã bắt đầu hoặc phòng không còn chờ.");
-            return;
-        }
+console.log("[BOOM] Joined lobby:", {
+    roomId: room.roomId,
+    sessionId: room.sessionId,
+    roomStatus: room.state.roomStatus,
+});
+
+setRoom(room);
+
+router.push(
+    `/lobby?room=${encodeURIComponent(room.roomId)}` +
+    `&session=${encodeURIComponent(room.sessionId)}` +
+    `&code=${encodeURIComponent(code)}`
+);
+
 
         setRoom(room);
 
@@ -165,13 +171,15 @@ async function joinRoom() {
             `&code=${encodeURIComponent(code)}`
         );
     } catch (error) {
-        console.error("[JOIN ROOM ERROR]", error);
-        setStatus("Không thể tham gia phòng. Vui lòng thử lại.");
+        console.error("[BOOM] JOIN LOBBY ERROR", error);
+
+        setStatus(
+            "Không thể tham gia sảnh. Vui lòng thử lại."
+        );
     } finally {
         setLoading(false);
     }
 }
-
     return (
         <main className="multiplayer-page">
             <section className="multiplayer-panel">

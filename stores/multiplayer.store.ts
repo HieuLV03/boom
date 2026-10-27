@@ -13,15 +13,24 @@ type MultiplayerStore = {
     clearRoom: () => void;
 };
 
+let activeRoom: Room<any> | null = null;
+
 export const useMultiplayerStore =
     create<MultiplayerStore>((set) => ({
         room: null,
         hostSessionId: null,
 
         setRoom: (newRoom) => {
+            if (activeRoom === newRoom) {
+                return;
+            }
+
+            activeRoom = newRoom;
+
             console.log("[STORE] Setting new room:", {
                 roomId: newRoom.roomId,
                 sessionId: newRoom.sessionId,
+                roomName: newRoom.name,
             });
 
             set({
@@ -29,51 +38,51 @@ export const useMultiplayerStore =
                 hostSessionId: null,
             });
 
-            // Đồng bộ chủ phòng từ state của server.
             const syncHost = () => {
+                if (activeRoom !== newRoom) return;
+
                 const state = newRoom.state as
                     | { hostId?: string }
                     | undefined;
 
                 const hostId = state?.hostId;
 
-                if (typeof hostId === "string" && hostId.length > 0) {
+                if (
+                    typeof hostId === "string" &&
+                    hostId.length > 0
+                ) {
                     set({ hostSessionId: hostId });
-
-                    console.log("[STORE] Synced host:", hostId);
                 }
             };
 
-            // Đồng bộ ngay nếu state đã có dữ liệu.
             syncHost();
 
-            // Đồng bộ tiếp khi server cập nhật state.
             newRoom.onStateChange(() => {
                 syncHost();
             });
 
-            // Theo dõi thông điệp hostChanged nếu server gửi.
-            newRoom.onMessage("hostChanged", (data: {
-                hostId?: string;
-            }) => {
-                if (typeof data?.hostId === "string") {
-                    set({ hostSessionId: data.hostId });
+            newRoom.onMessage(
+                "hostChanged",
+                (data: { hostId?: string }) => {
+                    if (activeRoom !== newRoom) return;
 
-                    console.log(
-                        "[STORE] Host changed:",
-                        data.hostId
-                    );
-                }
-            });
+                    if (typeof data?.hostId === "string") {
+                        set({
+                            hostSessionId: data.hostId,
+                        });
+                    }
+                },
+            );
         },
 
         setHostSessionId: (sessionId) => {
-            console.log("[STORE] Host session:", sessionId);
             set({ hostSessionId: sessionId });
         },
 
         clearRoom: () => {
             console.log("[STORE] clearRoom()");
+
+            activeRoom = null;
 
             set({
                 room: null,

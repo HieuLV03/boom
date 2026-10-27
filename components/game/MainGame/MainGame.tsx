@@ -2,38 +2,27 @@
 "use client";
 
 import {
+    useCallback,
     useEffect,
     useRef,
     useState,
 } from "react";
+
 import { useScareObjectStore } from "@/stores/scareObject.store";
-import "./MainGame.css";
-import JumpScareOverlay from "../JumpScareOverlay/JumpScareOverlay";
-import {
-    Canvas,
-} from "@react-three/fiber";
+import { useMultiplayerStore } from "@/stores/multiplayer.store";
+import { useBombStore } from "../bomb/bomb.store";
 
-import {
-    PerspectiveCamera,
-} from "@react-three/drei";
-
-import {
-    useRouter,
-} from "next/navigation";
+import { Canvas } from "@react-three/fiber";
+import { PerspectiveCamera } from "@react-three/drei";
+import { useRouter } from "next/navigation";
 
 import GameWorld from "../GameWorld";
 import GameHUD from "../GameHUD/GameHUD";
 import VirtualJoystick from "../VirtualJoystick/VirtualJoystick";
 import TouchCamera from "../TouchCamera";
+import JumpScareOverlay from "../JumpScareOverlay/JumpScareOverlay";
 
-import {
-    useBombStore,
-} from "../bomb/bomb.store";
-
-import {
-    useMultiplayerStore,
-} from "@/stores/multiplayer.store";
-
+import "./MainGame.css";
 
 // ============================================================
 // TYPES
@@ -43,10 +32,7 @@ type Props = {
     roomCode?: string;
 };
 
-type MapId =
-    | "tropical-village"
-    | "zombie-house";
-
+type MapId = "hospital";
 
 // ============================================================
 // BOOM GAME
@@ -55,38 +41,38 @@ type MapId =
 export default function MainGame({
     roomCode = "",
 }: Props) {
+    const router = useRouter();
 
-    const router =
-        useRouter();
-
-
-    // ========================================================
-    // ROOM
-    // ========================================================
-
-    const room =
-        useMultiplayerStore(
-            (state) =>
-                state.room
-        );
-
-
-    // ========================================================
-    // MAP STATE
-    // ========================================================
-
-    const [mapId, setMapId] = useState<MapId>(
-        "tropical-village"
+    const room = useMultiplayerStore(
+        (state) => state.room,
     );
 
+    const requestBomb = useBombStore(
+        (state) => state.requestBomb,
+    );
 
-    // ========================================================
-    // JUMPSCARE STATE
-    // ========================================================
-
+    const [mapId, setMapId] = useState<MapId>("hospital");
     const [scareTrigger, setScareTrigger] = useState(0);
+    const [isLeaving, setIsLeaving] = useState(false);
 
+    const leavingRef = useRef(false);
+    const roomRef = useRef(room);
 
+    // ========================================================
+    // KEEP CURRENT ROOM REF
+    // ========================================================
+useEffect(() => {
+    roomRef.current = room;
+
+    console.log("[MAIN GAME] Active room:", {
+        roomId: room?.roomId ?? null,
+        sessionId: room?.sessionId ?? null,
+        roomName: room?.name ?? null,
+        roomStatus: room?.state?.roomStatus ?? null,
+        mapId: room?.state?.mapId ?? null,
+        playerCount: room?.state?.players?.size ?? 0,
+    });
+}, [room]);
     // ========================================================
     // ROOM EVENTS: SCARE OBJECT
     // ========================================================
@@ -114,7 +100,7 @@ export default function MainGame({
                 if (data.objectId !== "scare-object-1") return;
 
                 useScareObjectStore.getState().setHp(data.hp);
-            }
+            },
         );
 
         const unsubscribeDestroyed = room.onMessage(
@@ -128,7 +114,7 @@ export default function MainGame({
                 if (data.objectId !== "scare-object-1") return;
 
                 setScareTrigger((previous) => previous + 1);
-            }
+            },
         );
 
         return () => {
@@ -142,304 +128,105 @@ export default function MainGame({
         };
     }, [room]);
 
-
-    // ========================================================
-    // BOMB
-    // ========================================================
-
-    const requestBomb =
-        useBombStore(
-            (state) =>
-                state.requestBomb
-        );
-
-
-    // ========================================================
-    // LEAVING
-    // ========================================================
-
-    const leavingRef =
-        useRef(false);
-
-
-    const [
-        isLeaving,
-        setIsLeaving,
-    ] = useState(false);
-
-
-    // ========================================================
-    // ROOM REF
-    // ========================================================
-
-    const roomRef =
-        useRef(room);
-
-
-    useEffect(() => {
-
-        roomRef.current =
-            room;
-
-    }, [room]);
-
-
     // ========================================================
     // ROOM EVENTS: MAP
     // ========================================================
 
-    useEffect(() => {
-        if (!room) {
-            setMapId("tropical-village");
-            return;
-        }
-
-        const updateMapId = () => {
-            const currentMapId = room.state?.mapId;
-
-            if (
-                currentMapId === "tropical-village" ||
-                currentMapId === "zombie-house"
-            ) {
-                setMapId(currentMapId);
-            }
-        };
-
-        updateMapId();
-
-        room.onStateChange(() => {
-            updateMapId();
-        });
-
-        // Không gọi unsubscribe nếu API không trả về hàm hủy đăng ký.
-    }, [room]);
-
-
-    // ========================================================
-    // CONNECTION LOG ONLY
-    // ========================================================
-    //
-    // IMPORTANT:
-    //
-    // Không đăng ký room.onLeave() ở đây.
-    //
-    // GamePage là nơi duy nhất xử lý onLeave.
-    //
-    // ========================================================
-
-
-    // ========================================================
-    // OUT
-    // ========================================================
-
-    async function handleLeaveGame() {
-
-        // ----------------------------------------------------
-        // Chống click nhiều lần
-        // ----------------------------------------------------
-
-        if (
-            leavingRef.current
-        ) {
-
-            return;
-
-        }
-
-
-        leavingRef.current =
-            true;
-
-
-        setIsLeaving(
-            true
-        );
-
-
-        console.log("");
-
-        console.log(
-            "========================================"
-        );
-
-        console.log(
-            "[ROOM] OUT CLICKED"
-        );
-
-        console.log(
-            "========================================"
-        );
-
-
-        // ====================================================
-        // GET CURRENT ROOM
-        // ====================================================
-
-        const currentRoom =
-            roomRef.current;
-
-
-        if (!currentRoom) {
-
-            console.warn(
-                "[ROOM] No active room"
-            );
-
-
-            useMultiplayerStore
-                .getState()
-                .clearRoom();
-
-
-            router.replace(
-                "/multiplayer"
-            );
-
-
-            return;
-
-        }
-
-
-        console.log(
-            "[ROOM] Leaving:",
-            {
-                roomId:
-                    currentRoom.roomId,
-
-                sessionId:
-                    currentRoom.sessionId,
-            }
-        );
-
-
-        // ====================================================
-        // LEAVE COLYSEUS
-        // ====================================================
-        //
-        // Chờ leave() hoàn thành trước khi clear store.
-        //
-        // ====================================================
-
-        try {
-
-            await currentRoom.leave();
-
-
-            console.log(
-                "[ROOM] ✅ Colyseus leave success"
-            );
-
-        } catch (error) {
-
-            console.warn(
-                "[ROOM] ⚠️ Colyseus leave error:",
-                error
-            );
-
-        }
-
-
-        // ====================================================
-        // CLEAR ONLY OLD ROOM
-        // ====================================================
-
-        const activeRoom =
-            useMultiplayerStore
-                .getState()
-                .room;
-
-
-        if (
-            activeRoom ===
-            currentRoom
-        ) {
-
-            useMultiplayerStore
-                .getState()
-                .clearRoom();
-
-
-            console.log(
-                "[ROOM] ✅ Old room cleared"
-            );
-
-        }
-        else {
-
-            console.log(
-                "[ROOM] Store already contains another room"
-            );
-
-        }
-
-
-        // ====================================================
-        // NAVIGATE
-        // ====================================================
-
-        console.log(
-            "[ROOM] → /multiplayer"
-        );
-
-
-        router.replace(
-            "/multiplayer"
-        );
-
+useEffect(() => {
+    if (!room) {
+        setMapId("hospital");
+        return;
     }
 
+    const updateMapId = () => {
+        const serverMapId = room.state?.mapId;
+
+        if (serverMapId === "hospital") {
+            setMapId("hospital");
+        }
+    };
+
+    updateMapId();
+
+    room.onStateChange(() => {
+        updateMapId();
+    });
+}, [room]);
+    // ========================================================
+    // LEAVE GAME
+    // ========================================================
+
+    const handleLeaveGame = useCallback(async () => {
+        if (leavingRef.current) return;
+
+        leavingRef.current = true;
+        setIsLeaving(true);
+
+        console.log("[ROOM] OUT CLICKED");
+
+        const currentRoom = roomRef.current;
+
+        if (!currentRoom) {
+            console.warn("[ROOM] No active room");
+
+            const store = useMultiplayerStore.getState();
+            store.clearRoom();
+
+            router.replace("/multiplayer");
+            return;
+        }
+
+        console.log("[ROOM] Leaving:", {
+            roomId: currentRoom.roomId,
+            sessionId: currentRoom.sessionId,
+        });
+
+        try {
+            await currentRoom.leave();
+            console.log("[ROOM] Colyseus leave completed");
+        } catch (error) {
+            console.warn("[ROOM] Colyseus leave error:", error);
+        }
+
+        // Chỉ xóa room nếu store vẫn giữ đúng room vừa rời.
+        const activeRoom = useMultiplayerStore.getState().room;
+
+        if (activeRoom === currentRoom) {
+            useMultiplayerStore.getState().clearRoom();
+            console.log("[ROOM] Old room cleared");
+        }
+
+        router.replace("/multiplayer");
+    }, [router]);
 
     // ========================================================
     // RENDER
     // ========================================================
 
     return (
-
         <div className="boom-game">
-
-            {/* ==================================================
-                3D GAME
-            ================================================== */}
+            {/* 3D GAME */}
 
             <Canvas
                 shadows
-                dpr={[
-                    1,
-                    1.5,
-                ]}
+                dpr={[1, 1.5]}
                 gl={{
-                    antialias:
-                        false,
+                    antialias: false,
                 }}
             >
-
                 <PerspectiveCamera
                     makeDefault
-                    position={[
-                        0,
-                        4,
-                        7,
-                    ]}
+                    position={[0, 4, 7]}
                     fov={60}
                 />
 
-
-                <ambientLight
-                    intensity={1.5}
-                />
-
+                <ambientLight intensity={1.5} />
 
                 <directionalLight
-                    position={[
-                        10,
-                        20,
-                        10,
-                    ]}
+                    position={[10, 20, 10]}
                     intensity={2}
                     castShadow
                 />
-
 
                 <hemisphereLight
                     intensity={1}
@@ -448,98 +235,47 @@ export default function MainGame({
                 />
 
                 <GameWorld mapId={mapId} />
-
             </Canvas>
 
+            {/* JUMPSCARE */}
 
-            {/* ==================================================
-                JUMPSCARE - MA NHÀO LÊN MÀN HÌNH
-            ================================================== */}
+            <JumpScareOverlay trigger={scareTrigger} />
 
-            <JumpScareOverlay
-                trigger={scareTrigger}
-            />
-
-
-            {/* ==================================================
-                OUT
-            ================================================== */}
+            {/* LEAVE GAME */}
 
             <button
                 type="button"
                 className="boom-game__out"
-                onClick={
-                    handleLeaveGame
-                }
-                disabled={
-                    isLeaving
-                }
+                onClick={handleLeaveGame}
+                disabled={isLeaving}
             >
-
-                {
-                    isLeaving
-                        ? "..."
-                        : "OUT"
-                }
-
+                {isLeaving ? "..." : "OUT"}
             </button>
 
+            {/* ROOM CODE */}
 
-            {/* ==================================================
-                ROOM CODE
-            ================================================== */}
+            {roomCode && (
+                <div className="boom-game__room-code">
+                    Mã phòng:
+                    <span className="boom-game__room-code-number">
+                        {roomCode}
+                    </span>
+                </div>
+            )}
 
-            {
-                roomCode && (
-
-                    <div
-                        className="
-                            boom-game__room-code
-                        "
-                    >
-
-                        Mã phòng:
-
-                        <span
-                            className="
-                                boom-game__room-code-number
-                            "
-                        >
-                            {
-                                roomCode
-                            }
-                        </span>
-
-                    </div>
-
-                )
-            }
-
-
-            {/* ==================================================
-                HUD
-            ================================================== */}
+            {/* HUD */}
 
             <GameHUD />
 
-
-            {/* ==================================================
-                LEFT JOYSTICK
-            ================================================== */}
+            {/* MOVEMENT */}
 
             <VirtualJoystick />
 
-
-            {/* ==================================================
-                RIGHT CAMERA
-            ================================================== */}
+            {/* CAMERA */}
 
             <TouchCamera />
 
-
-            {/* ==================================================
-                BOMB BUTTON - ĐỘC LẬP
-            ================================================== */}
+            {/* BOMB */}
 
             <button
                 type="button"
@@ -556,15 +292,6 @@ export default function MainGame({
             >
                 💣
             </button>
-
-
-            {/* ==================================================
-                JUMP BUTTON - ĐỘC LẬP
-            ================================================== */}
-
-
         </div>
-
     );
-
 }

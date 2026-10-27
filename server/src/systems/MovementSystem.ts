@@ -115,9 +115,29 @@ export class MovementSystem {
             }
         }
 
-        player.x = finalX;
-        player.z = finalZ;
-        player.rotation = requestedRotation;
+player.x = finalX;
+player.z = finalZ;
+player.rotation = requestedRotation;
+
+console.log("[MOVE DEBUG]", {
+    sessionId,
+    requested: {
+        x: requestedX,
+        z: requestedZ,
+    },
+    before: {
+        x: startX,
+        z: startZ,
+    },
+    after: {
+        x: player.x,
+        z: player.z,
+    },
+    distanceAccepted: Math.hypot(
+        player.x - startX,
+        player.z - startZ,
+    ),
+});
 
         player.moving =
             Math.abs(finalX - startX) > 0.001 ||
