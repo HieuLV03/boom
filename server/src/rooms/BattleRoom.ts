@@ -338,14 +338,6 @@ this.state.timeRemaining = MATCH_DURATION;
             timeRemaining: this.state.timeRemaining,
         });
 
-
-this.zombieSystem?.initialize();
-    this.broadcast("gameStarted", {
-        roomCode: this.state.roomCode,
-        mapId: this.state.mapId,
-        timeRemaining: this.state.timeRemaining,
-    });
-
     console.log("[BattleRoom] Game started:", {
         roomId: this.roomId,
         hostId: this.hostSessionId,

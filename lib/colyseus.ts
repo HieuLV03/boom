@@ -8,7 +8,7 @@ const serverUrl = (
     .trim()
     .replace(/\/+$/, "");
 
-console.log("[BOOM] Colyseus server URL:", JSON.stringify(serverUrl));
+console.log("[BOOM] Colyseus server URL:", serverUrl);
 
 const client = new Client(serverUrl);
 
