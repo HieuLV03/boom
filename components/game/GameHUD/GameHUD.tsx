@@ -362,12 +362,33 @@ useEffect(() => {
 
     if (!room) return;
 
-    const players = room.state?.players;
+ const state = room.state;
 
-    if (!players) {
-        console.warn("[HUD WEAPON] Players map chưa sẵn sàng");
-        return;
-    }
+if (!state) {
+    console.log("[HUD WEAPON] Room state chưa sẵn sàng", {
+        roomId: room.roomId,
+        sessionId: room.sessionId,
+    });
+    return;
+}
+
+const players = state.players;
+
+if (!players) {
+    console.log("[HUD WEAPON] Players map chưa sẵn sàng", {
+        roomId: room.roomId,
+        sessionId: room.sessionId,
+        stateKeys: Object.keys(state),
+    });
+    return;
+}
+
+console.log("[HUD WEAPON] State đã sẵn sàng", {
+    roomId: room.roomId,
+    sessionId: room.sessionId,
+    playerCount: players.size,
+    pickupCount: state.weaponPickups?.size ?? -1,
+});
 
     const $ = getStateCallbacks(room);
 

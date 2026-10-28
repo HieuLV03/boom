@@ -168,6 +168,7 @@ this.clock.setInterval(() => {
             },
         });
 
+      
         // Weapon pickups.
         this.weaponPickupSystem = new WeaponPickupSystem({
             state: this.state,
@@ -177,21 +178,36 @@ this.clock.setInterval(() => {
             },
         });
 
-console.log("[DEBUG WEAPON] Sau initialize", {
-    roomId: this.roomId,
-    mapId: this.mapId,
-    pickupCount: this.state.weaponPickups.size,
-    pickups: Array.from(
-        this.state.weaponPickups.values(),
-    ).map((pickup) => ({
-        id: pickup.id,
-        weaponType: pickup.weaponType,
-        x: pickup.x,
-        y: pickup.y,
-        z: pickup.z,
-        available: pickup.available,
-    })),
-});
+        // Tạo súng ngay khi phòng được khởi tạo,
+        // không đợi client gửi startGame.
+        console.log("[WEAPON] Bắt đầu khởi tạo súng", {
+            roomId: this.roomId,
+            mapId: this.mapId,
+            roomStatus: this.state.roomStatus,
+        });
+
+        try {
+            this.weaponPickupSystem.initialize();
+
+            console.log("[WEAPON] Kết quả khởi tạo súng", {
+                roomId: this.roomId,
+                mapId: this.mapId,
+                pickupCount: this.state.weaponPickups.size,
+                pickups: Array.from(
+                    this.state.weaponPickups.values(),
+                ).map((pickup) => ({
+                    id: pickup.id,
+                    weaponType: pickup.weaponType,
+                    available: pickup.available,
+                    x: pickup.x,
+                    y: pickup.y,
+                    z: pickup.z,
+                })),
+            });
+        } catch (error) {
+            console.error("[WEAPON] Khởi tạo súng thất bại", error);
+        }
+
         // Zombies.
         this.zombieSystem = new ZombieSystem({
             state: this.state,
@@ -292,26 +308,36 @@ this.onMessage("startGame", (client) => {
         return;
     }
 
-    this.state.roomStatus = "playing";
-    this.state.gameOver = false;
-    this.state.timeRemaining = MATCH_DURATION;
+this.state.roomStatus = "playing";
+this.state.gameOver = false;
+this.state.timeRemaining = MATCH_DURATION;
 
-  this.weaponPickupSystem?.initialize();
 
-console.log("[DEBUG WEAPON] Sau initialize:", {
-    roomId: this.roomId,
-    pickupCount: this.state.weaponPickups.size,
-    pickups: Array.from(
-        this.state.weaponPickups.values(),
-    ).map((pickup) => ({
-        id: pickup.id,
-        weaponType: pickup.weaponType,
-        available: pickup.available,
-        x: pickup.x,
-        y: pickup.y,
-        z: pickup.z,
-    })),
-});
+        console.log("[WEAPON] Kiểm tra trước khi bắt đầu trận", {
+            roomId: this.roomId,
+            mapId: this.mapId,
+            players: this.state.players.size,
+            pickupCount: this.state.weaponPickups.size,
+            pickups: Array.from(
+                this.state.weaponPickups.values(),
+            ).map((pickup) => ({
+                id: pickup.id,
+                weaponType: pickup.weaponType,
+                available: pickup.available,
+                x: pickup.x,
+                y: pickup.y,
+                z: pickup.z,
+            })),
+        });
+
+        this.zombieSystem?.initialize();
+
+        this.broadcast("gameStarted", {
+            roomCode: this.state.roomCode,
+            mapId: this.mapId,
+            timeRemaining: this.state.timeRemaining,
+        });
+
 
 this.zombieSystem?.initialize();
     this.broadcast("gameStarted", {
@@ -373,7 +399,6 @@ if (slot === 2 && !player.weapon2) return;
 player.equippedSlot = slot;
 
 
-            player.equippedSlot = slot;
         });
 
      this.onMessage("attack", (client, message) => {

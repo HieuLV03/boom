@@ -115,6 +115,13 @@ const [weapon1, setWeapon1] = useState("");
 const [weapon2, setWeapon2] = useState("");
 const [equippedSlot, setEquippedSlot] = useState(0);
 
+// HP đồng bộ trực tiếp từ Colyseus.
+// HP đồng bộ trực tiếp từ Colyseus.
+const [hp, setHp] = useState(100);
+
+// Tăng mỗi khi HP giảm để kích hoạt animation male_hit.
+const [hitTrigger, setHitTrigger] = useState(0);
+const previousHpRef = useRef(100);
 const aimTargetRef = useRef(new Vector3());
 const shotDirectionRef = useRef(new Vector3());
 const muzzlePositionRef = useRef(new Vector3());
@@ -519,10 +526,11 @@ setEquippedSlot(0);
                 // NAME
                 // ================================================
 
-                setPlayerName(
-                    serverPlayer.name ||
-                    "Player"
-                );
+         setPlayerName(
+    serverPlayer.name || "Player"
+);
+setHp(Number(serverPlayer.hp ?? 100));
+previousHpRef.current = Number(serverPlayer.hp ?? 100);
 setWeapon1(serverPlayer.weapon1 || "");
 setWeapon2(serverPlayer.weapon2 || "");
 setEquippedSlot(
@@ -591,7 +599,21 @@ setEquippedSlot(
                                 serverPlayer.name ||
                                 "Player"
                             );
+                            
+const nextHp = Number(serverPlayer.hp ?? 100);
+const previousHp = previousHpRef.current;
 
+if (nextHp < previousHp) {
+    console.log("[HIT] Local player bị mất HP:", {
+        previousHp,
+        nextHp,
+    });
+
+    setHitTrigger((trigger) => trigger + 1);
+}
+
+previousHpRef.current = nextHp;
+setHp(nextHp);
 // ================================================
 // WEAPON STATE
 // ================================================
@@ -2178,24 +2200,25 @@ if (room) {
     // ========================================================
     // PLAYER
     // ========================================================
-
 return (
     <group ref={playerRef}>
         <group visible={!firstPerson}>
-            <Player
-                position={[0, 0, 0]}
-                moving={isMoving}
-                movingBackward={movingBackward}
-                running={running && isMoving && !isCrouching}
-                crouching={isCrouching}
-aiming={
-    aiming &&
-    weaponType.trim().toLowerCase().replace(/[\s-]+/g, "_")
-        .includes("rifle")
-}
-                jumpTrigger={jumpTrigger}
-                weaponType={weaponType}
-            />
+          <Player
+    hp={hp}
+    hitTrigger={hitTrigger}
+    position={[0, 0, 0]}
+    moving={isMoving}
+    movingBackward={movingBackward}
+    running={running && isMoving && !isCrouching}
+    crouching={isCrouching}
+    aiming={
+        aiming &&
+        weaponType.trim().toLowerCase().replace(/[\s-]+/g, "_")
+            .includes("rifle")
+    }
+    jumpTrigger={jumpTrigger}
+    weaponType={weaponType}
+/>
         </group>
     </group>
 );

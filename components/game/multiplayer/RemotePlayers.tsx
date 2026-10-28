@@ -82,12 +82,21 @@ const [crouching, setCrouching] = useState(
 const [jumpTrigger, setJumpTrigger] = useState(
     Number(player?.jumpTrigger ?? 0)
 );
+
 const [aiming, setAiming] = useState(Boolean(player?.aiming));
+
+const [hp, setHp] = useState(
+    Number(player?.hp ?? 100)
+);
+
+const [hitTrigger, setHitTrigger] = useState(0);
+const previousHpRef = useRef(
+    Number(player?.hp ?? 100)
+);
 
 const [weaponType, setWeaponType] = useState(
     getEquippedWeapon(player)
 );
-
 // Mỗi nhân vật từ xa có bộ đếm đấm riêng.
 const [punchTrigger, setPunchTrigger] = useState(0);
 
@@ -101,7 +110,24 @@ useEffect(() => {
         setAiming(Boolean(player.aiming));
         setCrouching(Boolean(player.crouching));
 setJumpTrigger(Number(player.jumpTrigger ?? 0));
-     setWeaponType(getEquippedWeapon(player));
+setWeaponType(getEquippedWeapon(player));
+
+const nextHp = Number(player.hp ?? 100);
+const previousHp = previousHpRef.current;
+
+if (nextHp < previousHp) {
+    setHitTrigger((value) => value + 1);
+
+    console.log("[REMOTE HIT] Người chơi bị mất HP:", {
+        id,
+        previousHp,
+        nextHp,
+    });
+}
+
+previousHpRef.current = nextHp;
+setHp(nextHp);
+
 setPlayerName(player.name || "Player");
     };
 
@@ -245,6 +271,8 @@ useEffect(() => {
 
 <Player
     position={[0, 0, 0]}
+    hp={hp}
+    hitTrigger={hitTrigger}
     moving={moving}
     movingBackward={movingBackward}
     running={running}
@@ -252,8 +280,7 @@ useEffect(() => {
     aiming={aiming}
     weaponType={weaponType}
     punchTrigger={punchTrigger}
-        jumpTrigger={jumpTrigger}
-
+    jumpTrigger={jumpTrigger}
 />
         </group>
 

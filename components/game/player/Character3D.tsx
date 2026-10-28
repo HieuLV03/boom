@@ -89,8 +89,11 @@ type Props = {
     punchTrigger?: number;
     aiming?: boolean;
     jumpTrigger?: number;
+    hitTrigger?: number;
     weaponType?: string;
+    hp?: number;
 };
+
 type SegmentProps = {
     root: Object3D;
     start: Bone | null;
@@ -635,6 +638,7 @@ function HeldWeapon({
 // CHARACTER
 // ============================================================
 
+
 export default function Character3D({
     moving = false,
     movingBackward = false,
@@ -644,6 +648,8 @@ export default function Character3D({
     punchTrigger = 0,
     jumpTrigger = 0,
     weaponType = "",
+    hitTrigger = 0,
+    hp = 100,
 }: Props) {
     const { scene, animations } = useGLTF(MODEL_PATH);
 
@@ -811,12 +817,15 @@ useEffect(() => {
     const locomotionActionRef =
         useRef<AnimationAction | null>(null);
 
-    const punchingRef = useRef(false);
-    const jumpingRef = useRef(false);
+ const punchingRef = useRef(false);
+const jumpingRef = useRef(false);
+const hitReactRef = useRef(false);
 
+const previousHpRef = useRef(hp);
+const hitActionRef = useRef<AnimationAction | null>(null);
     const lastPunchTriggerRef = useRef(punchTrigger);
     const lastJumpTriggerRef = useRef(jumpTrigger);
-
+const lastHitTriggerRef = useRef(hitTrigger);
 const { actions, mixer } = useAnimations(
     animations,
     clonedScene,
@@ -1048,6 +1057,131 @@ if (moving && running) {
 };
 
 
+useEffect(() => {
+    // Mỗi trigger chỉ xử lý một lần.
+    if (hitTrigger === lastHitTriggerRef.current) {
+        return;
+    }
+
+    lastHitTriggerRef.current = hitTrigger;
+
+    // Đang nhảy thì bỏ qua hit reaction.
+    if (jumpingRef.current) {
+        console.log("[HIT] Bỏ qua vì đang nhảy", {
+            hitTrigger,
+        });
+        return;
+    }
+
+    const hitAction =
+        actions["male_hit"] ??
+        findAction(/^male_hit$/i);
+
+    if (!hitAction) {
+        console.error("[HIT] Không tìm thấy male_hit");
+        return;
+    }
+
+    // Hủy trạng thái đấm để đòn đấm không ghi đè hit reaction.
+    punchingRef.current = false;
+
+    hitReactRef.current = true;
+    hitActionRef.current = hitAction;
+
+    // Dừng các animation khác.
+    for (const action of Object.values(actions)) {
+        if (!action || action === hitAction) continue;
+
+        action.stopFading();
+        action.fadeOut(0.05);
+    }
+
+    // Phát male_hit đúng một lần.
+    hitAction.stopFading();
+    hitAction.enabled = true;
+    hitAction.reset();
+    hitAction.setLoop(LoopOnce, 1);
+    hitAction.clampWhenFinished = true;
+    hitAction.setEffectiveWeight(1);
+    hitAction.setEffectiveTimeScale(1);
+    hitAction.fadeIn(0.05).play();
+
+    activeActionRef.current = hitAction;
+
+    console.log("[HIT] male_hit bắt đầu", {
+        hitTrigger,
+        clip: hitAction.getClip().name,
+    });
+}, [hitTrigger, actions, animations, mixer]);
+
+// ========================================================
+// Phát male_hit khi HP giảm, sau đó trở về locomotion.
+// ========================================================
+
+
+useEffect(() => {
+    const hitAction =
+        actions["male_hit"] ??
+        findAction(/^male_hit$/i);
+
+    if (!hitAction) {
+        console.warn(
+            "[ANIMATION] Không tìm thấy male_hit để đăng ký finished.",
+            animations.map((clip) => clip.name),
+        );
+        return;
+    }
+
+
+const handleFinished = (event: { action?: AnimationAction }) => {
+    if (event.action !== hitAction) return;
+
+    hitReactRef.current = false;
+    hitActionRef.current = null;
+
+    hitAction.fadeOut(0.1);
+
+    // Không chuyển animation khác nếu nhân vật đang đấm hoặc nhảy.
+    if (punchingRef.current || jumpingRef.current) return;
+
+    const nextAction = getLocomotionAction();
+    if (!nextAction) return;
+
+    nextAction.stopFading();
+    nextAction.enabled = true;
+    nextAction.reset();
+    nextAction.setLoop(LoopRepeat, Infinity);
+    nextAction.clampWhenFinished = false;
+    nextAction.setEffectiveWeight(1);
+    nextAction.setEffectiveTimeScale(1);
+    nextAction.fadeIn(0.12).play();
+
+    activeActionRef.current = nextAction;
+
+    console.log(
+        "[HIT] Kết thúc, trở về:",
+        nextAction.getClip().name,
+    );
+};
+
+
+    mixer.addEventListener("finished", handleFinished);
+
+    return () => {
+        mixer.removeEventListener("finished", handleFinished);
+    };
+}, [
+    actions,
+    animations,
+    mixer,
+    weaponType,
+    moving,
+    movingBackward,
+    running,
+    crouching,
+    aiming,
+]);
+
     // ========================================================
     // DEBUG RIFLE ANIMATION
     // ========================================================
@@ -1098,9 +1232,14 @@ useEffect(() => {
 
     locomotionActionRef.current = nextAction;
 
-    if (!nextAction || punchingRef.current || jumpingRef.current) {
-        return;
-    }
+if (
+    !nextAction ||
+    punchingRef.current ||
+    jumpingRef.current ||
+    hitReactRef.current
+) {
+    return;
+}
 
     const previousAction = activeActionRef.current;
 
@@ -1178,9 +1317,15 @@ useEffect(() => {
 
             jumpingRef.current = false;
 
-            const nextAction = locomotionActionRef.current;
+         const nextAction = locomotionActionRef.current;
 
-            if (!nextAction || punchingRef.current) return;
+if (
+    !nextAction ||
+    punchingRef.current ||
+    hitReactRef.current
+) {
+    return;
+}
 
             jumpAction.fadeOut(0.1);
 
@@ -1274,13 +1419,16 @@ useEffect(() => {
         const handleFinished = (
             event: { action?: AnimationAction },
         ) => {
-            if (event.action !== punchAction) return;
+          if (event.action !== punchAction) return;
 
-            punchingRef.current = false;
+punchingRef.current = false;
 
-            const nextAction = locomotionActionRef.current;
+// Không để animation đấm ghi đè animation bị trúng đòn.
+if (hitReactRef.current) return;
 
-            if (!nextAction || jumpingRef.current) return;
+const nextAction = locomotionActionRef.current;
+
+if (!nextAction || jumpingRef.current) return;
 
             punchAction.fadeOut(0.1);
 

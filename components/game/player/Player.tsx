@@ -18,15 +18,19 @@ import { Text } from "@react-three/drei";
 type Props = {
     position?: [number, number, number];
     rotation?: number;
+    hp?: number;
+
     appearance?: PlayerAppearance;
     moving?: boolean;
     movingBackward?: boolean;
     aiming?: boolean;
     running?: boolean;
     crouching?: boolean;
+
     jumpTrigger?: number;
+    punchTrigger?: number;
+    hitTrigger?: number;
     weaponType?: string;
-    punchTrigger?: number; // Thêm dòng này
 };
 
 // ============================================================
@@ -35,6 +39,7 @@ type Props = {
 export default function Player({
     position = [0, 0, 0],
     rotation = 0,
+        hp = 100,
     appearance = DEFAULT_APPEARANCE,
     moving = false,
     movingBackward = false,
@@ -44,6 +49,8 @@ export default function Player({
     weaponType = "",
     aiming = false,
     punchTrigger: remotePunchTrigger,
+        hitTrigger = 0,
+
 }: Props) {
     const localPunchTrigger = usePunchStore(
         (state) => state.punchTrigger,
@@ -56,6 +63,7 @@ export default function Player({
         <group position={position}>
             <group rotation={[0, rotation, 0]}>
                 <Character3D
+                    hp={hp}
                     moving={moving}
                     movingBackward={movingBackward}
                     running={running && !crouching}
@@ -63,6 +71,8 @@ export default function Player({
                     aiming={aiming}
                     jumpTrigger={jumpTrigger}
                     punchTrigger={punchTrigger}
+                        hitTrigger={hitTrigger}
+
                     weaponType={weaponType}
                 />
             </group>
