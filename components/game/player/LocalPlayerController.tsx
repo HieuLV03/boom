@@ -120,7 +120,6 @@ const [equippedSlot, setEquippedSlot] = useState(0);
 const [hp, setHp] = useState(100);
 
 // Tăng mỗi khi HP giảm để kích hoạt animation male_hit.
-const [hitTrigger, setHitTrigger] = useState(0);
 const previousHpRef = useRef(100);
 const aimTargetRef = useRef(new Vector3());
 const shotDirectionRef = useRef(new Vector3());
@@ -608,8 +607,6 @@ if (nextHp < previousHp) {
         previousHp,
         nextHp,
     });
-
-    setHitTrigger((trigger) => trigger + 1);
 }
 
 previousHpRef.current = nextHp;
@@ -2205,7 +2202,6 @@ return (
         <group visible={!firstPerson}>
           <Player
     hp={hp}
-    hitTrigger={hitTrigger}
     position={[0, 0, 0]}
     moving={isMoving}
     movingBackward={movingBackward}

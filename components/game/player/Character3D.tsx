@@ -817,15 +817,21 @@ useEffect(() => {
     const locomotionActionRef =
         useRef<AnimationAction | null>(null);
 
- const punchingRef = useRef(false);
+
+const punchingRef = useRef(false);
 const jumpingRef = useRef(false);
 const hitReactRef = useRef(false);
 
-const previousHpRef = useRef(hp);
 const hitActionRef = useRef<AnimationAction | null>(null);
-    const lastPunchTriggerRef = useRef(punchTrigger);
-    const lastJumpTriggerRef = useRef(jumpTrigger);
-const lastHitTriggerRef = useRef(hitTrigger);
+const hitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+const lastPunchTriggerRef = useRef(punchTrigger);
+const lastJumpTriggerRef = useRef(jumpTrigger);
+
+// Theo dõi HP để nhận biết một lần mất máu thực sự.
+const lastHpRef = useRef(hp);
+const HIT_REACTION_MS = 450;
+
 const { actions, mixer } = useAnimations(
     animations,
     clonedScene,
@@ -1058,17 +1064,22 @@ if (moving && running) {
 
 
 useEffect(() => {
-    // Mỗi trigger chỉ xử lý một lần.
-    if (hitTrigger === lastHitTriggerRef.current) {
+    const previousHp = lastHpRef.current;
+
+    // Cập nhật HP đã ghi nhận trước khi xử lý.
+    lastHpRef.current = hp;
+
+    // Chỉ phản ứng khi HP thực sự giảm.
+    if (hp >= previousHp) {
         return;
     }
 
-    lastHitTriggerRef.current = hitTrigger;
-
-    // Đang nhảy thì bỏ qua hit reaction.
-    if (jumpingRef.current) {
-        console.log("[HIT] Bỏ qua vì đang nhảy", {
-            hitTrigger,
+    // Đang phản ứng với một đòn đánh thì bỏ qua
+    // các cập nhật HP tiếp theo trong thời gian khóa.
+    if (hitReactRef.current) {
+        console.log("[HIT] Bỏ qua sát thương trong thời gian khóa:", {
+            previousHp,
+            currentHp: hp,
         });
         return;
     }
@@ -1078,17 +1089,17 @@ useEffect(() => {
         findAction(/^male_hit$/i);
 
     if (!hitAction) {
-        console.error("[HIT] Không tìm thấy male_hit");
+        console.error("[HIT] Không tìm thấy animation male_hit");
         return;
     }
 
-    // Hủy trạng thái đấm để đòn đấm không ghi đè hit reaction.
-    punchingRef.current = false;
-
+    // Khóa trước khi phát animation để tránh kích hoạt trùng.
     hitReactRef.current = true;
     hitActionRef.current = hitAction;
 
-    // Dừng các animation khác.
+    punchingRef.current = false;
+    jumpingRef.current = false;
+
     for (const action of Object.values(actions)) {
         if (!action || action === hitAction) continue;
 
@@ -1096,23 +1107,79 @@ useEffect(() => {
         action.fadeOut(0.05);
     }
 
-    // Phát male_hit đúng một lần.
     hitAction.stopFading();
-    hitAction.enabled = true;
+    hitAction.stop();
     hitAction.reset();
+
+    hitAction.enabled = true;
     hitAction.setLoop(LoopOnce, 1);
     hitAction.clampWhenFinished = true;
     hitAction.setEffectiveWeight(1);
     hitAction.setEffectiveTimeScale(1);
-    hitAction.fadeIn(0.05).play();
+    hitAction.fadeIn(0.05);
+    hitAction.play();
 
     activeActionRef.current = hitAction;
 
-    console.log("[HIT] male_hit bắt đầu", {
-        hitTrigger,
-        clip: hitAction.getClip().name,
+    console.log("[HIT] Phát male_hit một lần:", {
+        previousHp,
+        currentHp: hp,
+        duration: hitAction.getClip().duration,
     });
-}, [hitTrigger, actions, animations, mixer]);
+
+    if (hitTimeoutRef.current !== null) {
+        clearTimeout(hitTimeoutRef.current);
+    }
+
+    hitTimeoutRef.current = setTimeout(() => {
+        hitTimeoutRef.current = null;
+
+        hitReactRef.current = false;
+        hitActionRef.current = null;
+
+        hitAction.stopFading();
+        hitAction.fadeOut(0.1);
+
+        const nextAction = getLocomotionAction();
+
+        if (!nextAction) {
+            console.warn("[HIT] Không tìm thấy animation để trở về.");
+            return;
+        }
+
+        for (const action of Object.values(actions)) {
+            if (!action || action === nextAction) continue;
+
+            action.stopFading();
+            action.fadeOut(0.1);
+        }
+
+        nextAction.stopFading();
+        nextAction.enabled = true;
+        nextAction.reset();
+        nextAction.setLoop(LoopRepeat, Infinity);
+        nextAction.clampWhenFinished = false;
+        nextAction.setEffectiveWeight(1);
+        nextAction.setEffectiveTimeScale(1);
+        nextAction.fadeIn(0.12).play();
+
+        activeActionRef.current = nextAction;
+
+        console.log("[HIT] Kết thúc phản ứng, trở về:", {
+            clip: nextAction.getClip().name,
+        });
+    }, HIT_REACTION_MS);
+}, [hp, actions, animations, mixer]);
+
+// Dọn timer khi component bị tháo khỏi scene.
+useEffect(() => {
+    return () => {
+        if (hitTimeoutRef.current !== null) {
+            clearTimeout(hitTimeoutRef.current);
+            hitTimeoutRef.current = null;
+        }
+    };
+}, []);
 
 // ========================================================
 // Phát male_hit khi HP giảm, sau đó trở về locomotion.
@@ -1132,44 +1199,6 @@ useEffect(() => {
         return;
     }
 
-
-const handleFinished = (event: { action?: AnimationAction }) => {
-    if (event.action !== hitAction) return;
-
-    hitReactRef.current = false;
-    hitActionRef.current = null;
-
-    hitAction.fadeOut(0.1);
-
-    // Không chuyển animation khác nếu nhân vật đang đấm hoặc nhảy.
-    if (punchingRef.current || jumpingRef.current) return;
-
-    const nextAction = getLocomotionAction();
-    if (!nextAction) return;
-
-    nextAction.stopFading();
-    nextAction.enabled = true;
-    nextAction.reset();
-    nextAction.setLoop(LoopRepeat, Infinity);
-    nextAction.clampWhenFinished = false;
-    nextAction.setEffectiveWeight(1);
-    nextAction.setEffectiveTimeScale(1);
-    nextAction.fadeIn(0.12).play();
-
-    activeActionRef.current = nextAction;
-
-    console.log(
-        "[HIT] Kết thúc, trở về:",
-        nextAction.getClip().name,
-    );
-};
-
-
-    mixer.addEventListener("finished", handleFinished);
-
-    return () => {
-        mixer.removeEventListener("finished", handleFinished);
-    };
 }, [
     actions,
     animations,
@@ -1416,36 +1445,32 @@ if (
             return;
         }
 
-        const handleFinished = (
-            event: { action?: AnimationAction },
-        ) => {
-          if (event.action !== punchAction) return;
+     const handleFinished = (
+    event: { action?: AnimationAction },
+) => {
+    if (event.action !== punchAction) return;
 
-punchingRef.current = false;
+    punchingRef.current = false;
 
-// Không để animation đấm ghi đè animation bị trúng đòn.
-if (hitReactRef.current) return;
+    // Không được chuyển animation khi đang bị đánh.
+    if (hitReactRef.current) return;
 
-const nextAction = locomotionActionRef.current;
+    if (jumpingRef.current) return;
 
-if (!nextAction || jumpingRef.current) return;
+    const nextAction = locomotionActionRef.current;
+    if (!nextAction) return;
 
-            punchAction.fadeOut(0.1);
+    punchAction.fadeOut(0.1);
 
-            nextAction.enabled = true;
-            nextAction.setLoop(LoopRepeat, Infinity);
-            nextAction.clampWhenFinished = false;
-            nextAction.setEffectiveWeight(1);
-            nextAction.reset();
-            nextAction.fadeIn(0.15).play();
+    nextAction.enabled = true;
+    nextAction.setLoop(LoopRepeat, Infinity);
+    nextAction.clampWhenFinished = false;
+    nextAction.setEffectiveWeight(1);
+    nextAction.reset();
+    nextAction.fadeIn(0.15).play();
 
-            activeActionRef.current = nextAction;
-
-            console.log(
-                "[ANIMATION] Punch finished; resumed:",
-                nextAction.getClip().name,
-            );
-        };
+    activeActionRef.current = nextAction;
+};
 
         mixer.addEventListener("finished", handleFinished);
 
@@ -1461,14 +1486,19 @@ if (!nextAction || jumpingRef.current) return;
     // ANIMATION: PUNCH TRIGGER
     // ========================================================
 
-    useEffect(() => {
-        if (punchTrigger === lastPunchTriggerRef.current) {
-            return;
-        }
 
-        lastPunchTriggerRef.current = punchTrigger;
+useEffect(() => {
+    if (punchTrigger === lastPunchTriggerRef.current) {
+        return;
+    }
 
-        if (jumpingRef.current) return;
+    lastPunchTriggerRef.current = punchTrigger;
+
+    // Không cho đấm ghi đè hit reaction hoặc animation nhảy.
+    if (jumpingRef.current || hitReactRef.current) {
+        return;
+    }
+
 
         const punchAction = findAction(
             /punch|attack|melee/i,

@@ -89,7 +89,6 @@ const [hp, setHp] = useState(
     Number(player?.hp ?? 100)
 );
 
-const [hitTrigger, setHitTrigger] = useState(0);
 const previousHpRef = useRef(
     Number(player?.hp ?? 100)
 );
@@ -116,8 +115,6 @@ const nextHp = Number(player.hp ?? 100);
 const previousHp = previousHpRef.current;
 
 if (nextHp < previousHp) {
-    setHitTrigger((value) => value + 1);
-
     console.log("[REMOTE HIT] Người chơi bị mất HP:", {
         id,
         previousHp,
@@ -272,7 +269,6 @@ useEffect(() => {
 <Player
     position={[0, 0, 0]}
     hp={hp}
-    hitTrigger={hitTrigger}
     moving={moving}
     movingBackward={movingBackward}
     running={running}
