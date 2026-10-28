@@ -716,7 +716,6 @@ useEffect(() => {
             markerUnderHand = true;
             break;
         }
-
         parent = parent.parent;
     }
 
