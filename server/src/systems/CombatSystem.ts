@@ -364,18 +364,43 @@ private handleRifleAttack(
             );
         }
 
-        const nearest = nearestRef.value;
+     const nearest = nearestRef.value;
 
-        this.broadcast("attackPerformed", {
-            playerId: sessionId,
-            action: "punch",
-            weapon: "punch",
-            hit: nearest !== null,
-            targetId: nearest?.id ?? null,
-            targetType: nearest?.type ?? null,
-        });
+console.log("[PUNCH TARGET DEBUG]", {
+    attackerId: sessionId,
+    attackerPosition: {
+        x: attacker.x,
+        z: attacker.z,
+        rotation: attacker.rotation,
+    },
+    punchRange: this.punchRange,
+    target: nearest,
+    players: Array.from(this.state.players.entries()).map(
+        ([id, player]) => ({
+            id,
+            x: player.x,
+            z: player.z,
+            rotation: player.rotation,
+            hp: player.hp,
+            alive: player.alive,
+            distance: Math.hypot(
+                player.x - attacker.x,
+                player.z - attacker.z,
+            ),
+        }),
+    ),
+});
 
-        if (!nearest) return;
+this.broadcast("attackPerformed", {
+    playerId: sessionId,
+    action: "punch",
+    weapon: "punch",
+    hit: nearest !== null,
+    targetId: nearest?.id ?? null,
+    targetType: nearest?.type ?? null,
+});
+
+if (!nearest) return;
 
         if (nearest.type === "player") {
             this.damagePlayer(
